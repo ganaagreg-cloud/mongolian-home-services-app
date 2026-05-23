@@ -57,6 +57,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading]     = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }))
 
@@ -74,11 +76,39 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
     return false
   }
 
+  const handleSubmit = async () => {
+    setIsLoading(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/workers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imei,
+          policeFile: policeFile ?? 'police_clearance.pdf',
+          bankName,
+          accountNumber,
+          accountHolderName,
+          iban,
+          accountType,
+        }),
+      })
+      const data = (await res.json()) as { success: boolean; error?: string }
+      if (data.success) {
+        setIsSubmitted(true)
+      } else {
+        setSubmitError(data.error ?? 'Алдаа гарлаа. Дахин оролдоно уу.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const nextStep = () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
     } else {
-      setIsSubmitted(true)
+      void handleSubmit()
     }
   }
 
@@ -354,12 +384,17 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
       {/* Next / Submit Button */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+        {submitError && (
+          <p className="mb-3 rounded-2xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+            {submitError}
+          </p>
+        )}
         <Button
           onClick={nextStep}
-          disabled={!canProceed()}
+          disabled={!canProceed() || isLoading}
           className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md disabled:opacity-50"
         >
-          {currentStep === 4 ? 'Илгээх' : 'Үргэлжлүүлэх'}
+          {isLoading ? 'Илгээж байна...' : currentStep === 4 ? 'Илгээх' : 'Үргэлжлүүлэх'}
         </Button>
       </div>
     </div>
