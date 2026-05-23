@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { NextRequest } from 'next/server'
 import type { SessionPayload } from './types'
 
 const SECRET = new TextEncoder().encode(
@@ -49,4 +50,12 @@ export async function setSessionCookie(payload: SessionPayload): Promise<void> {
 export async function clearSessionCookie(): Promise<void> {
   const store = await cookies()
   store.delete(COOKIE_NAME)
+}
+
+// Use at the top of every protected Route Handler.
+// Returns null if the request is unauthenticated (caller must return 401).
+export async function requireAuth(req: NextRequest): Promise<SessionPayload | null> {
+  const token = req.cookies.get(COOKIE_NAME)?.value
+  if (!token) return null
+  return verifyToken(token)
 }

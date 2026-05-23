@@ -1,10 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { OnboardingScreen } from '@/components/onboarding-screen'
-import { LoginScreen } from '@/components/login-screen'
-import { OTPScreen } from '@/components/otp-screen'
-import { DANSuccessScreen } from '@/components/dan-success-screen'
 import { HomeScreen } from '@/components/screens/home-screen'
 import { SearchScreen } from '@/components/screens/search-screen'
 import { BookingScreen } from '@/components/screens/booking-screen'
@@ -29,7 +25,6 @@ import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
 
 type Screen =
-  | 'onboarding' | 'login' | 'otp' | 'dan-success'
   | 'home' | 'search' | 'booking' | 'active-booking' | 'review' | 'profile' | 'chat' | 'orders'
   | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
@@ -38,23 +33,16 @@ type Screen =
 type UserRole = 'user' | 'worker' | 'admin'
 
 export default function Home() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('onboarding')
-  const [phone, setPhone] = useState('')
+  const [currentScreen, setCurrentScreen] = useState<Screen>('home')
   const [userName] = useState('Бат')
   const [userRole, setUserRole] = useState<UserRole>('user')
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
   const [hasActiveBooking, setHasActiveBooking] = useState(false)
 
-  // Auth handlers
-  const handleOnboardingComplete = () => setCurrentScreen('login')
-  const handleSendOTP = (phoneNumber: string) => {
-    setPhone(phoneNumber)
-    setCurrentScreen('otp')
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
   }
-  const handleDANLogin = () => setCurrentScreen('dan-success')
-  const handleOTPVerify = () => setCurrentScreen('dan-success')
-  const handleBackToLogin = () => setCurrentScreen('login')
-  const handleContinueToHome = () => setCurrentScreen('home')
 
   // User navigation
   const handleBottomNav = (screen: 'home' | 'orders' | 'chat' | 'profile') => {
@@ -70,7 +58,6 @@ export default function Home() {
   }
 
   // Screen-specific handlers
-  const handleCategorySelect = () => setCurrentScreen('search')
   const handleBookWorker = (workerId: string) => {
     setSelectedWorkerId(workerId)
     setCurrentScreen('booking')
@@ -82,10 +69,6 @@ export default function Home() {
   const handleSOS = () => alert('SOS илгээгдлээ!')
   const handleJobComplete = () => setCurrentScreen('review')
   const handleBecomeWorker = () => setCurrentScreen('worker-register')
-  const handleLogout = () => {
-    setUserRole('user')
-    setCurrentScreen('login')
-  }
 
   // Role switcher for demo
   const handleRoleSwitch = (role: UserRole) => {
@@ -124,47 +107,39 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-[390px] min-h-screen bg-background">
       {/* Role Switcher - Demo only */}
-      {!['onboarding', 'login', 'otp', 'dan-success'].includes(currentScreen) && (
-        <div className="fixed top-2 right-2 z-50 flex gap-1 rounded-full bg-card p-1 shadow-lg">
-          <button
-            onClick={() => handleRoleSwitch('user')}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              userRole === 'user' ? 'bg-primary text-white' : 'text-muted-foreground'
-            }`}
-          >
-            User
-          </button>
-          <button
-            onClick={() => handleRoleSwitch('worker')}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              userRole === 'worker' ? 'bg-primary text-white' : 'text-muted-foreground'
-            }`}
-          >
-            Worker
-          </button>
-          <button
-            onClick={() => handleRoleSwitch('admin')}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              userRole === 'admin' ? 'bg-primary text-white' : 'text-muted-foreground'
-            }`}
-          >
-            Admin
-          </button>
-        </div>
-      )}
-
-      {/* Auth Screens */}
-      {currentScreen === 'onboarding' && <OnboardingScreen onComplete={handleOnboardingComplete} />}
-      {currentScreen === 'login' && <LoginScreen onSendOTP={handleSendOTP} onDANLogin={handleDANLogin} />}
-      {currentScreen === 'otp' && <OTPScreen phone={phone} onBack={handleBackToLogin} onVerify={handleOTPVerify} />}
-      {currentScreen === 'dan-success' && <DANSuccessScreen onContinue={handleContinueToHome} />}
+      <div className="fixed top-2 right-2 z-50 flex gap-1 rounded-full bg-card p-1 shadow-lg">
+        <button
+          onClick={() => handleRoleSwitch('user')}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            userRole === 'user' ? 'bg-primary text-white' : 'text-muted-foreground'
+          }`}
+        >
+          User
+        </button>
+        <button
+          onClick={() => handleRoleSwitch('worker')}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            userRole === 'worker' ? 'bg-primary text-white' : 'text-muted-foreground'
+          }`}
+        >
+          Worker
+        </button>
+        <button
+          onClick={() => handleRoleSwitch('admin')}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            userRole === 'admin' ? 'bg-primary text-white' : 'text-muted-foreground'
+          }`}
+        >
+          Admin
+        </button>
+      </div>
 
       {/* User Screens */}
       {currentScreen === 'home' && (
         <HomeScreen
           userName={userName}
           onSearch={() => setCurrentScreen('search')}
-          onCategorySelect={handleCategorySelect}
+          onCategorySelect={() => setCurrentScreen('search')}
           onActiveBookingClick={() => setCurrentScreen('active-booking')}
           hasActiveBooking={hasActiveBooking}
         />
