@@ -1,9 +1,12 @@
 'use client'
 
+import useSWR from 'swr'
 import { Bell, Search, Sparkles, Droplets, Zap, Wrench, Paintbrush, Wind, Star, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { fetcher } from '@/lib/fetcher'
+import type { Worker } from '@/lib/types'
 
 interface HomeScreenProps {
   userName: string
@@ -15,18 +18,12 @@ interface HomeScreenProps {
 }
 
 const categories = [
-  { id: 'cleaning', icon: Sparkles, label: 'Цэвэрлэгээ' },
-  { id: 'plumbing', icon: Droplets, label: 'Сантехник' },
-  { id: 'electrical', icon: Zap, label: 'Цахилгаан' },
-  { id: 'repair', icon: Wrench, label: 'Жижиг засвар' },
-  { id: 'painting', icon: Paintbrush, label: 'Будаг' },
-  { id: 'hvac', icon: Wind, label: 'Агааржуулалт' },
-]
-
-const featuredWorkers = [
-  { id: '1', name: 'Батболд', rating: 4.9, reviews: 124, specialty: 'Цэвэрлэгээ', image: '' },
-  { id: '2', name: 'Ганзориг', rating: 4.8, reviews: 89, specialty: 'Сантехник', image: '' },
-  { id: '3', name: 'Түвшинбаяр', rating: 4.9, reviews: 156, specialty: 'Цахилгаан', image: '' },
+  { id: 'cleaning',    icon: Sparkles,    label: 'Цэвэрлэгээ' },
+  { id: 'plumbing',   icon: Droplets,    label: 'Сантехник' },
+  { id: 'electrical', icon: Zap,         label: 'Цахилгаан' },
+  { id: 'repair',     icon: Wrench,      label: 'Жижиг засвар' },
+  { id: 'painting',   icon: Paintbrush,  label: 'Будаг' },
+  { id: 'hvac',       icon: Wind,        label: 'Агааржуулалт' },
 ]
 
 export function HomeScreen({
@@ -37,6 +34,11 @@ export function HomeScreen({
   onWorkerSelect,
   hasActiveBooking = false,
 }: HomeScreenProps) {
+  const { data: featuredWorkers, isLoading } = useSWR<Worker[]>(
+    '/api/workers?sort=rating',
+    fetcher,
+  )
+
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
       {/* Header */}
@@ -91,7 +93,7 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Categories Section */}
+      {/* Categories */}
       <div className="mt-6 px-6">
         <h2 className="text-lg font-bold text-foreground">Үйлчилгээ сонгох</h2>
         <div className="mt-4 grid grid-cols-3 gap-3">
@@ -113,34 +115,48 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Featured Workers Section */}
+      {/* Featured Workers */}
       <div className="mt-6">
         <div className="flex items-center justify-between px-6">
           <h2 className="text-lg font-bold text-foreground">Шилдэг ажилтнууд</h2>
-          <button className="text-sm font-medium text-primary">Бүгдийг харах</button>
+          <button
+            onClick={onSearch}
+            className="text-sm font-medium text-primary"
+          >
+            Бүгдийг харах
+          </button>
         </div>
+
         <div className="mt-4 flex gap-3 overflow-x-auto px-6 pb-2 scrollbar-hide">
-          {featuredWorkers.map((worker) => (
-            <button
-              key={worker.id}
-              onClick={() => onWorkerSelect?.(worker.id)}
-              className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm"
-            >
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={worker.image} />
-                <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
-                  {worker.name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <p className="mt-2 font-semibold text-foreground">{worker.name}</p>
-              <p className="text-xs text-muted-foreground">{worker.specialty}</p>
-              <div className="mt-1 flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                <span className="text-xs font-medium text-foreground">{worker.rating}</span>
-                <span className="text-xs text-muted-foreground">({worker.reviews})</span>
-              </div>
-            </button>
-          ))}
+          {isLoading
+            ? [1, 2, 3].map((i) => (
+                <div key={i} className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm">
+                  <Skeleton className="h-16 w-16 rounded-full" />
+                  <Skeleton className="mt-2 h-4 w-20" />
+                  <Skeleton className="mt-1 h-3 w-16" />
+                  <Skeleton className="mt-1 h-3 w-12" />
+                </div>
+              ))
+            : (featuredWorkers ?? []).slice(0, 6).map((worker) => (
+                <button
+                  key={worker.id}
+                  onClick={() => onWorkerSelect?.(worker.id)}
+                  className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm active:scale-95 transition-all"
+                >
+                  <Avatar className="h-16 w-16">
+                    <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
+                      {worker.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="mt-2 font-semibold text-foreground">{worker.name.split(' ')[0]}</p>
+                  <p className="text-xs text-muted-foreground">{worker.specialty}</p>
+                  <div className="mt-1 flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                    <span className="text-xs font-medium text-foreground">{worker.rating}</span>
+                    <span className="text-xs text-muted-foreground">({worker.reviewCount})</span>
+                  </div>
+                </button>
+              ))}
         </div>
       </div>
     </div>

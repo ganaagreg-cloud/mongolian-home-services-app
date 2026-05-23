@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import { TABLES } from './schema'
+import { seed } from './seed'
 
 const DB_PATH = path.join(process.cwd(), 'app.db')
 
@@ -14,6 +15,7 @@ if (!g.__db) {
   for (const sql of TABLES) {
     g.__db.exec(sql)
   }
+  seed(g.__db)
 }
 
 export const db = g.__db

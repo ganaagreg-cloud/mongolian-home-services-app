@@ -1,22 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { Search, SlidersHorizontal, Star, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-
-interface Worker {
-  id: string
-  name: string
-  rating: number
-  reviews: number
-  pricePerHour: number
-  specialty: string
-  image: string
-  verified: boolean
-}
+import { fetcher } from '@/lib/fetcher'
+import type { Worker } from '@/lib/types'
 
 interface SearchScreenProps {
   onBack: () => void
@@ -24,46 +16,38 @@ interface SearchScreenProps {
   initialCategory?: string
 }
 
-const mockWorkers: Worker[] = [
-  { id: '1', name: 'Батболд Д.', rating: 4.9, reviews: 124, pricePerHour: 25000, specialty: 'Цэвэрлэгээ', image: '', verified: true },
-  { id: '2', name: 'Ганзориг Б.', rating: 4.8, reviews: 89, pricePerHour: 35000, specialty: 'Сантехник', image: '', verified: true },
-  { id: '3', name: 'Түвшинбаяр О.', rating: 4.9, reviews: 156, pricePerHour: 40000, specialty: 'Цахилгаан', image: '', verified: true },
-  { id: '4', name: 'Эрдэнэбат М.', rating: 4.7, reviews: 67, pricePerHour: 30000, specialty: 'Жижиг засвар', image: '', verified: true },
-]
-
 const filterChips = [
-  { id: 'price', label: 'Үнэ' },
-  { id: 'time', label: 'Цаг' },
-  { id: 'rating', label: 'Үнэлгээ' },
+  { id: 'rating',     label: 'Үнэлгээ',   sort: 'rating' },
+  { id: 'price_asc',  label: 'Хямд эхэлж', sort: 'price_asc' },
+  { id: 'price_desc', label: 'Үнэтэй эхэлж', sort: 'price_desc' },
 ]
 
-export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchScreenProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [workers, setWorkers] = useState<Worker[]>(mockWorkers)
+export function SearchScreen({ onBack, onBookWorker }: SearchScreenProps) {
+  const [searchQuery, setSearchQuery]     = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [activeSort, setActiveSort]       = useState<string | null>(null)
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    setIsLoading(true)
-    // Simulate search
-    setTimeout(() => {
-      setWorkers(mockWorkers.filter(w => 
-        w.name.toLowerCase().includes(query.toLowerCase()) ||
-        w.specialty.toLowerCase().includes(query.toLowerCase())
-      ))
-      setIsLoading(false)
-    }, 500)
-  }
+  // 350 ms debounce — avoid hammering the API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 350)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  const sort = activeSort ?? 'rating'
+  const url  = `/api/workers?q=${encodeURIComponent(debouncedQuery)}&sort=${sort}`
+
+  const { data: workers, isLoading, error } = useSWR<Worker[]>(url, fetcher)
+
+  const list = workers ?? []
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
-      {/* Search Header */}
-      <div className="sticky top-0 z-10 bg-background px-6 pt-12 pb-4">
+      {/* Sticky search header */}
+      <div className="sticky top-0 z-10 bg-background px-6 pb-4 pt-12">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
           >
             <X className="h-5 w-5 text-foreground" />
           </button>
@@ -72,24 +56,24 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
             <Input
               placeholder="Үйлчилгээ хайх..."
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="h-12 rounded-2xl border-border bg-card pl-12 pr-12 shadow-sm"
               autoFocus
             />
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-primary/10 p-1.5">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-primary/10 p-1.5">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
-            </button>
+            </div>
           </div>
         </div>
 
-        {/* Filter Chips */}
+        {/* Sort chips */}
         <div className="mt-4 flex gap-2">
           {filterChips.map((chip) => (
             <button
               key={chip.id}
-              onClick={() => setActiveFilter(activeFilter === chip.id ? null : chip.id)}
+              onClick={() => setActiveSort(activeSort === chip.id ? null : chip.id)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                activeFilter === chip.id
+                activeSort === chip.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-foreground shadow-sm'
               }`}
@@ -116,7 +100,11 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
               </div>
             ))}
           </div>
-        ) : workers.length === 0 ? (
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-sm text-destructive">Мэдээлэл ачааллахад алдаа гарлаа</p>
+          </div>
+        ) : list.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card">
               <Search className="h-10 w-10 text-muted-foreground" />
@@ -126,14 +114,10 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
           </div>
         ) : (
           <div className="space-y-4">
-            {workers.map((worker) => (
-              <div
-                key={worker.id}
-                className="overflow-hidden rounded-2xl bg-card p-4 shadow-sm"
-              >
+            {list.map((worker) => (
+              <div key={worker.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-sm">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-14 w-14 shrink-0">
-                    <AvatarImage src={worker.image} />
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
                       {worker.name[0]}
                     </AvatarFallback>
@@ -141,7 +125,7 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-semibold text-foreground">{worker.name}</p>
-                      {worker.verified && (
+                      {worker.danVerified && (
                         <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
                           ДАН
                         </span>
@@ -153,7 +137,7 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
                         <Star className="h-3.5 w-3.5 fill-accent text-accent" />
                         <span className="text-sm font-medium text-foreground">{worker.rating}</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">({worker.reviews})</span>
+                      <span className="text-sm text-muted-foreground">({worker.reviewCount})</span>
                       <span className="text-sm font-semibold text-primary">
                         ₮{worker.pricePerHour.toLocaleString()}/цаг
                       </span>
@@ -163,7 +147,7 @@ export function SearchScreen({ onBack, onBookWorker, initialCategory }: SearchSc
                 <div className="mt-3">
                   <Button
                     onClick={() => onBookWorker(worker.id)}
-                    className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90"
+                    className="h-11 w-full rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
                   >
                     Захиалах
                   </Button>
