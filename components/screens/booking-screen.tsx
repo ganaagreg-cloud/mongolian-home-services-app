@@ -1,25 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import useSWR from 'swr'
 import { ArrowLeft, MapPin, Lock, Star, Home, Building2, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { fetcher } from '@/lib/fetcher'
+import type { Worker } from '@/lib/types'
 
 interface BookingScreenProps {
   workerId: string
   onBack: () => void
-  onConfirm: (booking: BookingDetails) => void
-}
-
-interface BookingDetails {
-  workerId: string
-  date: string
-  time: string
-  duration: number
-  address: string
-  notes: string
-  paymentMethod: 'qpay' | 'socialpay'
+  onConfirm: (orderId: string) => void
 }
 
 const unavailableTimes = new Set(['10:00', '14:00'])
@@ -36,23 +30,19 @@ const durations = [
   { label: 'Тусгай', value: 0 },
 ]
 
-const workerInfo = {
-  id: '1',
-  name: 'Батболд Д.',
-  rating: 4.9,
-  reviews: 124,
-  pricePerHour: 25000,
-  specialty: 'Цэвэрлэгээ',
-  image: '',
-}
-
 export function BookingScreen({ workerId, onBack, onConfirm }: BookingScreenProps) {
+  const { data: worker, isLoading: workerLoading } = useSWR<Worker>(
+    `/api/workers/${workerId}`, fetcher,
+  )
+
   const [selectedDate, setSelectedDate] = useState<number>(0)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [selectedDuration, setSelectedDuration] = useState<number>(2)
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'office' | null>(null)
   const [rooms, setRooms] = useState<string | null>(null)
   const [area, setArea] = useState('')
@@ -71,7 +61,8 @@ export function BookingScreen({ workerId, onBack, onConfirm }: BookingScreenProp
   })
 
   const hours = selectedDuration > 0 ? selectedDuration : 2
-  const basePrice = workerInfo.pricePerHour * hours
+  const pricePerHour = worker?.pricePerHour ?? 0
+  const basePrice = pricePerHour * hours
 
   // Room multiplier (apartment only)
   const roomsNum = rooms === '5+' ? 5 : rooms ? parseInt(rooms) : 1
@@ -111,18 +102,35 @@ export function BookingScreen({ workerId, onBack, onConfirm }: BookingScreenProp
   const showRoomsError = submitted && propertyType === 'apartment' && !rooms
   const showAreaError = submitted && propertyType === 'apartment' && !area.trim()
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setSubmitted(true)
     if (!canConfirm) return
-    onConfirm({
-      workerId,
-      date: dates[selectedDate].full,
-      time: selectedTime!,
-      duration: selectedDuration,
-      address,
-      notes,
-      paymentMethod: 'qpay',
-    })
+    setIsConfirming(true)
+    setConfirmError(null)
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workerId,
+          service: worker?.specialty ?? 'Үйлчилгээ',
+          address,
+          scheduledDate: `${dates[selectedDate].full}T${selectedTime}`,
+          hours,
+          totalAmount: total,
+          propertyType: propertyType ?? undefined,
+          notes: notes || undefined,
+        }),
+      })
+      const data = (await res.json()) as { success: boolean; data?: { id: string }; error?: string }
+      if (data.success && data.data) {
+        onConfirm(data.data.id)
+      } else {
+        setConfirmError(data.error ?? 'Захиалга үүсгэхэд алдаа гарлаа')
+      }
+    } finally {
+      setIsConfirming(false)
+    }
   }
 
   return (
@@ -139,33 +147,48 @@ export function BookingScreen({ workerId, onBack, onConfirm }: BookingScreenProp
       </div>
 
       {/* Worker Summary */}
-      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
-        <Avatar className="h-14 w-14 shrink-0">
-          <AvatarImage src={workerInfo.image} />
-          <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
-            {workerInfo.name[0]}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-foreground">{workerInfo.name}</p>
-            <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
-              ДАН
-            </span>
-          </div>
-          <div className="mt-1 flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-            <span className="text-sm font-medium text-foreground">{workerInfo.rating}</span>
-            <span className="text-xs text-muted-foreground">({workerInfo.reviews})</span>
-          </div>
-          <p className="text-sm font-semibold text-primary">₮{workerInfo.pricePerHour.toLocaleString()}/цаг</p>
-        </div>
-        <button
-          onClick={onBack}
-          className="shrink-0 text-sm font-medium text-primary active:scale-95 transition-all"
-        >
-          Өөрчлөх
-        </button>
+      <div className="mx-6 mt-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+        {workerLoading ? (
+          <>
+            <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </>
+        ) : (
+          <>
+            <Avatar className="h-14 w-14 shrink-0">
+              <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
+                {(worker?.name ?? '?')[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-foreground">{worker?.name ?? '—'}</p>
+                {worker?.danVerified && (
+                  <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                    ДАН
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                <span className="text-sm font-medium text-foreground">{worker?.rating ?? '—'}</span>
+                <span className="text-xs text-muted-foreground">({worker?.reviewCount ?? 0})</span>
+              </div>
+              <p className="text-sm font-semibold text-primary">
+                ₮{(worker?.pricePerHour ?? 0).toLocaleString()}/цаг
+              </p>
+            </div>
+            <button
+              onClick={onBack}
+              className="shrink-0 text-sm font-medium text-primary transition-all active:scale-95"
+            >
+              Өөрчлөх
+            </button>
+          </>
+        )}
       </div>
 
       {/* Date Picker */}
@@ -454,12 +477,17 @@ export function BookingScreen({ workerId, onBack, onConfirm }: BookingScreenProp
 
       {/* Fixed Bottom CTA */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+        {confirmError && (
+          <p className="mb-3 rounded-2xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+            {confirmError}
+          </p>
+        )}
         <Button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
+          onClick={() => { void handleConfirm() }}
+          disabled={!canConfirm || isConfirming}
           className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md disabled:opacity-50 active:scale-95 transition-all"
         >
-          Захиалах
+          {isConfirming ? 'Захиалж байна...' : 'Захиалах'}
         </Button>
       </div>
     </div>

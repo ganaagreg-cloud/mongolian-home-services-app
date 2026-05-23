@@ -1,86 +1,91 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Star, RotateCcw, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import useSWR from 'swr'
+import { ArrowLeft, RotateCcw, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { fetcher } from '@/lib/fetcher'
+import type { Order, OrderStatus } from '@/lib/types'
 
 interface OrdersScreenProps {
   onBack: () => void
   onRebook: (workerId: string) => void
+  onViewActive: (orderId: string) => void
 }
 
-type OrderStatus = 'active' | 'completed' | 'cancelled'
-
-interface Order {
-  id: string
-  workerId: string
-  workerName: string
-  service: string
-  date: string
-  hours: number
-  totalAmount: number
-  rating?: number
-  status: OrderStatus
-}
-
-const mockOrders: Order[] = [
-  {
-    id: '1',
-    workerId: '1',
-    workerName: 'Батболд Д.',
-    service: 'Цэвэрлэгээ',
-    date: '2026-05-20',
-    hours: 3,
-    totalAmount: 75000,
-    rating: 5,
-    status: 'completed',
-  },
-  {
-    id: '2',
-    workerId: '2',
-    workerName: 'Сарантуяа Б.',
-    service: 'Угаалга',
-    date: '2026-05-15',
-    hours: 2,
-    totalAmount: 50000,
-    rating: 4,
-    status: 'completed',
-  },
-  {
-    id: '3',
-    workerId: '3',
-    workerName: 'Анхбаяр Т.',
-    service: 'Сантехник',
-    date: '2026-05-10',
-    hours: 1,
-    totalAmount: 35000,
-    status: 'cancelled',
-  },
-  {
-    id: '4',
-    workerId: '4',
-    workerName: 'Энхтуяа Г.',
-    service: 'Цэвэрлэгээ',
-    date: '2026-05-23',
-    hours: 2,
-    totalAmount: 50000,
-    status: 'active',
-  },
-]
+const ACTIVE_STATUSES: OrderStatus[] = ['pending', 'accepted', 'arriving', 'working']
 
 const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg: string; text: string }> = {
-  active: { label: 'Идэвхтэй', icon: Clock, bg: 'bg-primary/10', text: 'text-primary' },
-  completed: { label: 'Дууссан', icon: CheckCircle2, bg: 'bg-success/10', text: 'text-success' },
-  cancelled: { label: 'Цуцлагдсан', icon: XCircle, bg: 'bg-destructive/10', text: 'text-destructive' },
+  pending:   { label: 'Хүлээгдэж байна', icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
+  accepted:  { label: 'Зөвшөөрсөн',     icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
+  arriving:  { label: 'Ирж байна',       icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
+  working:   { label: 'Ажиллаж байна',  icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent' },
+  completed: { label: 'Дууссан',        icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
+  cancelled: { label: 'Цуцлагдсан',     icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
 }
 
-export function OrdersScreen({ onBack, onRebook }: OrdersScreenProps) {
-  const [tab, setTab] = useState<'active' | 'past'>('active')
+function OrderCard({ order, onRebook, onViewActive }: { order: Order; onRebook: (id: string) => void; onViewActive: (id: string) => void }) {
+  const cfg = statusConfig[order.status]
+  const StatusIcon = cfg.icon
+  const isActive = ACTIVE_STATUSES.includes(order.status)
+  const dateLabel = order.scheduledDate.split('T')[0]
 
-  const filtered = mockOrders.filter((o) =>
-    tab === 'active' ? o.status === 'active' : o.status !== 'active'
+  return (
+    <div className="rounded-2xl bg-card p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <Avatar className="h-12 w-12 shrink-0">
+          <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
+            {(order.workerName ?? '?')[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate font-semibold text-foreground">{order.workerName ?? '—'}</p>
+            <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
+              <StatusIcon className="h-3 w-3" />
+              {cfg.label}
+            </span>
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">{order.service} · {order.hours}ц</p>
+          <p className="text-xs text-muted-foreground">{dateLabel}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+        <p className="text-sm font-semibold text-primary">₮{order.totalAmount.toLocaleString()}</p>
+        {isActive ? (
+          <Button
+            onClick={() => onViewActive(order.id)}
+            size="sm"
+            className="h-9 rounded-2xl bg-primary text-sm font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+          >
+            Харах
+          </Button>
+        ) : order.status === 'completed' ? (
+          <Button
+            onClick={() => onRebook(order.workerId)}
+            size="sm"
+            variant="outline"
+            className="h-9 rounded-2xl border-border bg-card text-sm font-semibold shadow-sm active:scale-95 transition-all"
+          >
+            <RotateCcw className="mr-1.5 h-4 w-4" />
+            Дахин захиалах
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export function OrdersScreen({ onBack, onRebook, onViewActive }: OrdersScreenProps) {
+  const [tab, setTab] = useState<'active' | 'past'>('active')
+  const { data: orders, isLoading, error } = useSWR<Order[]>('/api/orders', fetcher)
+
+  const filtered = (orders ?? []).filter((o) =>
+    tab === 'active' ? ACTIVE_STATUSES.includes(o.status) : !ACTIVE_STATUSES.includes(o.status)
   )
 
   return (
@@ -118,7 +123,21 @@ export function OrdersScreen({ onBack, onRebook }: OrdersScreenProps) {
 
       {/* Order List */}
       <div className="mt-4 space-y-3 px-6">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          ))
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-sm text-destructive">Захиалга ачаалахад алдаа гарлаа</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card">
               <Clock className="h-10 w-10 text-muted-foreground" />
@@ -129,61 +148,9 @@ export function OrdersScreen({ onBack, onRebook }: OrdersScreenProps) {
             </p>
           </div>
         ) : (
-          filtered.map((order) => {
-            const cfg = statusConfig[order.status]
-            const StatusIcon = cfg.icon
-            return (
-              <div key={order.id} className="rounded-2xl bg-card p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-12 w-12 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
-                      {order.workerName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-semibold text-foreground">{order.workerName}</p>
-                      <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{order.service} · {order.hours}ц</p>
-                    <p className="text-xs text-muted-foreground">{order.date}</p>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                  <div>
-                    {order.rating != null && (
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star
-                            key={s}
-                            className={`h-3.5 w-3.5 ${s <= order.rating! ? 'fill-accent text-accent' : 'text-muted-foreground'}`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <p className="mt-0.5 text-sm font-semibold text-primary">
-                      ₮{order.totalAmount.toLocaleString()}
-                    </p>
-                  </div>
-                  {order.status === 'completed' && (
-                    <Button
-                      onClick={() => onRebook(order.workerId)}
-                      size="sm"
-                      variant="outline"
-                      className="h-9 rounded-2xl border-border bg-card text-sm font-semibold shadow-sm active:scale-95 transition-all"
-                    >
-                      <RotateCcw className="mr-1.5 h-4 w-4" />
-                      Дахин захиалах
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )
-          })
+          filtered.map((order) => (
+            <OrderCard key={order.id} order={order} onRebook={onRebook} onViewActive={onViewActive} />
+          ))
         )}
       </div>
     </div>

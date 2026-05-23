@@ -38,6 +38,7 @@ export default function Home() {
   const [userRole, setUserRole] = useState<UserRole>('user')
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
   const [hasActiveBooking, setHasActiveBooking] = useState(false)
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -62,7 +63,8 @@ export default function Home() {
     setSelectedWorkerId(workerId)
     setCurrentScreen('booking')
   }
-  const handleBookingConfirm = () => {
+  const handleBookingConfirm = (orderId: string) => {
+    setActiveOrderId(orderId)
     setHasActiveBooking(true)
     setCurrentScreen('active-booking')
   }
@@ -159,6 +161,7 @@ export default function Home() {
       )}
       {currentScreen === 'active-booking' && (
         <ActiveBookingScreen
+          orderId={activeOrderId ?? undefined}
           onChat={() => setCurrentScreen('chat')}
           onSOS={handleSOS}
           onBack={() => setCurrentScreen('home')}
@@ -166,9 +169,11 @@ export default function Home() {
       )}
       {currentScreen === 'review' && (
         <ReviewScreen
+          orderId={activeOrderId ?? undefined}
           onSubmit={() => {}}
           onHome={() => {
             setHasActiveBooking(false)
+            setActiveOrderId(null)
             setCurrentScreen('home')
           }}
           onRebook={() => setCurrentScreen('search')}
@@ -208,6 +213,10 @@ export default function Home() {
           onRebook={(workerId) => {
             setSelectedWorkerId(workerId)
             setCurrentScreen('booking')
+          }}
+          onViewActive={(orderId) => {
+            setActiveOrderId(orderId)
+            setCurrentScreen('active-booking')
           }}
         />
       )}
