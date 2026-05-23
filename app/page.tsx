@@ -10,12 +10,15 @@ import { SearchScreen } from '@/components/screens/search-screen'
 import { BookingScreen } from '@/components/screens/booking-screen'
 import { ActiveBookingScreen } from '@/components/screens/active-booking-screen'
 import { ReviewScreen } from '@/components/screens/review-screen'
+import { OrdersScreen } from '@/components/screens/orders-screen'
+import { ChatScreen } from '@/components/screens/chat-screen'
 import { ProfileScreen } from '@/components/screens/profile-screen'
 import { PersonalInfoScreen } from '@/components/screens/personal-info-screen'
 import { SavedWorkersScreen } from '@/components/screens/saved-workers-screen'
 import { HelpScreen } from '@/components/screens/help-screen'
 import { PrivacyScreen } from '@/components/screens/privacy-screen'
 import { WorkerRegisterScreen } from '@/components/screens/worker-register-screen'
+import { WorkerProfileScreen } from '@/components/screens/worker-profile-screen'
 import { WorkerJobsScreen } from '@/components/screens/worker-jobs-screen'
 import { WorkerActiveScreen } from '@/components/screens/worker-active-screen'
 import { WorkerEarningsScreen } from '@/components/screens/worker-earnings-screen'
@@ -63,7 +66,7 @@ export default function Home() {
     if (screen === 'jobs') setCurrentScreen('worker-jobs')
     else if (screen === 'active') setCurrentScreen('worker-active')
     else if (screen === 'earnings') setCurrentScreen('worker-earnings')
-    else if (screen === 'profile') setCurrentScreen('profile')
+    else if (screen === 'profile') setCurrentScreen('worker-profile')
   }
 
   // Screen-specific handlers
@@ -100,8 +103,8 @@ export default function Home() {
     else if (menu === 'privacy') setCurrentScreen('privacy')
   }
 
-  const showUserBottomNav = ['home', 'search', 'orders', 'chat', 'profile'].includes(currentScreen)
-  const showWorkerBottomNav = ['worker-jobs', 'worker-active', 'worker-earnings'].includes(currentScreen)
+  const showUserBottomNav = ['home', 'search', 'orders', 'chat', 'profile', 'active-booking'].includes(currentScreen)
+  const showWorkerBottomNav = ['worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile'].includes(currentScreen)
 
   const getActiveUserTab = (): 'home' | 'orders' | 'chat' | 'profile' => {
     if (currentScreen === 'home' || currentScreen === 'search') return 'home'
@@ -114,7 +117,8 @@ export default function Home() {
     if (currentScreen === 'worker-jobs') return 'jobs'
     if (currentScreen === 'worker-active') return 'active'
     if (currentScreen === 'worker-earnings') return 'earnings'
-    return 'profile'
+    if (currentScreen === 'worker-profile') return 'profile'
+    return 'jobs'
   }
 
   return (
@@ -224,16 +228,19 @@ export default function Home() {
         <PrivacyScreen onBack={() => setCurrentScreen('profile')} />
       )}
       {currentScreen === 'orders' && (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-24">
-          <p className="text-lg font-semibold text-foreground">Захиалгын түүх</p>
-          <p className="mt-2 text-sm text-muted-foreground">Одоогоор захиалга байхгүй байна</p>
-        </div>
+        <OrdersScreen
+          onBack={() => setCurrentScreen('profile')}
+          onRebook={(workerId) => {
+            setSelectedWorkerId(workerId)
+            setCurrentScreen('booking')
+          }}
+        />
       )}
       {currentScreen === 'chat' && (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-24">
-          <p className="text-lg font-semibold text-foreground">Чат</p>
-          <p className="mt-2 text-sm text-muted-foreground">Одоогоор мессеж байхгүй байна</p>
-        </div>
+        <ChatScreen
+          workerName="Батболд Д."
+          onBack={() => setCurrentScreen('active-booking')}
+        />
       )}
 
       {/* Worker Screens */}
@@ -257,6 +264,18 @@ export default function Home() {
       )}
       {currentScreen === 'worker-earnings' && (
         <WorkerEarningsScreen onConnectBank={() => {}} />
+      )}
+      {currentScreen === 'worker-profile' && (
+        <WorkerProfileScreen
+          workerName={userName}
+          phone="+976 9911 2233"
+          onMenuClick={(menu) => {
+            if (menu === 'personal-info') setCurrentScreen('personal-info')
+            else if (menu === 'help') setCurrentScreen('help')
+            else if (menu === 'privacy') setCurrentScreen('privacy')
+          }}
+          onLogout={handleLogout}
+        />
       )}
 
       {/* Admin Screens */}

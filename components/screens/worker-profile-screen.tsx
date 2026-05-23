@@ -1,0 +1,418 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  UserCircle, HelpCircle, Shield, LogOut, BadgeCheck, Star, Briefcase,
+  ToggleLeft, ToggleRight, Pencil, X, Check, Clock, AlertTriangle, ChevronDown,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
+interface WorkerProfileScreenProps {
+  workerName: string
+  phone: string
+  onMenuClick: (menu: string) => void
+  onLogout: () => void
+}
+
+const BANKS = [
+  'Хаан Банк',
+  'Голомт',
+  'ХХБ',
+  'Төрийн Банк',
+  'Хас Банк',
+  'Капитрон',
+  'Үндэсний хөрөнгө оруулалт',
+  'Чингис Хаан Банк',
+]
+
+const IBAN_RE = /^MN\d{2}[A-Z0-9]{18}$/
+
+interface BankInfo {
+  bankName: string
+  accountNumber: string
+  accountHolderName: string
+  iban: string
+  accountType: 'checking' | 'savings'
+  verified: boolean
+}
+
+const mockBankInfo: BankInfo = {
+  bankName: 'Хаан Банк',
+  accountNumber: '1234567890',
+  accountHolderName: 'БАТ ДОРЖ',
+  iban: 'MN8612345678901234ABCD',
+  accountType: 'checking',
+  verified: false,
+}
+
+function maskAccount(num: string) {
+  return '****' + num.slice(-4)
+}
+
+function formatIBAN(iban: string) {
+  return iban.match(/.{1,4}/g)?.join(' ') ?? iban
+}
+
+function fieldError(field: string, value: string): string {
+  switch (field) {
+    case 'bankName':
+      return !value ? 'Банкны нэрийг сонгоно уу' : ''
+    case 'accountNumber':
+      return !/^\d{10,20}$/.test(value) ? 'Дансны дугаар 10–20 оронтой тоо байх ёстой' : ''
+    case 'accountHolderName':
+      return value.trim().length < 3 ? 'Дансны эзний нэрийг оруулна уу (дор хаяж 3 тэмдэгт)' : ''
+    case 'iban':
+      return !IBAN_RE.test(value)
+        ? 'IBAN буруу формат байна. Жишээ: MN86XXXXXXXXXXXXXXXXXX'
+        : ''
+    default:
+      return ''
+  }
+}
+
+const menuItems = [
+  { id: 'personal-info', icon: UserCircle, label: 'Хувийн мэдээлэл' },
+  { id: 'help', icon: HelpCircle, label: 'Тусламж' },
+  { id: 'privacy', icon: Shield, label: 'Нууцлал' },
+]
+
+export function WorkerProfileScreen({
+  workerName,
+  phone,
+  onMenuClick,
+  onLogout,
+}: WorkerProfileScreenProps) {
+  const [isAvailable, setIsAvailable] = useState(true)
+  const [bankInfo, setBankInfo] = useState<BankInfo>(mockBankInfo)
+  const [isEditingBank, setIsEditingBank] = useState(false)
+
+  // Edit form state
+  const [editBank, setEditBank] = useState(bankInfo.bankName)
+  const [editAccount, setEditAccount] = useState(bankInfo.accountNumber)
+  const [editHolder, setEditHolder] = useState(bankInfo.accountHolderName)
+  const [editIban, setEditIban] = useState(bankInfo.iban)
+  const [editType, setEditType] = useState<'checking' | 'savings'>(bankInfo.accountType)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  const touch = (f: string) => setTouched((t) => ({ ...t, [f]: true }))
+
+  const editValid =
+    !!editBank &&
+    /^\d{10,20}$/.test(editAccount) &&
+    editHolder.trim().length >= 3 &&
+    IBAN_RE.test(editIban)
+
+  const openEdit = () => {
+    setEditBank(bankInfo.bankName)
+    setEditAccount(bankInfo.accountNumber)
+    setEditHolder(bankInfo.accountHolderName)
+    setEditIban(bankInfo.iban)
+    setEditType(bankInfo.accountType)
+    setTouched({})
+    setIsEditingBank(true)
+  }
+
+  const cancelEdit = () => {
+    setIsEditingBank(false)
+    setTouched({})
+  }
+
+  const saveEdit = () => {
+    setBankInfo({
+      bankName: editBank,
+      accountNumber: editAccount,
+      accountHolderName: editHolder,
+      iban: editIban,
+      accountType: editType,
+      verified: false, // reset to pending after any edit
+    })
+    setIsEditingBank(false)
+    setTouched({})
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background pb-24">
+      {/* Header */}
+      <div className="px-6 pt-12">
+        <h1 className="text-xl font-bold text-foreground">Профайл</h1>
+      </div>
+
+      {/* Profile Card */}
+      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+        <Avatar className="h-16 w-16">
+          <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
+            {workerName[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-lg font-semibold text-foreground">{workerName}</p>
+          <p className="text-sm text-muted-foreground">{phone}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <BadgeCheck className="h-4 w-4 text-success" />
+              <span className="text-xs font-medium text-success">ДАН</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+              <span className="text-xs font-medium text-foreground">4.9</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="mt-4 mx-6 grid grid-cols-3 gap-3">
+        {[
+          { label: 'Гүйцэтгэсэн', value: '124' },
+          { label: 'Үнэлгээ', value: '4.9' },
+          { label: 'Орлого', value: '₮485K' },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl bg-card p-3 shadow-sm text-center">
+            <p className="text-lg font-bold text-foreground">{stat.value}</p>
+            <p className="text-xs text-muted-foreground">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Availability Toggle */}
+      <div className="mt-4 mx-6 flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isAvailable ? 'bg-success/10' : 'bg-muted'}`}>
+            <Briefcase className={`h-5 w-5 ${isAvailable ? 'text-success' : 'text-muted-foreground'}`} />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Горим</p>
+            <p className={`text-xs font-medium ${isAvailable ? 'text-success' : 'text-muted-foreground'}`}>
+              {isAvailable ? 'Ажил хүлээн авч байна' : 'Амарч байна'}
+            </p>
+          </div>
+        </div>
+        <button onClick={() => setIsAvailable((v) => !v)} className="transition-all active:scale-95">
+          {isAvailable
+            ? <ToggleRight className="h-8 w-8 text-success" />
+            : <ToggleLeft className="h-8 w-8 text-muted-foreground" />}
+        </button>
+      </div>
+
+      {/* Banking Section */}
+      <div className="mt-6 mx-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-foreground">Банкны мэдээлэл</h2>
+          {!isEditingBank && (
+            <button
+              onClick={openEdit}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+
+        {isEditingBank ? (
+          <div className="space-y-4">
+            {/* Warning */}
+            <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">
+                Буруу мэдээлэл оруулвал төлбөр хүргүүлэхэд саатахыг анхааруулна
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+              {/* Bank name */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Банкны нэр</p>
+                <div className="relative">
+                  <select
+                    value={editBank}
+                    onChange={(e) => setEditBank(e.target.value)}
+                    onBlur={() => touch('bankName')}
+                    className="h-12 w-full appearance-none rounded-2xl border border-border bg-background px-4 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Банк сонгох...</option>
+                    {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                {touched.bankName && fieldError('bankName', editBank) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('bankName', editBank)}</p>
+                )}
+              </div>
+
+              {/* Account number */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Дансны дугаар</p>
+                <Input
+                  placeholder="1234567890"
+                  inputMode="numeric"
+                  value={editAccount}
+                  onChange={(e) => setEditAccount(e.target.value.replace(/\D/g, '').slice(0, 20))}
+                  onBlur={() => touch('accountNumber')}
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                />
+                {touched.accountNumber && fieldError('accountNumber', editAccount) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('accountNumber', editAccount)}</p>
+                )}
+              </div>
+
+              {/* Account holder */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Дансны эзний нэр</p>
+                <Input
+                  placeholder="БАТБОЛД ДОРЖ"
+                  value={editHolder}
+                  onChange={(e) => setEditHolder(e.target.value.toUpperCase())}
+                  onBlur={() => touch('accountHolderName')}
+                  className="h-12 rounded-2xl border-border bg-background shadow-sm"
+                />
+                {touched.accountHolderName && fieldError('accountHolderName', editHolder) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('accountHolderName', editHolder)}</p>
+                )}
+              </div>
+
+              {/* IBAN */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">IBAN</p>
+                <Input
+                  placeholder="MN86XXXXXXXXXXXXXXXXXX"
+                  value={editIban}
+                  onChange={(e) => {
+                    const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 22)
+                    setEditIban(raw)
+                  }}
+                  onBlur={() => touch('iban')}
+                  className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-sm"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">{editIban.length}/22 тэмдэгт</p>
+                {touched.iban && fieldError('iban', editIban) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('iban', editIban)}</p>
+                )}
+              </div>
+
+              {/* Account type */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Дансны төрөл</p>
+                <div className="flex gap-3">
+                  {([
+                    { value: 'checking', label: 'Эргүүлэлтийн' },
+                    { value: 'savings', label: 'Хадгаламж' },
+                  ] as const).map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setEditType(type.value)}
+                      className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors active:scale-95 ${
+                        editType === type.value
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background text-foreground shadow-sm'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Edit action buttons */}
+            <div className="flex gap-3">
+              <Button
+                onClick={cancelEdit}
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Болих
+              </Button>
+              <Button
+                onClick={saveEdit}
+                disabled={!editValid}
+                className="h-12 flex-1 rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Хадгалах
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-card p-4 shadow-sm">
+            {/* Verification badge */}
+            {!bankInfo.verified && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-accent/10 px-3 py-2">
+                <Clock className="h-4 w-4 shrink-0 text-accent" />
+                <p className="text-xs font-medium text-accent">Админ баталгаажуулахыг хүлээж байна</p>
+              </div>
+            )}
+            {bankInfo.verified && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-success/10 px-3 py-2">
+                <BadgeCheck className="h-4 w-4 shrink-0 text-success" />
+                <p className="text-xs font-medium text-success">Баталгаажсан</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Банк</p>
+                <p className="text-sm font-semibold text-foreground">{bankInfo.bankName}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Дансны дугаар</p>
+                <p className="font-mono text-sm font-semibold text-foreground">{maskAccount(bankInfo.accountNumber)}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Дансны эзэн</p>
+                <p className="text-sm font-semibold text-foreground">{bankInfo.accountHolderName}</p>
+              </div>
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground">IBAN</p>
+                <p className="mt-1 font-mono text-sm font-semibold text-foreground tracking-wider">
+                  {formatIBAN(bankInfo.iban)}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Төрөл</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {bankInfo.accountType === 'checking' ? 'Эргүүлэлтийн' : 'Хадгаламж'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Menu Items */}
+      <div className="mt-6 mx-6 overflow-hidden rounded-2xl bg-card shadow-sm">
+        {menuItems.map((item, index) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              onClick={() => onMenuClick(item.id)}
+              className={`flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 active:scale-[0.98] ${
+                index !== menuItems.length - 1 ? 'border-b border-border' : ''
+              }`}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Icon className="h-5 w-5 text-primary" />
+              </div>
+              <span className="flex-1 text-left font-medium text-foreground">{item.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Logout */}
+      <div className="mt-4 mx-6">
+        <Button
+          onClick={onLogout}
+          variant="ghost"
+          className="h-14 w-full rounded-2xl text-destructive font-semibold hover:bg-destructive/10"
+        >
+          <LogOut className="mr-2 h-5 w-5" />
+          Гарах
+        </Button>
+      </div>
+    </div>
+  )
+}
