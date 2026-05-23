@@ -1,113 +1,87 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Check, X, FileText, User, Shield } from 'lucide-react'
+import useSWR from 'swr'
+import { ArrowLeft, Check, X, FileText, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-
-interface PendingWorker {
-  id: string
-  name: string
-  register: string
-  phone: string
-  danPhoto: string
-  policeDocument: string
-  imei: string
-  appliedAt: string
-}
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { fetcher } from '@/lib/fetcher'
+import type { AdminPendingWorker } from '@/lib/types'
 
 interface AdminVerifyScreenProps {
   onBack: () => void
-  onApprove: (workerId: string) => void
-  onReject: (workerId: string, reason: string) => void
 }
 
-const mockPendingWorkers: PendingWorker[] = [
-  {
-    id: '1',
-    name: 'Баттулга Ганболд',
-    register: 'УБ99112233',
-    phone: '+976 9911 2233',
-    danPhoto: '',
-    policeDocument: 'police_clearance.pdf',
-    imei: '123456789012345',
-    appliedAt: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'Энхбаяр Мөнхбат',
-    register: 'УБ88223344',
-    phone: '+976 8822 3344',
-    danPhoto: '',
-    policeDocument: 'police_doc.pdf',
-    imei: '987654321098765',
-    appliedAt: '2024-01-14',
-  },
-]
+export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
+  const { data: workers, isLoading, mutate } = useSWR<AdminPendingWorker[]>(
+    '/api/admin/workers/pending', fetcher,
+  )
 
-export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifyScreenProps) {
-  const [selectedWorker, setSelectedWorker] = useState<PendingWorker | null>(null)
+  const [selected, setSelected] = useState<AdminPendingWorker | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectInput, setShowRejectInput] = useState(false)
-  const [pendingWorkers, setPendingWorkers] = useState(mockPendingWorkers)
+  const [isActing, setIsActing] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const handleApprove = (workerId: string) => {
-    onApprove(workerId)
-    setPendingWorkers(pendingWorkers.filter(w => w.id !== workerId))
-    setSelectedWorker(null)
+  const act = async (action: 'approve' | 'reject') => {
+    if (!selected) return
+    if (action === 'reject' && !rejectionReason.trim()) return
+    setIsActing(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/workers/${selected.id}/verify`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason: rejectionReason || undefined }),
+      })
+      const data = (await res.json()) as { success: boolean; error?: string }
+      if (!data.success) {
+        setActionError(data.error ?? 'Алдаа гарлаа')
+        return
+      }
+      await mutate()
+      setSelected(null)
+      setRejectionReason('')
+      setShowRejectInput(false)
+    } finally {
+      setIsActing(false)
+    }
   }
 
-  const handleReject = (workerId: string) => {
-    if (!rejectionReason.trim()) return
-    onReject(workerId, rejectionReason)
-    setPendingWorkers(pendingWorkers.filter(w => w.id !== workerId))
-    setSelectedWorker(null)
-    setRejectionReason('')
-    setShowRejectInput(false)
-  }
-
-  if (selectedWorker) {
+  if (selected) {
     return (
       <div className="flex min-h-screen flex-col bg-background pb-32">
         {/* Header */}
         <div className="flex items-center gap-4 px-6 pt-12">
           <button
             onClick={() => {
-              setSelectedWorker(null)
+              setSelected(null)
               setShowRejectInput(false)
               setRejectionReason('')
+              setActionError(null)
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
           >
             <ArrowLeft className="h-5 w-5 text-foreground" />
           </button>
           <h1 className="text-xl font-bold text-foreground">Ажилтан шалгах</h1>
         </div>
 
-        {/* Worker Info Card */}
+        {/* Worker Info */}
         <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={selectedWorker.danPhoto} />
               <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
-                {selectedWorker.name[0]}
+                {selected.name[0]}
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-lg font-semibold text-foreground">{selectedWorker.name}</p>
-              <p className="text-sm text-muted-foreground">{selectedWorker.register}</p>
-              <p className="text-sm text-muted-foreground">{selectedWorker.phone}</p>
+              <p className="text-lg font-semibold text-foreground">{selected.name}</p>
+              <p className="text-sm text-muted-foreground">{selected.phone}</p>
+              <p className="text-xs text-muted-foreground">{selected.createdAt.split('T')[0]}</p>
             </div>
-          </div>
-        </div>
-
-        {/* DAN Photo */}
-        <div className="mt-4 mx-6">
-          <h2 className="font-semibold text-foreground">ДАН зураг</h2>
-          <div className="mt-2 aspect-[3/4] max-w-[200px] rounded-2xl bg-card shadow-sm flex items-center justify-center">
-            <User className="h-16 w-16 text-muted-foreground" />
           </div>
         </div>
 
@@ -117,12 +91,14 @@ export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifySc
           <div className="mt-2 flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
             <FileText className="h-8 w-8 text-primary" />
             <div className="flex-1">
-              <p className="font-medium text-foreground">{selectedWorker.policeDocument}</p>
+              <p className="font-medium text-foreground">{selected.policeFile ?? 'Байхгүй'}</p>
               <p className="text-xs text-muted-foreground">PDF баримт</p>
             </div>
-            <Button variant="outline" size="sm" className="rounded-xl">
-              Үзэх
-            </Button>
+            {selected.policeFile && (
+              <Button variant="outline" size="sm" className="rounded-xl">
+                Үзэх
+              </Button>
+            )}
           </div>
         </div>
 
@@ -130,7 +106,7 @@ export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifySc
         <div className="mt-4 mx-6">
           <h2 className="font-semibold text-foreground">IMEI дугаар</h2>
           <div className="mt-2 rounded-2xl bg-card p-4 shadow-sm">
-            <p className="font-mono text-foreground">{selectedWorker.imei}</p>
+            <p className="font-mono text-foreground">{selected.imei ?? '—'}</p>
           </div>
         </div>
 
@@ -149,24 +125,27 @@ export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifySc
 
         {/* Action Buttons */}
         <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+          {actionError && (
+            <p className="mb-3 rounded-2xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+              {actionError}
+            </p>
+          )}
           {showRejectInput ? (
             <div className="flex gap-3">
               <Button
-                onClick={() => {
-                  setShowRejectInput(false)
-                  setRejectionReason('')
-                }}
+                onClick={() => { setShowRejectInput(false); setRejectionReason('') }}
                 variant="outline"
+                disabled={isActing}
                 className="h-14 flex-1 rounded-2xl border-border font-semibold"
               >
                 Буцах
               </Button>
               <Button
-                onClick={() => handleReject(selectedWorker.id)}
-                disabled={!rejectionReason.trim()}
-                className="h-14 flex-1 rounded-2xl bg-destructive font-semibold text-white shadow-md disabled:opacity-50"
+                onClick={() => { void act('reject') }}
+                disabled={!rejectionReason.trim() || isActing}
+                className="h-14 flex-1 rounded-2xl bg-destructive font-semibold text-white shadow-md disabled:opacity-50 active:scale-95 transition-all"
               >
-                Илгээх
+                {isActing ? 'Илгээж байна...' : 'Илгээх'}
               </Button>
             </div>
           ) : (
@@ -174,17 +153,19 @@ export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifySc
               <Button
                 onClick={() => setShowRejectInput(true)}
                 variant="outline"
-                className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10"
+                disabled={isActing}
+                className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10 active:scale-95 transition-all"
               >
                 <X className="mr-2 h-5 w-5" />
                 Татгалзах
               </Button>
               <Button
-                onClick={() => handleApprove(selectedWorker.id)}
-                className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90"
+                onClick={() => { void act('approve') }}
+                disabled={isActing}
+                className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 disabled:opacity-50 active:scale-95 transition-all"
               >
                 <Check className="mr-2 h-5 w-5" />
-                Зөвшөөрөх
+                {isActing ? 'Хадгалж байна...' : 'Зөвшөөрөх'}
               </Button>
             </div>
           )}
@@ -199,50 +180,60 @@ export function AdminVerifyScreen({ onBack, onApprove, onReject }: AdminVerifySc
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         <h1 className="text-xl font-bold text-foreground">Ажилтан баталгаажуулалт</h1>
       </div>
 
-      {/* Pending List */}
+      {/* List */}
       <div className="mt-6 px-6">
-        <p className="text-sm text-muted-foreground">{pendingWorkers.length} хүлээгдэж байна</p>
-        
-        {pendingWorkers.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+                <Skeleton className="h-14 w-14 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (workers?.length ?? 0) === 0 ? (
           <div className="mt-8 rounded-2xl bg-card p-8 shadow-sm text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mx-auto">
               <Check className="h-8 w-8 text-success" />
             </div>
             <p className="mt-4 font-medium text-foreground">Бүгд шалгагдсан!</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Хүлээгдэж буй хүсэлт байхгүй байна
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Хүлээгдэж буй хүсэлт байхгүй байна</p>
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
-            {pendingWorkers.map((worker) => (
-              <button
-                key={worker.id}
-                onClick={() => setSelectedWorker(worker)}
-                className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-sm text-left"
-              >
-                <Avatar className="h-14 w-14">
-                  <AvatarImage src={worker.danPhoto} />
-                  <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
-                    {worker.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">{worker.name}</p>
-                  <p className="text-sm text-muted-foreground">{worker.register}</p>
-                  <p className="text-xs text-muted-foreground">Огноо: {worker.appliedAt}</p>
-                </div>
-                <Shield className="h-5 w-5 text-accent" />
-              </button>
-            ))}
-          </div>
+          <>
+            <p className="text-sm text-muted-foreground">{workers!.length} хүлээгдэж байна</p>
+            <div className="mt-4 space-y-3">
+              {workers!.map((worker) => (
+                <button
+                  key={worker.id}
+                  onClick={() => setSelected(worker)}
+                  className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-sm text-left active:scale-95 transition-all"
+                >
+                  <Avatar className="h-14 w-14">
+                    <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
+                      {worker.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">{worker.name}</p>
+                    <p className="text-sm text-muted-foreground">{worker.phone}</p>
+                    <p className="text-xs text-muted-foreground">{worker.createdAt.split('T')[0]}</p>
+                  </div>
+                  <Shield className="h-5 w-5 text-accent" />
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

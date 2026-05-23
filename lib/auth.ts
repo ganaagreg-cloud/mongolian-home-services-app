@@ -59,3 +59,10 @@ export async function requireAuth(req: NextRequest): Promise<SessionPayload | nu
   if (!token) return null
   return verifyToken(token)
 }
+
+// Returns null if the caller is not an admin (use with 403 response).
+export async function requireAdmin(req: NextRequest): Promise<SessionPayload | null> {
+  const session = await requireAuth(req)
+  if (!session || session.role !== 'admin') return null
+  return session
+}

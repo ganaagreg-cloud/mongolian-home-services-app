@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth'
+
+const schema = z.object({
+  compensationAmount: z.number().int().min(0).optional(),
+})
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await requireAdmin(req)
+  if (!session) {
+    return NextResponse.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, { status: 403 })
+  }
+
+  let body: unknown
+  try { body = await req.json() } catch {
+    return NextResponse.json({ success: false, error: 'Буруу өгөгдөл' }, { status: 400 })
+  }
+
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ success: false, error: 'Буруу өгөгдөл' }, { status: 400 })
+  }
+
+  const { id } = await params
+  const { compensationAmount } = parsed.data
+
+  const result = db.prepare(`
+    UPDATE disputes
+    SET    status = 'resolved',
+           compensation_amount = ?,
+           updated_at = datetime('now')
+    WHERE  id = ? AND status = 'open'
+  `).run(compensationAmount ?? null, id)
+
+  if (result.changes === 0) {
+    return NextResponse.json({ success: false, error: 'Гомдол олдсонгүй эсвэл аль хэдийн шийдэгдсэн' }, { status: 404 })
+  }
+
+  return NextResponse.json({ success: true, data: undefined })
+}

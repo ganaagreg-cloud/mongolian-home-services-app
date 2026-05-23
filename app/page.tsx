@@ -272,14 +272,11 @@ export default function Home() {
       {currentScreen === 'admin-verify' && (
         <AdminVerifyScreen
           onBack={() => setCurrentScreen('admin')}
-          onApprove={() => {}}
-          onReject={() => {}}
         />
       )}
       {currentScreen === 'admin-disputes' && (
         <AdminDisputesScreen
           onBack={() => setCurrentScreen('admin')}
-          onResolve={() => {}}
         />
       )}
 

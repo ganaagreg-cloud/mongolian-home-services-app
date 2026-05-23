@@ -171,6 +171,47 @@ export interface ResolveDisputeBody {
   compensationAmount?: number
 }
 
+// ── Admin ────────────────────────────────────────────────────────────────────
+
+export interface AdminRecentOrder {
+  id: string
+  customerName: string
+  workerName: string
+  service: string
+  status: string
+  totalAmount: number
+}
+
+export interface AdminStats {
+  todayOrders: number
+  totalRevenue: number
+  activeWorkers: number
+  openDisputes: number
+  recentOrders: AdminRecentOrder[]
+}
+
+export interface AdminPendingWorker {
+  id: string
+  name: string
+  phone: string
+  imei: string | null
+  policeFile: string | null
+  createdAt: string
+}
+
+export interface AdminDispute {
+  id: string
+  orderId: string
+  customerName: string
+  workerName: string
+  service: string
+  issue: string
+  status: string
+  totalAmount: number
+  compensationAmount: number | null
+  createdAt: string
+}
+
 export interface UpdateAvailabilityBody {
   isAvailable: boolean
 }
