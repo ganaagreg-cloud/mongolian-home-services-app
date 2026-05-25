@@ -24,7 +24,8 @@ test('2. Login – empty submit shows error', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   // Click login with empty fields
-  await page.locator('button').filter({ hasText: /нэвтрэх/i }).click()
+  // Button is disabled when form is empty — force-click to verify no submit occurs
+  await page.locator('button').filter({ hasText: /нэвтрэх/i }).click({ force: true })
   await page.waitForTimeout(1500)
   await snap(page, '02-login-empty-error')
 })
@@ -58,7 +59,8 @@ test('5. Register – empty submit shows validation', async ({ page }) => {
   await page.goto('/register')
   await page.waitForLoadState('networkidle')
 
-  await page.locator('button[type="submit"], button').filter({ hasText: /бүртгүүлэх/i }).last().click()
+  // Button is disabled when form is empty — force-click to verify no submit occurs
+  await page.locator('button[type="submit"], button').filter({ hasText: /бүртгүүлэх/i }).last().click({ force: true })
   await page.waitForTimeout(1500)
   await snap(page, '05-register-empty-error')
 })

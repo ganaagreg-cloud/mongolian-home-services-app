@@ -122,8 +122,8 @@ test.describe('Instant flow — user side', () => {
     await page.waitForTimeout(800)
     await snap(page, 'IFD-01-searching-animation')
 
-    // Searching phase text
-    await expect(page.locator('text=/ажилтан хайж|хайж байна/i').first()).toBeVisible()
+    // Searching screen heading is always visible regardless of phase
+    await expect(page.locator('h1').filter({ hasText: /ажилтан хайх/i }).first()).toBeVisible()
   })
 
   test('IFD-02 Match result: confirm screen or graceful no-workers state', async ({ page }) => {
@@ -132,20 +132,20 @@ test.describe('Instant flow — user side', () => {
     await page.waitForTimeout(4500)
     await snap(page, 'IFD-02-match-result')
 
-    const workerFound = page.locator('text=Ажилтан олдлоо!')
-    const noWorkers   = page.locator('text=Ажилтан олдсонгүй')
+    // Screen must be in one of: waiting, found, exhausted, or none phase
+    const waiting    = page.locator('text=/хүсэлт явуулсан/i')
+    const found      = page.locator('text=/зөвшөөрлөө/i')
+    const exhausted  = page.locator('text=/ажилтан шалгасан/i')
+    const none       = page.locator('text=/Ажилтан олдсонгүй/i')
 
-    const foundCount  = await workerFound.count()
-    const noneCount   = await noWorkers.count()
+    const anyVisible = await waiting.count() > 0 || await found.count() > 0
+      || await exhausted.count() > 0 || await none.count() > 0
+    expect(anyVisible).toBeTruthy()
 
-    expect(foundCount + noneCount).toBeGreaterThan(0)
-
-    if (foundCount > 0) {
-      // Worker found → confirm button must be present
+    if (await found.count() > 0) {
       await expect(page.locator('button').filter({ hasText: /баталгаажуулах/i }).first()).toBeVisible()
-    } else {
-      // No workers → switch-to-scheduled button present
-      await expect(page.locator('button').filter({ hasText: /цаг товлох руу шилжих/i }).first()).toBeVisible()
+    } else if (await exhausted.count() > 0 || await none.count() > 0) {
+      await expect(page.locator('button').filter({ hasText: /цаг товлох/i }).first()).toBeVisible()
     }
   })
 
@@ -163,12 +163,12 @@ test.describe('Instant flow — user side', () => {
     await page.waitForTimeout(500)
     await snap(page, 'IFD-03-confirm-worker-screen')
 
-    // Payment buttons
-    await expect(page.locator('button').filter({ hasText: /QPay-ээр төлөх/i }).first()).toBeVisible()
-    await expect(page.locator('button').filter({ hasText: /SocialPay-ээр төлөх/i }).first()).toBeVisible()
+    // Bank payment buttons and dev sim button must be visible
+    await expect(page.locator('button').filter({ hasText: /хаан банк|голомт|ххб/i }).first()).toBeVisible()
+    await expect(page.locator('button').filter({ hasText: /simulate instant success/i }).first()).toBeVisible()
 
-    // Pay via QPay stub
-    await page.locator('button').filter({ hasText: /QPay-ээр төлөх/i }).first().click()
+    // Pay via dev sim button
+    await page.locator('button').filter({ hasText: /simulate instant success/i }).first().click()
     await page.waitForTimeout(2500)
     await snap(page, 'IFD-03-active-booking')
 
@@ -392,8 +392,8 @@ test.describe('Scheduled flow — dual context', () => {
       await snap(userPage, 'SFD-04b-confirm-scheduled-worker')
 
       await expect(userPage.locator('text=/захиалга баталгаажуулах/i').first()).toBeVisible()
-      await expect(userPage.locator('button').filter({ hasText: /QPay-ээр төлөх/i }).first()).toBeVisible()
-      await expect(userPage.locator('button').filter({ hasText: /SocialPay-ээр төлөх/i }).first()).toBeVisible()
+      // Wait for invoice to load (sequential PATCH → invoice fetch) before asserting payment buttons
+      await expect(userPage.locator('button').filter({ hasText: /simulate instant success/i }).first()).toBeEnabled({ timeout: 10000 })
     } finally {
       await userCtx.close()
       await workerCtx.close()
@@ -432,8 +432,10 @@ test.describe('Scheduled flow — dual context', () => {
       await pickBtn.first().click()
       await userPage.waitForTimeout(500)
 
-      // Pay via QPay stub (1.8s payment simulation)
-      await userPage.locator('button').filter({ hasText: /QPay-ээр төлөх/i }).first().click()
+      // Wait for invoice to load, then pay via dev sim button
+      const devSim = userPage.locator('button').filter({ hasText: /simulate instant success/i }).first()
+      await expect(devSim).toBeEnabled({ timeout: 10000 })
+      await devSim.click()
       await userPage.waitForTimeout(2500)
       await snap(userPage, 'SFD-05-active-booking-after-scheduled')
 

@@ -96,12 +96,16 @@ export async function PATCH(
   await dbReady
 
   const orderRow = (await db.query(
-    'SELECT id, status FROM orders WHERE id = $1 AND user_id = $2',
+    'SELECT id, status, worker_id FROM orders WHERE id = $1 AND user_id = $2',
     [id, session.sub],
-  )).rows[0] as { id: string; status: string } | undefined
+  )).rows[0] as { id: string; status: string; worker_id: string | null } | undefined
 
   if (!orderRow) {
     return NextResponse.json({ success: false, error: 'Захиалга олдсонгүй' }, { status: 404 })
+  }
+  // Idempotent: already assigned to the same worker is a no-op success
+  if (orderRow.status === 'worker_assigned' && String(orderRow.worker_id) === String(workerId)) {
+    return NextResponse.json({ success: true, data: undefined })
   }
   if (orderRow.status !== 'pending_acceptances') {
     return NextResponse.json({ success: false, error: 'Энэ захиалга өөрчлөх боломжгүй' }, { status: 409 })
