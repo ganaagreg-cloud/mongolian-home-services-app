@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { MessageCircle, Check } from 'lucide-react'
+import { MessageCircle, Check, MapPin, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,7 @@ interface ActiveBookingScreenProps {
   orderId?: string
   onChat: () => void
   onBack: () => void
+  onReview?: () => void
 }
 
 const STATUS_STEPS = [
@@ -42,7 +43,7 @@ function statusToStep(status: string | undefined): number {
   }
 }
 
-export function ActiveBookingScreen({ orderId, onChat }: ActiveBookingScreenProps) {
+export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBookingScreenProps) {
   const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
   const { data: order, isLoading } = useSWR<Order | null>(url, fetcher, { refreshInterval: 8000 })
 
@@ -97,7 +98,20 @@ export function ActiveBookingScreen({ orderId, onChat }: ActiveBookingScreenProp
         {isLoading ? (
           <Skeleton className="mt-1 h-4 w-48" />
         ) : (
-          <p className="mt-1 font-medium text-foreground">{order?.address ?? '—'}</p>
+          <>
+            <p className="mt-1 font-medium text-foreground">{order?.address ?? '—'}</p>
+            {order?.address && (
+              <a
+                href={`https://maps.google.com/maps?q=${encodeURIComponent(order.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+              >
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="flex-1">Чиглэл авах</span>
+              </a>
+            )}
+          </>
         )}
       </div>
 
@@ -185,6 +199,19 @@ export function ActiveBookingScreen({ orderId, onChat }: ActiveBookingScreenProp
           Чат бичих
         </Button>
       </div>
+
+      {/* Review CTA */}
+      {order?.status === 'completed' && onReview && (
+        <div className="mt-4 mx-6">
+          <Button
+            onClick={onReview}
+            className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-white shadow-md hover:bg-accent/90 active:scale-95 transition-all"
+          >
+            <Star className="mr-2 h-5 w-5" />
+            Үнэлгээ өгөх
+          </Button>
+        </div>
+      )}
 
       {/* Floating SOS FAB */}
       <SosButton orderId={orderId} />

@@ -126,9 +126,20 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
           <>
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground">Хаяг</p>
                 <p className="mt-0.5 font-medium text-foreground">{order?.address}</p>
+                {order?.address && (
+                  <a
+                    href={`https://maps.google.com/maps?q=${encodeURIComponent(order.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+                  >
+                    <MapPin className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">Чиглэл авах</span>
+                  </a>
+                )}
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -303,7 +314,7 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
 
       {/* Complete button — only when in_progress */}
       {isInProgress && (
-        <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+        <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
           {!hasAfter && (
             <p className="mb-2 text-center text-xs text-muted-foreground">
               Дараах зургаа оруулсны дараа дуусгах боломжтой

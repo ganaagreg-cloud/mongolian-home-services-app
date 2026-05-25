@@ -7,16 +7,21 @@ import { Input } from '@/components/ui/input'
 
 interface LoginScreenProps {
   onLogin: (email: string, password: string) => void
+  onPhoneLogin: (phone: string) => void
   onRegister: () => void
   loading?: boolean
 }
 
-export function LoginScreen({ onLogin, onRegister, loading = false }: LoginScreenProps) {
-  const [email, setEmail] = useState('')
+export function LoginScreen({ onLogin, onPhoneLogin, onRegister, loading = false }: LoginScreenProps) {
+  const [mode, setMode] = useState<'email' | 'phone'>('email')
+
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const [phone,    setPhone]    = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  const canSubmit = email.includes('@') && password.length > 0 && !loading
+  const canSubmitEmail = email.includes('@') && password.length > 0 && !loading
+  const canSubmitPhone = /^\d{8}$/.test(phone) && !loading
 
   return (
     <div className="flex min-h-screen flex-col bg-background px-6 py-8">
@@ -29,56 +34,105 @@ export function LoginScreen({ onLogin, onRegister, loading = false }: LoginScree
         <p className="mt-1 text-sm text-muted-foreground">Гэрийн үйлчилгээний платформ</p>
       </div>
 
-      {/* Form */}
-      <div className="mt-12 flex flex-1 flex-col gap-4">
-        {/* Email */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">
-            Цахим хаяг
-          </label>
-          <Input
-            type="email"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value.trim())}
-            autoCapitalize="none"
-            autoCorrect="off"
-            className="h-12 rounded-2xl border-border bg-card text-foreground shadow-sm placeholder:text-muted-foreground"
-          />
-        </div>
-
-        {/* Password */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">
-            Нууц үг
-          </label>
-          <div className="relative">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 rounded-2xl border-border bg-card pr-12 text-foreground shadow-sm placeholder:text-muted-foreground"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showPassword ? 'Нуух' : 'Харуулах'}
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Login CTA */}
-        <Button
-          onClick={() => onLogin(email, password)}
-          disabled={!canSubmit}
-          className="mt-2 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+      {/* Mode tabs */}
+      <div className="mt-10 flex rounded-2xl bg-card p-1 shadow-sm">
+        <button
+          onClick={() => setMode('email')}
+          className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold transition-all ${
+            mode === 'email'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground'
+          }`}
         >
-          {loading ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
-        </Button>
+          Цахим хаяг
+        </button>
+        <button
+          onClick={() => setMode('phone')}
+          className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold transition-all ${
+            mode === 'phone'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground'
+          }`}
+        >
+          Утасны дугаар
+        </button>
+      </div>
+
+      {/* Form */}
+      <div className="mt-6 flex flex-1 flex-col gap-4">
+        {mode === 'email' ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-foreground">Цахим хаяг</label>
+              <Input
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value.trim())}
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="h-12 rounded-2xl border-border bg-card text-foreground shadow-sm placeholder:text-muted-foreground"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-foreground">Нууц үг</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 rounded-2xl border-border bg-card pr-12 text-foreground shadow-sm placeholder:text-muted-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Нуух' : 'Харуулах'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => onLogin(email, password)}
+              disabled={!canSubmitEmail}
+              className="mt-2 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-foreground">Утасны дугаар</label>
+              <div className="flex h-12 items-center rounded-2xl border border-border bg-card shadow-sm">
+                <span className="pl-4 pr-2 text-sm font-medium text-muted-foreground">+976</span>
+                <div className="h-5 w-px bg-border" />
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="9900 0000"
+                  value={phone}
+                  maxLength={8}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  className="h-full flex-1 border-0 bg-transparent pl-3 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">OTP код илгээгдэх болно</p>
+            </div>
+
+            <Button
+              onClick={() => onPhoneLogin(phone)}
+              disabled={!canSubmitPhone}
+              className="mt-2 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading ? 'Илгээж байна...' : 'OTP авах'}
+            </Button>
+          </>
+        )}
 
         {/* Divider */}
         <div className="relative my-2">

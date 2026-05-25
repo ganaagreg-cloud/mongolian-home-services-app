@@ -3,46 +3,66 @@
 import { useState, useRef, useEffect } from 'react'
 import { ArrowLeft, Send, Shield } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
+import type { Message } from '@/lib/types'
 
 interface ChatScreenProps {
-  workerName?: string
+  orderId: string
   onBack: () => void
 }
 
-interface Message {
-  id: string
-  text: string
-  sender: 'user' | 'worker'
-  time: string
-}
-
-const mockMessages: Message[] = [
-  { id: '1', sender: 'worker', text: 'Сайн байна уу! Захиалгыг хүлээн авлаа.', time: '10:02' },
-  { id: '2', sender: 'worker', text: '10 минутын дотор хүрч очно.', time: '10:02' },
-  { id: '3', sender: 'user', text: 'За, баярлалаа. Хаалга нээлттэй байна.', time: '10:04' },
-  { id: '4', sender: 'worker', text: 'Ойлголоо, удахгүй очно!', time: '10:05' },
-]
-
-export function ChatScreen({ workerName = 'Батболд Д.', onBack }: ChatScreenProps) {
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
-  const [draft, setDraft] = useState('')
+export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
+  const [draft,    setDraft]    = useState('')
+  const [sending,  setSending]  = useState(false)
+  const [myId,     setMyId]     = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const { data: messages = [], mutate } = useSWR<Message[]>(
+    `/api/orders/${orderId}/messages`,
+    fetcher,
+    { refreshInterval: 3000 },
+  )
+
+  // Resolve current user id once on mount
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((d: { success: boolean; data?: { id: number } }) => {
+        if (d.success && d.data) setMyId(String(d.data.id))
+      })
+      .catch(() => {})
+  }, [])
+
+  // Auto-scroll to bottom when messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim()
-    if (!text) return
-    const now = new Date()
-    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
-    setMessages((prev) => [...prev, { id: String(Date.now()), sender: 'user', text, time }])
+    if (!text || sending) return
     setDraft('')
+    setSending(true)
+    try {
+      await fetch(`/api/orders/${orderId}/messages`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ text }),
+      })
+      await mutate()
+    } finally {
+      setSending(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') send()
+    if (e.key === 'Enter') void send()
+  }
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso)
+    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
   return (
@@ -57,11 +77,11 @@ export function ChatScreen({ workerName = 'Батболд Д.', onBack }: ChatSc
         </button>
         <Avatar className="h-10 w-10">
           <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
-            {workerName[0]}
+            З
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="truncate font-semibold text-foreground">{workerName}</p>
+          <p className="truncate font-semibold text-foreground">Захиалгын чат</p>
           <p className="text-xs text-muted-foreground">Платформоор дамжуулан холбогдоно</p>
         </div>
       </div>
@@ -76,27 +96,32 @@ export function ChatScreen({ workerName = 'Батболд Д.', onBack }: ChatSc
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 pb-28">
+        {messages.length === 0 && (
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Мессеж байхгүй байна. Эхний мессежийг илгээнэ үү.
+          </p>
+        )}
         {messages.map((msg) => {
-          const isUser = msg.sender === 'user'
+          const isMe = myId != null && msg.senderId === myId
           return (
-            <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-              {!isUser && (
+            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {!isMe && (
                 <Avatar className="mr-2 h-8 w-8 shrink-0 self-end">
                   <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                    {workerName[0]}
+                    {(msg.senderName ?? '?')[0]}
                   </AvatarFallback>
                 </Avatar>
               )}
               <div
                 className={`max-w-[72%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                  isUser
+                  isMe
                     ? 'rounded-br-sm bg-primary text-primary-foreground'
                     : 'rounded-bl-sm bg-card text-foreground'
                 }`}
               >
                 <p className="text-sm leading-snug">{msg.text}</p>
-                <p className={`mt-1 text-right text-[10px] ${isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                  {msg.time}
+                <p className={`mt-1 text-right text-[10px] ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                  {formatTime(msg.createdAt)}
                 </p>
               </div>
             </div>
@@ -106,7 +131,7 @@ export function ChatScreen({ workerName = 'Батболд Д.', onBack }: ChatSc
       </div>
 
       {/* Input */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 border-t border-border bg-background px-6 pb-8 pt-4">
+      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-[390px] -translate-x-1/2 border-t border-border bg-background px-6 pb-8 pt-4">
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -117,8 +142,8 @@ export function ChatScreen({ workerName = 'Батболд Д.', onBack }: ChatSc
             className="h-12 flex-1 rounded-2xl border border-border bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           <button
-            onClick={send}
-            disabled={!draft.trim()}
+            onClick={() => { void send() }}
+            disabled={!draft.trim() || sending}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary shadow-md transition-all active:scale-95 disabled:opacity-40"
           >
             <Send className="h-5 w-5 text-primary-foreground" />

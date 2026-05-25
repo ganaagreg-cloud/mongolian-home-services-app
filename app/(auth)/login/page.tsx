@@ -30,7 +30,6 @@ export default function LoginPage() {
       }
 
       if (!data.success && data.needsVerification && data.phone) {
-        // Account exists but phone not verified — send OTP then redirect
         await fetch('/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -48,10 +47,33 @@ export default function LoginPage() {
     }
   }
 
+  const handlePhoneLogin = async (phone: string) => {
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+      const data = (await res.json()) as { success: boolean; error?: string }
+      if (!data.success) {
+        setError(data.error ?? 'OTP илгээхэд алдаа гарлаа.')
+        return
+      }
+      router.push(`/otp?phone=${encodeURIComponent(phone)}`)
+    } catch {
+      setError('Сүлжээний алдаа. Дахин оролдоно уу.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="relative">
       <LoginScreen
         onLogin={handleLogin}
+        onPhoneLogin={handlePhoneLogin}
         onRegister={() => router.push('/register')}
         loading={loading}
       />

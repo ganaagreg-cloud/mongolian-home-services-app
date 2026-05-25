@@ -137,7 +137,19 @@ function ScheduledJobCard({
           </div>
           <div className="mt-2 flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-foreground">{job.address}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground">{job.address.split(',')[0]}</p>
+              <p className="text-xs text-muted-foreground">Дэлгэрэнгүй хаяг хүлээн авснаар харагдана</p>
+              <a
+                href={`https://maps.google.com/maps?q=${encodeURIComponent(job.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-medium text-primary active:scale-95 transition-all"
+              >
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="flex-1">Чиглэл авах</span>
+              </a>
+            </div>
           </div>
           <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -192,8 +204,14 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob }: WorkerJobsScreen
   const handleDeclineInstant = async (jobId: string) => {
     void mutateInstant((prev = []) => prev.filter((j) => j.id !== jobId), { revalidate: false })
     try {
-      await fetch(`/api/orders/${jobId}/decline-instant`, { method: 'POST' })
-    } catch { /* ignore; card already removed from UI */ }
+      const res = await fetch(`/api/orders/${jobId}/decline-instant`, { method: 'POST' })
+      if (!res.ok) {
+        // Decline failed — revalidate so the card reappears
+        void mutateInstant()
+      }
+    } catch {
+      void mutateInstant()
+    }
   }
 
   const handleAcceptInstant = async (jobId: string) => {
@@ -291,7 +309,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob }: WorkerJobsScreen
                     key={job.id}
                     job={job}
                     onAccept={() => { void handleAcceptInstant(job.id) }}
-                    onDecline={() => handleDeclineInstant(job.id)}
+                    onDecline={() => { void handleDeclineInstant(job.id) }}
                   />
                 ))}
               </div>

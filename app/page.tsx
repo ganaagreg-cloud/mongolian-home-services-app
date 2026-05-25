@@ -51,6 +51,9 @@ export default function Home() {
   const [matchedWorker,       setMatchedWorker]       = useState<MatchedWorker | null>(null)
   const [selectedAcceptor,    setSelectedAcceptor]    = useState<OrderAcceptance | null>(null)
   const [activeWorkerOrderId, setActiveWorkerOrderId] = useState<string | null>(null)
+  const [personalInfoBack,   setPersonalInfoBack]   = useState<Screen>('profile')
+  const [chatOrderId,        setChatOrderId]        = useState<string | null>(null)
+  const [chatBack,           setChatBack]           = useState<Screen>('active-booking')
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -78,9 +81,18 @@ export default function Home() {
   }
 
   // Worker navigation
-  const handleWorkerBottomNav = (screen: 'jobs' | 'active' | 'earnings' | 'profile') => {
+  const handleWorkerBottomNav = (screen: 'jobs' | 'active' | 'chat' | 'earnings' | 'profile') => {
     if (screen === 'jobs')     { setCurrentScreen('worker-jobs') }
     else if (screen === 'active')   { setActiveWorkerOrderId(null); setCurrentScreen('worker-active') }
+    else if (screen === 'chat') {
+      if (activeWorkerOrderId) {
+        setChatOrderId(activeWorkerOrderId)
+        setChatBack('worker-active')
+        setCurrentScreen('chat')
+      } else {
+        setCurrentScreen('worker-active')
+      }
+    }
     else if (screen === 'earnings') setCurrentScreen('worker-earnings')
     else if (screen === 'profile')  setCurrentScreen('worker-profile')
   }
@@ -124,7 +136,7 @@ export default function Home() {
     setCurrentScreen('active-booking')
   }
 
-  const handleJobComplete = () => setCurrentScreen('review')
+  const handleJobComplete = () => setCurrentScreen('worker-jobs')
   const handleBecomeWorker = () => setCurrentScreen('worker-register')
 
   // Role switcher for demo — also updates the JWT session so worker/admin APIs work
@@ -154,9 +166,10 @@ export default function Home() {
     'home', 'orders', 'chat', 'profile', 'active-booking',
   ].includes(currentScreen)
 
-  const showWorkerBottomNav = [
-    'worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile',
-  ].includes(currentScreen)
+  const showWorkerBottomNav = (
+    ['worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile'].includes(currentScreen) ||
+    (currentScreen === 'chat' && userRole === 'worker')
+  )
 
   const getActiveUserTab = (): 'home' | 'orders' | 'chat' | 'profile' => {
     if (currentScreen === 'home')   return 'home'
@@ -165,9 +178,10 @@ export default function Home() {
     return 'profile'
   }
 
-  const getActiveWorkerTab = (): 'jobs' | 'active' | 'earnings' | 'profile' => {
+  const getActiveWorkerTab = (): 'jobs' | 'active' | 'chat' | 'earnings' | 'profile' => {
     if (currentScreen === 'worker-jobs')     return 'jobs'
     if (currentScreen === 'worker-active')   return 'active'
+    if (currentScreen === 'chat')            return 'chat'
     if (currentScreen === 'worker-earnings') return 'earnings'
     if (currentScreen === 'worker-profile')  return 'profile'
     return 'jobs'
@@ -245,8 +259,9 @@ export default function Home() {
       {currentScreen === 'active-booking' && (
         <ActiveBookingScreen
           orderId={activeOrderId ?? undefined}
-          onChat={() => setCurrentScreen('chat')}
+          onChat={() => { setChatOrderId(activeOrderId); setChatBack('active-booking'); setCurrentScreen('chat') }}
           onBack={() => setCurrentScreen('home')}
+          onReview={() => setCurrentScreen('review')}
         />
       )}
       {currentScreen === 'review' && (
@@ -276,7 +291,7 @@ export default function Home() {
         <PersonalInfoScreen
           userName={userName}
           phone={userPhone}
-          onBack={() => setCurrentScreen('profile')}
+          onBack={() => setCurrentScreen(personalInfoBack)}
         />
       )}
       {currentScreen === 'saved-workers' && (
@@ -301,10 +316,10 @@ export default function Home() {
           }}
         />
       )}
-      {currentScreen === 'chat' && (
+      {currentScreen === 'chat' && chatOrderId && (
         <ChatScreen
-          workerName="Батболд Д."
-          onBack={() => setCurrentScreen('active-booking')}
+          orderId={chatOrderId}
+          onBack={() => setCurrentScreen(chatBack)}
         />
       )}
 
@@ -327,7 +342,7 @@ export default function Home() {
       {currentScreen === 'worker-active' && (
         <WorkerActiveScreen
           orderId={activeWorkerOrderId}
-          onChat={() => {}}
+          onChat={() => { setChatOrderId(activeWorkerOrderId); setChatBack('worker-active'); setCurrentScreen('chat') }}
           onComplete={handleJobComplete}
         />
       )}
@@ -339,7 +354,7 @@ export default function Home() {
           workerName={userName}
           phone={userPhone}
           onMenuClick={(menu) => {
-            if (menu === 'personal-info') setCurrentScreen('personal-info')
+            if (menu === 'personal-info') { setPersonalInfoBack('worker-profile'); setCurrentScreen('personal-info') }
             else if (menu === 'help') setCurrentScreen('help')
             else if (menu === 'privacy') setCurrentScreen('privacy')
           }}

@@ -1,18 +1,19 @@
 'use client'
 
-import { Briefcase, ClipboardList, Wallet, User } from 'lucide-react'
+import { Briefcase, ClipboardList, MessageCircle, Wallet, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface WorkerBottomNavProps {
-  active: 'jobs' | 'active' | 'earnings' | 'profile'
-  onNavigate: (screen: 'jobs' | 'active' | 'earnings' | 'profile') => void
+  active: 'jobs' | 'active' | 'chat' | 'earnings' | 'profile'
+  onNavigate: (screen: 'jobs' | 'active' | 'chat' | 'earnings' | 'profile') => void
 }
 
 const navItems = [
-  { id: 'jobs' as const, icon: Briefcase, label: 'Ажил' },
-  { id: 'active' as const, icon: ClipboardList, label: 'Идэвхтэй' },
-  { id: 'earnings' as const, icon: Wallet, label: 'Орлого' },
-  { id: 'profile' as const, icon: User, label: 'Профайл' },
+  { id: 'jobs'     as const, icon: Briefcase,     label: 'Ажил' },
+  { id: 'active'   as const, icon: ClipboardList,  label: 'Идэвхтэй' },
+  { id: 'chat'     as const, icon: MessageCircle,  label: 'Чат' },
+  { id: 'earnings' as const, icon: Wallet,         label: 'Орлого' },
+  { id: 'profile'  as const, icon: User,           label: 'Профайл' },
 ]
 
 export function WorkerBottomNav({ active, onNavigate }: WorkerBottomNavProps) {

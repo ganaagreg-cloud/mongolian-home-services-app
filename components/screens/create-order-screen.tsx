@@ -4,10 +4,11 @@ import { useState } from 'react'
 import {
   ArrowLeft, ArrowRight, MapPin, Lock, Sparkles, Droplets,
   Zap, Wrench, Paintbrush, Wind, Home, Building2, Briefcase, Camera,
-  Clock, CalendarDays, CheckCircle,
+  Clock, CalendarDays, CheckCircle, LocateFixed,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LocationPicker } from '@/components/location-picker'
 import type { MatchingStrategy } from '@/lib/types'
 
 interface CreateOrderScreenProps {
@@ -59,10 +60,11 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
   const [notes, setNotes] = useState('')
 
   // Submission
-  const [isConfirming,   setIsConfirming]   = useState(false)
-  const [confirmError,   setConfirmError]   = useState<string | null>(null)
-  const [step1Submitted, setStep1Submitted] = useState(false)
-  const [step2Submitted, setStep2Submitted] = useState(false)
+  const [isConfirming,       setIsConfirming]       = useState(false)
+  const [confirmError,       setConfirmError]       = useState<string | null>(null)
+  const [step1Submitted,     setStep1Submitted]     = useState(false)
+  const [step2Submitted,     setStep2Submitted]     = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
 
   // Generate next 14 days
   const dates = Array.from({ length: 14 }, (_, i) => {
@@ -209,13 +211,25 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
           {/* Address */}
           <div className="mt-6 px-6">
             <h2 className="font-semibold text-foreground">Хаяг</h2>
-            <div className="relative mt-3">
-              <MapPin className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <button
+              onClick={() => setShowLocationPicker(true)}
+              className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+            >
+              <LocateFixed className="h-4 w-4 shrink-0" />
+              {address ? 'Байршил өөрчлөх' : 'Газрын зурагт байршил сонгох'}
+            </button>
+            {address && (
+              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-card px-4 py-3 shadow-sm">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p className="text-sm text-foreground">{address}</p>
+              </div>
+            )}
+            <div className="relative mt-2">
               <Input
-                placeholder="Дүүрэг, хороо, гудамж, байр..."
+                placeholder="Эсвэл хаяг гараар оруулах..."
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="h-12 rounded-2xl border-border bg-card pl-12 shadow-sm"
+                className="h-12 rounded-2xl border-border bg-card pl-4 shadow-sm"
               />
             </div>
             {showAddressError && (
@@ -652,6 +666,14 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </p>
           </div>
         </>
+      )}
+
+      {/* Location picker overlay */}
+      {showLocationPicker && (
+        <LocationPicker
+          onSelect={(addr) => { setAddress(addr); setShowLocationPicker(false) }}
+          onClose={() => setShowLocationPicker(false)}
+        />
       )}
 
       {/* Fixed bottom CTA */}

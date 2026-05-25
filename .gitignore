@@ -25,6 +25,9 @@ dev.db-wal
 # Build cache
 tsconfig.tsbuildinfo
 
+# pnpm store
+.pnpm-store/
+
 # Generated / uploaded content
 public/uploads/
 screenshots/

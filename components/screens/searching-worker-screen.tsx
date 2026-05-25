@@ -98,10 +98,10 @@ export function SearchingWorkerScreen({
       } catch { /* network hiccup — retry next tick */ }
     }, 3000)
 
-    // 65 s: worker's 60 s expired + buffer → call match again (server expires the stale offer)
+    // 75 s: worker's 60 s card + 10 s server stale buffer (70 s) + 5 s margin
     const timeoutId = setTimeout(() => {
       if (!cancelled) setPhase('searching')
-    }, 65_000)
+    }, 75_000)
 
     return () => { cancelled = true; clearInterval(pollId); clearTimeout(timeoutId) }
   }, [phase, orderId, worker])

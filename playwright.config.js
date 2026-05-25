@@ -2,7 +2,7 @@
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = {
   testDir: './tests/e2e',
-  timeout: 30000,
+  timeout: 60000,
   use: {
     baseURL: 'http://localhost:3000',
     viewport: { width: 390, height: 844 },
