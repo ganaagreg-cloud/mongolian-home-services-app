@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 
 const schema = z.object({
@@ -29,15 +29,16 @@ export async function PATCH(
   const { id } = await params
   const { compensationAmount } = parsed.data
 
-  const result = db.prepare(`
+  await dbReady
+  const result = await db.query(`
     UPDATE disputes
     SET    status = 'resolved',
-           compensation_amount = ?,
-           updated_at = datetime('now')
-    WHERE  id = ? AND status = 'open'
-  `).run(compensationAmount ?? null, id)
+           compensation_amount = $1,
+           updated_at = NOW()
+    WHERE  id = $2 AND status = 'open'
+  `, [compensationAmount ?? null, id])
 
-  if (result.changes === 0) {
+  if (!result.rowCount) {
     return NextResponse.json({ success: false, error: 'Гомдол олдсонгүй эсвэл аль хэдийн шийдэгдсэн' }, { status: 404 })
   }
 

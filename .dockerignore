@@ -1,0 +1,12 @@
+node_modules
+.next
+app.db
+dev.db
+.git
+public/uploads
+screenshots
+tests
+.vscode
+.claude
+*.md
+!README.md

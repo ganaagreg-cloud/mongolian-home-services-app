@@ -23,8 +23,13 @@ export interface User {
   id: string
   phone: string
   name: string
+  username: string
+  firstName: string
+  lastName: string
+  email: string
   role: UserRole
   danVerified: boolean
+  isVerified: boolean
   createdAt: string
 }
 
@@ -44,31 +49,91 @@ export interface Worker {
   createdAt: string
 }
 
+export type MatchingStrategy = 'instant' | 'scheduled'
+
 export type OrderStatus =
-  | 'pending'
-  | 'accepted'
-  | 'arriving'
-  | 'working'
-  | 'completed'
-  | 'cancelled'
+  | 'pending_acceptances'       // scheduled post — waiting for workers to accept
+  | 'searching_worker'          // instant — system looking for a match
+  | 'pending_worker_acceptance' // instant — offer sent to a worker, awaiting their response
+  | 'pending_payment'           // worker confirmed, awaiting user payment
+  | 'worker_assigned'           // worker matched + paid, job locked
+  | 'worker_on_the_way'   // worker en route
+  | 'in_progress'         // job is happening
+  | 'completed'           // done, awaiting rating
+  | 'rated'               // review submitted
+  | 'cancelled_by_user'
+  | 'cancelled_by_worker'
+  | 'no_workers_found'    // all match attempts exhausted
 
 export type PropertyType = 'house' | 'apartment' | 'office'
+
+export type MatchAttemptStatus = 'offered' | 'accepted' | 'declined' | 'timeout'
+
+export interface MatchAttempt {
+  id: string
+  orderId: string
+  workerId: string
+  status: MatchAttemptStatus
+  offeredAt: string
+  respondedAt?: string
+}
+
+// What a worker sees in their incoming-orders queue.
+// Address is masked to neighbourhood only until they accept.
+export interface WorkerIncomingOrder {
+  orderId: string
+  service: string
+  scheduledDate: string
+  hours: number
+  totalAmount: number
+  generalArea: string   // neighbourhood only — exact address hidden until accept
+  distanceKm: number    // mocked for now
+  urgent: boolean
+  expiresAt: string     // offered_at + 60 s; worker must accept before this
+}
 
 export interface Order {
   id: string
   userId: string
-  workerId: string
-  workerName?: string  // joined
+  workerId: string | null   // null until a worker accepts
+  workerName?: string       // joined from users
   service: string
   status: OrderStatus
   address: string
   scheduledDate: string
   hours: number
-  totalAmount: number  // MNT integer
+  totalAmount: number       // MNT integer
+  urgent: boolean
+  rooms?: number
+  areaSqm?: number
   propertyType?: PropertyType
   notes?: string
+  matchingStrategy?: MatchingStrategy
+  paymentStatus?: PaymentStatus
+  beforePhotoUrl?: string
+  afterPhotoUrl?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface MatchedWorker {
+  workerId: string
+  name: string
+  rating: number
+  specialty: string
+  pricePerHour: number
+}
+
+export interface OrderAcceptance {
+  id: string
+  orderId: string
+  workerId: string
+  workerName: string
+  workerRating: number
+  workerReviewCount: number
+  workerSpecialty: string
+  workerPricePerHour: number
+  acceptedAt: string
 }
 
 export interface Message {
@@ -87,6 +152,29 @@ export interface Review {
   rating: number   // 1-5
   comment?: string
   createdAt: string
+}
+
+export type PaymentStatus = 'unpaid' | 'paid'
+
+// QPay V2 invoice shape
+export interface InvoiceUrl {
+  name:        string  // bank name, e.g. "Хаан банк"
+  description: string  // human-readable action label
+  link:        string  // bank deeplink, e.g. "khanbank://qpay?id=..."
+}
+
+export interface PaymentInvoice {
+  invoice_id: string
+  qr_text:    string
+  qr_image:   string  // data URI
+  urls:        InvoiceUrl[]
+}
+
+// DAN OAuth2 identity payload
+export interface DANIdentity {
+  firstname:      string
+  lastname:       string
+  registernumber: string
 }
 
 export type TransactionType = 'earning' | 'withdrawal'
@@ -134,6 +222,19 @@ export interface SavedWorker {
 
 // ── Request bodies ───────────────────────────────────────────────────────────
 
+export interface RegisterBody {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  password: string
+}
+
+export interface LoginBody {
+  email: string
+  password: string
+}
+
 export interface SendOtpBody {
   phone: string
 }
@@ -144,14 +245,17 @@ export interface VerifyOtpBody {
 }
 
 export interface CreateOrderBody {
-  workerId: string
   service: string
   address: string
   scheduledDate: string
   hours: number
   totalAmount: number
+  urgent?: boolean
+  rooms?: number
+  areaSqm?: number
   propertyType?: PropertyType
   notes?: string
+  matchingStrategy?: MatchingStrategy
 }
 
 export interface SubmitReviewBody {

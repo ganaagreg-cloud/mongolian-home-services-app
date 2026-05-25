@@ -1,21 +1,33 @@
-import Database from 'better-sqlite3'
-import path from 'path'
+import { Pool } from 'pg'
 import { TABLES } from './schema'
 import { seed } from './seed'
 
-const DB_PATH = path.join(process.cwd(), 'app.db')
+type GlobalWithDb = typeof globalThis & {
+  __pool?: Pool
+  __dbReady?: Promise<void>
+}
+const g = globalThis as GlobalWithDb
 
-// Survive Next.js hot-reload in dev without opening multiple connections.
-const g = global as typeof global & { __db?: Database.Database }
-
-if (!g.__db) {
-  g.__db = new Database(DB_PATH)
-  g.__db.pragma('journal_mode = WAL')
-  g.__db.pragma('foreign_keys = ON')
-  for (const sql of TABLES) {
-    g.__db.exec(sql)
-  }
-  seed(g.__db)
+function createPool(): Pool {
+  const url = process.env.DATABASE_URL
+  if (!url) throw new Error('DATABASE_URL is not set')
+  return new Pool({ connectionString: url })
 }
 
-export const db = g.__db
+async function init(pool: Pool): Promise<void> {
+  for (const sql of TABLES) {
+    await pool.query(sql)
+  }
+  await seed(pool)
+}
+
+if (!g.__pool) {
+  g.__pool = createPool()
+  g.__dbReady = init(g.__pool).catch((err) => {
+    console.error('[db] init failed:', err)
+    throw err
+  })
+}
+
+export const db = g.__pool!
+export const dbReady = g.__dbReady!

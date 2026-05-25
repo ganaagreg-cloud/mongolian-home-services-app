@@ -1,12 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {
+    root: import.meta.dirname,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ['better-sqlite3'],
+  serverExternalPackages: ['pg'],
 }
 
 export default nextConfig

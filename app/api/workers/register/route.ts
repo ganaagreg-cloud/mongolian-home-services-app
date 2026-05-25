@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth, setSessionCookie } from '@/lib/auth'
 
 const schema = z.object({
@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const existing = db.prepare('SELECT id FROM workers WHERE user_id = ?').get(session.sub)
+  await dbReady
+
+  const existing = (await db.query('SELECT id FROM workers WHERE user_id = $1', [session.sub])).rows[0]
   if (existing) {
     return NextResponse.json(
       { success: false, error: 'Та ажилтнаар аль хэдийн бүртгүүлсэн байна' },
@@ -41,29 +43,36 @@ export async function POST(req: NextRequest) {
   }
 
   const { imei, policeFile, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
-  const workerId  = crypto.randomUUID()
-  const bankingId = crypto.randomUUID()
 
-  db.transaction(() => {
-    db.prepare(
-      `INSERT INTO workers
-         (id, user_id, specialty, price_per_hour, rating, review_count,
-          imei, police_file, is_available, is_active)
-       VALUES (?, ?, '', 0, 0, 0, ?, ?, 1, 0)`,
-    ).run(workerId, session.sub, imei, policeFile)
+  const client = await db.connect()
+  let workerId: string
+  try {
+    await client.query('BEGIN')
 
-    db.prepare(
-      `INSERT INTO banking_info
-         (id, worker_id, bank_name, account_number, account_holder_name,
-          iban, account_type, verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-    ).run(bankingId, workerId, bankName, accountNumber, accountHolderName, iban, accountType)
+    const workerResult = (await client.query(
+      `INSERT INTO workers (user_id, specialty, price_per_hour, rating, review_count, imei, police_file, is_available, is_active)
+       VALUES ($1, '', 0, 0, 0, $2, $3, true, false)
+       RETURNING id`,
+      [session.sub, imei, policeFile],
+    )).rows[0] as { id: string }
+    workerId = String(workerResult.id)
 
-    db.prepare('UPDATE users SET role = ? WHERE id = ?').run('worker', session.sub)
-  })()
+    await client.query(
+      `INSERT INTO banking_info (worker_id, bank_name, account_number, account_holder_name, iban, account_type, verified)
+       VALUES ($1, $2, $3, $4, $5, $6, false)`,
+      [workerId, bankName, accountNumber, accountHolderName, iban, accountType],
+    )
 
-  // Re-issue JWT so the client session reflects the new role
+    await client.query('UPDATE users SET role = $1 WHERE id = $2', ['worker', session.sub])
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+
   await setSessionCookie({ sub: session.sub, role: 'worker', phone: session.phone })
-
   return NextResponse.json({ success: true, data: { workerId } })
 }

@@ -1,35 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import type { Worker } from '@/lib/types'
 
 type WorkerRow = {
-  id: string
-  user_id: string
-  name: string
-  specialty: string
-  price_per_hour: number
-  rating: number
-  review_count: number
-  is_available: number
-  is_active: number
-  dan_verified: number
-  created_at: string
+  id: string; user_id: string; name: string; specialty: string
+  price_per_hour: number; rating: number; review_count: number
+  is_available: boolean; is_active: boolean; dan_verified: boolean; created_at: string
 }
 
 function toWorker(row: WorkerRow): Worker {
   return {
-    id: row.id,
-    userId: row.user_id,
-    name: row.name,
-    specialty: row.specialty,
+    id:           String(row.id),
+    userId:       String(row.user_id),
+    name:         row.name,
+    specialty:    row.specialty,
     pricePerHour: row.price_per_hour,
-    rating: row.rating,
-    reviewCount: row.review_count,
-    isAvailable: row.is_available === 1,
-    isActive: row.is_active === 1,
-    danVerified: row.dan_verified === 1,
-    createdAt: row.created_at,
+    rating:       row.rating,
+    reviewCount:  row.review_count,
+    isAvailable:  Boolean(row.is_available),
+    isActive:     Boolean(row.is_active),
+    danVerified:  Boolean(row.dan_verified),
+    createdAt:    row.created_at,
   }
 }
 
@@ -45,19 +37,22 @@ export async function GET(req: NextRequest) {
   const sort      = sp.get('sort') ?? 'rating'
   const skipAvailabilityFilter = sp.get('available') === '0'
 
-  const conditions: string[] = ['w.is_active = 1']
-  const params: unknown[]    = []
+  const conditions: string[] = ['w.is_active = true']
+  const qParams: unknown[]   = []
+  let pIdx = 1
 
   if (!skipAvailabilityFilter) {
-    conditions.push('w.is_available = 1')
+    conditions.push('w.is_available = true')
   }
   if (q) {
-    conditions.push('(u.name LIKE ? OR w.specialty LIKE ?)')
-    params.push(`%${q}%`, `%${q}%`)
+    conditions.push(`(u.name ILIKE $${pIdx} OR w.specialty ILIKE $${pIdx + 1})`)
+    qParams.push(`%${q}%`, `%${q}%`)
+    pIdx += 2
   }
   if (specialty) {
-    conditions.push('w.specialty = ?')
-    params.push(specialty)
+    conditions.push(`w.specialty = $${pIdx}`)
+    qParams.push(specialty)
+    pIdx += 1
   }
 
   const orderBy =
@@ -65,7 +60,8 @@ export async function GET(req: NextRequest) {
     sort === 'price_desc' ? 'w.price_per_hour DESC'  :
     'w.rating DESC, w.review_count DESC'
 
-  const rows = db.prepare(`
+  await dbReady
+  const rows = (await db.query(`
     SELECT w.id, w.user_id, u.name, w.specialty, w.price_per_hour,
            w.rating, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
@@ -74,7 +70,7 @@ export async function GET(req: NextRequest) {
     WHERE  ${conditions.join(' AND ')}
     ORDER  BY ${orderBy}
     LIMIT  50
-  `).all(...params) as WorkerRow[]
+  `, qParams)).rows as WorkerRow[]
 
   return NextResponse.json({ success: true, data: rows.map(toWorker) })
 }

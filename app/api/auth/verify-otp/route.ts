@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { setSessionCookie } from '@/lib/auth'
 import type { UserRole } from '@/lib/types'
 
 const schema = z.object({
   phone: z.string().regex(/^\d{8}$/),
-  otp: z.string().length(6),
+  otp:   z.string().length(6),
 })
-
-type OtpRow = { code: string }
-type UserRow = { id: string; phone: string; role: string }
 
 export async function POST(req: NextRequest) {
   let body: unknown
@@ -25,10 +22,24 @@ export async function POST(req: NextRequest) {
 
   const { phone, otp } = parsed.data
 
-  // Find a valid, unexpired OTP for this phone
-  const record = db
-    .prepare(`SELECT code FROM otp_codes WHERE phone = ? AND expires_at > datetime('now')`)
-    .get(phone) as OtpRow | undefined
+  await dbReady
+
+  const user = (await db.query(
+    'SELECT id, phone, role FROM users WHERE phone = $1',
+    [phone],
+  )).rows[0] as { id: string; phone: string; role: string } | undefined
+
+  if (!user) {
+    return NextResponse.json(
+      { success: false, error: 'Бүртгэлгүй утасны дугаар. Эхлээд бүртгүүлнэ үү.' },
+      { status: 404 },
+    )
+  }
+
+  const record = (await db.query(
+    'SELECT code FROM otp_codes WHERE phone = $1 AND expires_at > NOW()',
+    [phone],
+  )).rows[0] as { code: string } | undefined
 
   if (!record || record.code !== otp) {
     return NextResponse.json(
@@ -37,20 +48,19 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Consume the OTP
-  db.prepare('DELETE FROM otp_codes WHERE phone = ?').run(phone)
-
-  // Find or create user
-  let user = db.prepare('SELECT id, phone, role FROM users WHERE phone = ?').get(phone) as UserRow | undefined
-  if (!user) {
-    const id = crypto.randomUUID()
-    db.prepare('INSERT INTO users (id, phone, name, role, dan_verified) VALUES (?, ?, ?, ?, ?)').run(
-      id, phone, '', 'user', 0,
-    )
-    user = { id, phone, role: 'user' }
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('DELETE FROM otp_codes WHERE phone = $1', [phone])
+    await client.query('UPDATE users SET is_verified = true WHERE id = $1', [user.id])
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
 
-  await setSessionCookie({ sub: user.id, role: user.role as UserRole, phone: user.phone })
-
+  await setSessionCookie({ sub: String(user.id), role: user.role as UserRole, phone: user.phone })
   return NextResponse.json({ success: true, data: undefined })
 }

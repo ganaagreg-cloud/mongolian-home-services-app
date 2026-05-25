@@ -9,14 +9,92 @@ pnpm dev           # Next.js dev server (localhost:3000, Turbopack)
 pnpm build         # Production build
 pnpm start         # Production server
 pnpm lint          # ESLint
-npx tsc --noEmit   # TypeScript type check (no typecheck script yet)
+npx tsc --noEmit   # TypeScript type check
+
+# Docker
+docker compose up --build        # Start web + db (Postgres 16)
+docker compose down              # Stop containers (volume preserved)
+docker compose down -v           # Stop + wipe Postgres volume (full reset)
+docker compose exec db psql -U postgres -d homeservices   # Postgres shell
+docker compose logs web -f       # Stream Next.js logs
 ```
 
-Jest and Playwright are not installed yet — add them before writing tests.
+## MCP Server Configuration
+
+Three MCP servers are configured in `~/.config/Code/User/mcp.json` (VS Code) or the Claude Code MCP settings:
+
+### Playwright
+- **Purpose:** Visual/UI testing, screenshots, browser automation
+- **Usage:** Navigate to pages, take screenshots, interact with UI elements, assert DOM state
+- **Common tasks:** Screenshot a route (`http://localhost:3000/register`), fill forms, click buttons, test user flows end-to-end
+
+### Context7
+- **Purpose:** Up-to-date library documentation lookup
+- **Usage:** Resolve library-specific APIs (Next.js, Tailwind, Shadcn, Zod, etc.) without relying on stale training data
+- **Common tasks:** Look up correct API signatures, migration guides, component props
+
+### GitHub
+- **Purpose:** Repository management, PR/issue operations
+- **Usage:** List repos, create/review PRs, manage issues, check CI status
+- **Common tasks:** `gh repo list`, `gh pr create`, `gh issue view`
+
+## Testing Workflows
+
+### Visual / UI Testing (Playwright)
+1. Start the dev server: `pnpm dev`
+2. Use Playwright MCP to navigate to the target route
+3. Take a screenshot and inspect layout against the design token checklist
+4. Interact with elements (click, type) to verify interactive states
+
+### User Flow Testing
+- Login flow: phone input → OTP → role selection → home screen
+- Worker registration: DAN verification → police clearance upload → activation
+- Booking flow: search → worker card → date/time → payment → confirmation
+- Admin flow: pending verifications → approve/reject → dispute resolution
+
+### Form Validation Testing
+- Submit empty forms — verify all required-field errors appear
+- Submit invalid phone numbers — verify format error
+- Submit mismatched OTP — verify error state and retry logic
+
+### Component Testing
+- Verify `rounded-2xl` on all cards/buttons/inputs (never `rounded-lg`)
+- Verify `active:scale-95` responds on tap/click
+- Verify loading skeleton renders before data, empty state renders on no results
+- Verify bottom nav tab highlights match `currentScreen`
+
+## Common Tasks
+
+### Login Flow Testing
+```
+1. Open http://localhost:3000
+2. Enter a valid Mongolian phone number (8 digits, starts with 9x/8x)
+3. Verify OTP screen appears
+4. Enter 6-digit OTP
+5. Verify redirect to home screen with correct role
+```
+
+### API Integration Testing
+- All routes live under `app/api/`
+- Auth header: `Authorization: Bearer <token>`
+- Test with: `curl -X POST http://localhost:3000/api/auth/send-otp -d '{"phone":"99001234"}'`
+- Verify Zod validation rejects malformed input with 400
+- Verify unauthenticated requests to protected routes return 401
+
+### Test Generation for CI/CD
+- Install: `pnpm add -D jest @testing-library/react @testing-library/jest-dom playwright`
+- Unit tests: `__tests__/` alongside components
+- E2E tests: `e2e/` at repo root, one file per user flow
+- Run in CI: `pnpm test && pnpm playwright test`
+
+### UI/UX Analysis
+- Use Playwright screenshot + Context7 docs to compare implementation against design tokens
+- Check mobile viewport (390px wide) — the app targets iPhone-sized screens
+- Verify `pb-24` / `pb-32` so content is never hidden behind the bottom nav or fixed CTA
 
 ## Architecture
 
-This is a **UI prototype** — all data is hardcoded/mocked. There is no backend, database, or real auth yet.
+Full-stack Next.js 16 App Router app. The UI layer is a client-side state machine; the data layer is a real PostgreSQL database (via `pg` Pool) running in Docker. Auth is JWT-based (stateless cookies via `jose`).
 
 ### Navigation: State Machine, Not Next.js Routing
 
@@ -37,29 +115,37 @@ Role determines which bottom nav is rendered and which screens are reachable:
 
 ```
 components/
-  screens/          # 13 full-screen views (one per Screen value)
+  screens/          # 25 full-screen views (one per Screen value)
   ui/               # shadcn/ui + Radix UI primitives (do not edit)
   bottom-nav.tsx    # User tab bar
   worker-bottom-nav.tsx
   login-screen.tsx
   onboarding-screen.tsx
   otp-screen.tsx
+  register-screen.tsx
   dan-success-screen.tsx
+  sos-button.tsx
   theme-provider.tsx
 hooks/
   use-mobile.ts     # 768px breakpoint detector
   use-toast.ts
 lib/
+  auth.ts           # requireAuth(), setSessionCookie(), JWT sign/verify via jose
+  types.ts          # shared TypeScript types (UserRole, Screen, OrderStatus, …)
   utils.ts          # cn() = clsx + tailwind-merge
-```
-
-Planned (not created yet):
-```
-app/api/            # API routes
-lib/db.ts           # pg.Pool
-lib/dan-auth.ts     # ДАН OAuth
-lib/payments/       # QPay + SocialPay
-db/migrations/      # Plain SQL files
+lib/db/
+  index.ts          # pg Pool singleton + schema init + seed on first boot
+  schema.ts         # CREATE TABLE IF NOT EXISTS DDL (PostgreSQL)
+  seed.ts           # dev seed data (workers, orders, banking info)
+lib/mocks/
+  dan.ts            # mock ДАН identity response
+app/api/
+  auth/             # send-otp, verify-otp, login, register, logout, me, dan, test-login
+  orders/           # CRUD + match, accept, decline, upload, review, status
+  workers/          # list, register, [id], me, me/availability, me/banking
+  admin/            # stats, disputes, workers/pending, workers/[id]/verify
+  payments/         # create-invoice (QPay V2 mock), dev-sim-pay
+  sos/              # emergency alert (< 2s response requirement)
 ```
 
 ## Key Technical Facts
@@ -99,12 +185,15 @@ db/migrations/      # Plain SQL files
 - Wrap all Mongolian-facing strings in `t()` (i18n hook, not yet installed)
 - Use `cn()` from `lib/utils.ts` for all className composition
 
-## Database Conventions (for when pg is added)
+## Database Conventions
 
 - Table names: `snake_case` plural (`service_workers`, `bookings`)
-- Every table: `created_at`, `updated_at` timestamps
+- Every table: `created_at` timestamp; mutable tables also have `updated_at`
 - Soft delete via `deleted_at` — never hard-delete user or worker records
 - Parameterized queries only: `db.query('SELECT … WHERE id = $1', [id])` — never string concatenation
+- All queries are async: `await db.query(...)` — never block the event loop
+- Booleans stored as `BOOLEAN` (not `0`/`1`) — pass `true`/`false` in query params
+- Auto-increment PKs: `SERIAL` (int) for internal tables — `TEXT`/UUID only for externally-exposed tokens
 
 ## Security Rules
 
@@ -115,16 +204,20 @@ db/migrations/      # Plain SQL files
 
 ## Environment Variables
 
-Add `.env.local` before any DB/API work:
+Docker Compose injects `DATABASE_URL` automatically for the `web` service. For local non-Docker dev, create `.env.local`:
 
 ```
-DATABASE_URL=postgres://user:pass@host:5432/dbname
+# Injected by docker-compose.yml automatically — only needed for local pnpm dev
+DATABASE_URL=postgresql://postgres:mongolia_secure_pass@localhost:5432/homeservices
+
+# External integrations (not yet wired — fill in when integrating)
 DAN_CLIENT_ID=
 DAN_CLIENT_SECRET=
 QPAY_API_KEY=
 SOCIALPAY_API_KEY=
 GOOGLE_MAPS_API_KEY=
 FCM_SERVER_KEY=
+JWT_SECRET=        # falls back to a hardcoded dev secret if unset
 ```
 
 ---
@@ -471,3 +564,59 @@ Before returning any UI component, verify:
 - [ ] Lucide React for all icons (no emoji, no inline SVG)
 - [ ] `text-muted-foreground` on metadata, labels, subtitles
 - [ ] Loading skeleton + empty state present for any list/grid
+
+---
+
+## Engineering Principles
+
+### 1. Think Before Coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+* State assumptions explicitly. If uncertain, ask.
+* If multiple interpretations exist, present them — don't pick silently.
+* If a simpler approach exists, say so. Push back when warranted.
+* If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+
+* No features beyond what was asked.
+* No abstractions for single-use code.
+* No "flexibility" or "configurability" that wasn't requested.
+* No error handling for impossible scenarios.
+* If you write 200 lines and it could be 50, rewrite it.
+
+Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+* Don't "improve" adjacent code, comments, or formatting.
+* Don't refactor things that aren't broken.
+* Match existing style, even if you'd do it differently.
+* If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+* Remove imports/variables/functions that YOUR changes made unused.
+* Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the request.
+
+### 4. Goal-Driven Execution
+Define success criteria. Verify before claiming done.
+
+* Transform vague tasks into verifiable goals before starting.
+  Example: "Add validation" → "Reject inputs X/Y/Z with error; accept A/B/C"
+* If tests exist, write/update them. If not, define manual verification steps.
+* For multi-step tasks, state a brief plan with verify steps:
+  1. [Step] → verify: [how to check]
+  2. [Step] → verify: [how to check]
+* Don't claim "done" until each verify step actually passes.
+
+### 5. IDs
+Primary keys are INTEGER (autoincrement) — faster joins, smaller storage.
+Use TEXT/UUID only for tokens exposed externally (share links, invite codes,
+session tokens) where unguessability matters.
+Don't use TEXT as a primary key for internal tables.

@@ -1,32 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import type { BankingInfo, AccountType } from '@/lib/types'
 
 type BankingRow = {
   id: string; worker_id: string; bank_name: string; account_number: string
   account_holder_name: string; iban: string; account_type: string
-  verified: number; updated_at: string
+  verified: boolean; updated_at: string
 }
 
 function toBankingInfo(row: BankingRow): BankingInfo {
   return {
-    id:                 row.id,
-    workerId:           row.worker_id,
+    id:                 String(row.id),
+    workerId:           String(row.worker_id),
     bankName:           row.bank_name,
     accountNumber:      row.account_number,
     accountHolderName:  row.account_holder_name,
     iban:               row.iban,
     accountType:        row.account_type as AccountType,
-    verified:           row.verified === 1,
+    verified:           Boolean(row.verified),
     updatedAt:          row.updated_at,
   }
-}
-
-function getWorkerIdForUser(userId: string): string | null {
-  const row = db.prepare('SELECT id FROM workers WHERE user_id = ?').get(userId) as { id: string } | undefined
-  return row?.id ?? null
 }
 
 const upsertSchema = z.object({
@@ -43,11 +38,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, { status: 401 })
   }
 
-  const workerId = getWorkerIdForUser(session.sub)
-  // Return null data (not 404) so the client can distinguish "no banking info yet" from an error
-  if (!workerId) return NextResponse.json({ success: true, data: null })
+  await dbReady
+  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1', [session.sub])).rows[0] as { id: string } | undefined
+  if (!workerRow) return NextResponse.json({ success: true, data: null })
 
-  const row = db.prepare('SELECT * FROM banking_info WHERE worker_id = ?').get(workerId) as BankingRow | undefined
+  const row = (await db.query('SELECT * FROM banking_info WHERE worker_id = $1', [workerRow.id])).rows[0] as BankingRow | undefined
   return NextResponse.json({ success: true, data: row ? toBankingInfo(row) : null })
 }
 
@@ -57,8 +52,9 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, { status: 401 })
   }
 
-  const workerId = getWorkerIdForUser(session.sub)
-  if (!workerId) {
+  await dbReady
+  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1', [session.sub])).rows[0] as { id: string } | undefined
+  if (!workerRow) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
 
@@ -76,23 +72,20 @@ export async function PUT(req: NextRequest) {
   }
 
   const { bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
-  const existing = db.prepare('SELECT id FROM banking_info WHERE worker_id = ?').get(workerId) as { id: string } | undefined
 
-  if (existing) {
-    db.prepare(`
-      UPDATE banking_info
-      SET bank_name = ?, account_number = ?, account_holder_name = ?,
-          iban = ?, account_type = ?, verified = 0, updated_at = datetime('now')
-      WHERE worker_id = ?
-    `).run(bankName, accountNumber, accountHolderName, iban, accountType, workerId)
-  } else {
-    db.prepare(`
-      INSERT INTO banking_info
-        (id, worker_id, bank_name, account_number, account_holder_name, iban, account_type, verified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-    `).run(crypto.randomUUID(), workerId, bankName, accountNumber, accountHolderName, iban, accountType)
-  }
+  await db.query(`
+    INSERT INTO banking_info (worker_id, bank_name, account_number, account_holder_name, iban, account_type, verified)
+    VALUES ($1, $2, $3, $4, $5, $6, false)
+    ON CONFLICT (worker_id) DO UPDATE
+      SET bank_name = EXCLUDED.bank_name,
+          account_number = EXCLUDED.account_number,
+          account_holder_name = EXCLUDED.account_holder_name,
+          iban = EXCLUDED.iban,
+          account_type = EXCLUDED.account_type,
+          verified = false,
+          updated_at = NOW()
+  `, [workerRow.id, bankName, accountNumber, accountHolderName, iban, accountType])
 
-  const updated = db.prepare('SELECT * FROM banking_info WHERE worker_id = ?').get(workerId) as BankingRow
+  const updated = (await db.query('SELECT * FROM banking_info WHERE worker_id = $1', [workerRow.id])).rows[0] as BankingRow
   return NextResponse.json({ success: true, data: toBankingInfo(updated) })
 }

@@ -1,36 +1,55 @@
 'use client'
 
 import useSWR from 'swr'
-import { MessageCircle, AlertTriangle, Check } from 'lucide-react'
+import { MessageCircle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { SosButton } from '@/components/sos-button'
 import type { Order } from '@/lib/types'
 
 interface ActiveBookingScreenProps {
   orderId?: string
   onChat: () => void
-  onSOS: () => void
   onBack: () => void
 }
 
-const statusSteps = [
-  { id: 'pending',   label: 'Хүлээгдэж байна' },
-  { id: 'accepted',  label: 'Зөвшөөрсөн' },
-  { id: 'arriving',  label: 'Ирж байна' },
-  { id: 'working',   label: 'Ажиллаж байна' },
-  { id: 'completed', label: 'Дууслаа' },
+const STATUS_STEPS = [
+  'Ажилтан хайж байна',
+  'Ажилтан олдлоо',
+  'Ирж байна',
+  'Ажиллаж байна',
+  'Дууслаа',
 ]
 
-export function ActiveBookingScreen({ orderId, onChat, onSOS }: ActiveBookingScreenProps) {
-  const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
-  const { data: order, isLoading } = useSWR<Order | null>(url, fetcher, { refreshInterval: 15000 })
+function statusToStep(status: string | undefined): number {
+  switch (status) {
+    case 'searching_worker':
+    case 'pending_acceptances':
+      return 0
+    case 'worker_assigned':
+      return 1
+    case 'worker_on_the_way':
+      return 2
+    case 'in_progress':
+      return 3
+    case 'completed':
+    case 'rated':
+      return 4
+    default:
+      return -1
+  }
+}
 
-  const currentStepIndex = statusSteps.findIndex((s) => s.id === order?.status)
+export function ActiveBookingScreen({ orderId, onChat }: ActiveBookingScreenProps) {
+  const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
+  const { data: order, isLoading } = useSWR<Order | null>(url, fetcher, { refreshInterval: 8000 })
+
+  const currentStepIndex = statusToStep(order?.status)
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
+    <div className="flex min-h-screen flex-col bg-background pb-8">
       {/* Header */}
       <div className="px-6 pt-12">
         <h1 className="text-xl font-bold text-foreground">Идэвхтэй захиалга</h1>
@@ -86,11 +105,11 @@ export function ActiveBookingScreen({ orderId, onChat, onSOS }: ActiveBookingScr
       <div className="mt-6 mx-6 rounded-2xl bg-card p-6 shadow-sm">
         <h2 className="font-semibold text-foreground">Явц</h2>
         <div className="mt-4 space-y-4">
-          {statusSteps.map((step, index) => {
-            const isCompleted = index < currentStepIndex
-            const isCurrent = index === currentStepIndex
+          {STATUS_STEPS.map((label, index) => {
+            const isCompleted = currentStepIndex > index
+            const isCurrent = currentStepIndex === index
             return (
-              <div key={step.id} className="flex items-center gap-4">
+              <div key={index} className="flex items-center gap-4">
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full ${
                     isCompleted
@@ -107,7 +126,7 @@ export function ActiveBookingScreen({ orderId, onChat, onSOS }: ActiveBookingScr
                   )}
                 </div>
                 <span className={`font-medium ${isCompleted || isCurrent ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {step.label}
+                  {label}
                 </span>
                 {isCurrent && (
                   <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -119,6 +138,41 @@ export function ActiveBookingScreen({ orderId, onChat, onSOS }: ActiveBookingScr
           })}
         </div>
       </div>
+
+      {/* Before / After photos — shown once the worker uploads them */}
+      {(order?.beforePhotoUrl ?? order?.afterPhotoUrl) && (
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <h2 className="font-semibold text-foreground">Ажлын зураг</h2>
+          <div className={`mt-3 grid gap-3 ${order?.beforePhotoUrl && order?.afterPhotoUrl ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {order?.beforePhotoUrl && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Өмнөх</p>
+                <div className="overflow-hidden rounded-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={order.beforePhotoUrl}
+                    alt="Өмнөх"
+                    className="h-40 w-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+            {order?.afterPhotoUrl && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Дараах</p>
+                <div className="overflow-hidden rounded-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={order.afterPhotoUrl}
+                    alt="Дараах"
+                    className="h-40 w-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Chat Button */}
       <div className="mt-4 mx-6">
@@ -132,16 +186,8 @@ export function ActiveBookingScreen({ orderId, onChat, onSOS }: ActiveBookingScr
         </Button>
       </div>
 
-      {/* SOS Button */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
-        <Button
-          onClick={onSOS}
-          className="h-14 w-full rounded-2xl bg-destructive text-base font-bold text-white shadow-md hover:bg-destructive/90 active:scale-95 transition-all"
-        >
-          <AlertTriangle className="mr-2 h-5 w-5" />
-          SOS - Яаралтай тусламж
-        </Button>
-      </div>
+      {/* Floating SOS FAB */}
+      <SosButton orderId={orderId} />
     </div>
   )
 }

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
+const WORKER_STATUSES = ['worker_on_the_way', 'in_progress', 'completed', 'cancelled_by_worker'] as const
+const USER_STATUSES   = ['cancelled_by_user'] as const
+
 const schema = z.object({
-  status: z.enum(['accepted', 'arriving', 'working', 'completed', 'cancelled']),
+  status: z.enum([...WORKER_STATUSES, ...USER_STATUSES]),
 })
 
 export async function PATCH(
@@ -27,22 +30,55 @@ export async function PATCH(
   }
 
   const { id } = await params
+  const { status } = parsed.data
 
-  // Worker can update their own orders; users can only cancel
-  const workerRow = db.prepare('SELECT id FROM workers WHERE user_id = ?').get(session.sub) as { id: string } | undefined
+  await dbReady
+
+  const workerRow = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1',
+    [session.sub],
+  )).rows[0] as { id: string } | undefined
   const isWorker = !!workerRow
 
-  if (!isWorker && parsed.data.status !== 'cancelled') {
+  if (!isWorker && status !== 'cancelled_by_user') {
     return NextResponse.json({ success: false, error: 'Зөвхөн ажилтан статус өөрчлөх боломжтой' }, { status: 403 })
   }
 
-  const result = isWorker
-    ? db.prepare(`UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ? AND worker_id = ?`)
-        .run(parsed.data.status, id, workerRow!.id)
-    : db.prepare(`UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`)
-        .run(parsed.data.status, id, session.sub)
+  if (isWorker && (USER_STATUSES as readonly string[]).includes(status)) {
+    return NextResponse.json({ success: false, error: 'Зөвхөн захиалагч цуцлах боломжтой' }, { status: 403 })
+  }
 
-  if (result.changes === 0) {
+  if (isWorker && (status === 'in_progress' || status === 'completed')) {
+    const photoRow = (await db.query(
+      'SELECT before_photo_url, after_photo_url FROM orders WHERE id = $1',
+      [id],
+    )).rows[0] as { before_photo_url: string | null; after_photo_url: string | null } | undefined
+
+    if (status === 'in_progress' && !photoRow?.before_photo_url) {
+      return NextResponse.json(
+        { success: false, error: 'Өмнөх зургаа оруулсны дараа ажил эхлүүлнэ үү' },
+        { status: 422 },
+      )
+    }
+    if (status === 'completed' && !photoRow?.after_photo_url) {
+      return NextResponse.json(
+        { success: false, error: 'Дараах зургаа оруулсны дараа ажлыг дуусгана уу' },
+        { status: 422 },
+      )
+    }
+  }
+
+  const result = isWorker
+    ? await db.query(
+        'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND worker_id = $3',
+        [status, id, workerRow!.id],
+      )
+    : await db.query(
+        'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
+        [status, id, session.sub],
+      )
+
+  if (!result.rowCount) {
     return NextResponse.json({ success: false, error: 'Захиалга олдсонгүй' }, { status: 404 })
   }
 

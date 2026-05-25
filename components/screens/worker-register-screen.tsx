@@ -56,8 +56,10 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   const [accountType, setAccountType] = useState<'checking' | 'savings'>('checking')
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
+  const [danLoading,  setDanLoading]  = useState(false)
+  const [danError,    setDanError]    = useState<string | null>(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
-  const [isLoading, setIsLoading]     = useState(false)
+  const [isLoading,   setIsLoading]   = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }))
@@ -197,12 +199,38 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                 <span className="font-medium text-success">Холбогдсон</span>
               </div>
             ) : (
-              <Button
-                onClick={() => setTimeout(() => setDanConnected(true), 1000)}
-                className="mt-4 h-14 w-full rounded-2xl bg-primary font-semibold shadow-md"
-              >
-                ДАН системээр нэвтрэх
-              </Button>
+              <>
+                {danError && (
+                  <p className="mt-3 text-center text-sm text-destructive">{danError}</p>
+                )}
+                <Button
+                  onClick={async () => {
+                    setDanLoading(true)
+                    setDanError(null)
+                    try {
+                      const res = await fetch('/api/auth/dan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({}),
+                      })
+                      const data = (await res.json()) as { success: boolean; error?: string }
+                      if (data.success) {
+                        setDanConnected(true)
+                      } else {
+                        setDanError(data.error ?? 'ДАН системтэй холбогдоход алдаа гарлаа.')
+                      }
+                    } catch {
+                      setDanError('Сүлжээний алдаа. Дахин оролдоно уу.')
+                    } finally {
+                      setDanLoading(false)
+                    }
+                  }}
+                  disabled={danLoading}
+                  className="mt-4 h-14 w-full rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50"
+                >
+                  {danLoading ? 'Холбогдож байна...' : 'ДАН системээр нэвтрэх'}
+                </Button>
+              </>
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
 const schema = z.object({
@@ -32,10 +32,12 @@ export async function POST(
 
   const { id: orderId } = await params
 
-  // Verify the order belongs to this user and is completed
-  const order = db.prepare(
-    `SELECT id, worker_id FROM orders WHERE id = ? AND user_id = ? AND status = 'completed'`,
-  ).get(orderId, session.sub) as { id: string; worker_id: string } | undefined
+  await dbReady
+
+  const order = (await db.query(
+    `SELECT id, worker_id FROM orders WHERE id = $1 AND user_id = $2 AND status = 'completed'`,
+    [orderId, session.sub],
+  )).rows[0] as { id: string; worker_id: string } | undefined
 
   if (!order) {
     return NextResponse.json(
@@ -44,30 +46,44 @@ export async function POST(
     )
   }
 
-  // Prevent duplicate reviews
-  const existing = db.prepare('SELECT id FROM reviews WHERE order_id = ?').get(orderId)
+  const existing = (await db.query('SELECT id FROM reviews WHERE order_id = $1', [orderId])).rows[0]
   if (existing) {
     return NextResponse.json({ success: false, error: 'Та аль хэдийн үнэлсэн байна' }, { status: 409 })
   }
 
   const { rating, comment } = parsed.data
 
-  db.transaction(() => {
-    db.prepare(
-      'INSERT INTO reviews (id, order_id, worker_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
-    ).run(crypto.randomUUID(), orderId, order.worker_id, rating, comment ?? null)
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-    // Recalculate worker rating average
-    const stats = db.prepare(
-      'SELECT AVG(rating) as avg, COUNT(*) as cnt FROM reviews WHERE worker_id = ?',
-    ).get(order.worker_id) as { avg: number; cnt: number }
-
-    db.prepare('UPDATE workers SET rating = ?, review_count = ? WHERE id = ?').run(
-      Math.round(stats.avg * 10) / 10,
-      stats.cnt,
-      order.worker_id,
+    await client.query(
+      'INSERT INTO reviews (order_id, worker_id, rating, comment) VALUES ($1, $2, $3, $4)',
+      [orderId, order.worker_id, rating, comment ?? null],
     )
-  })()
+
+    const stats = (await client.query(
+      'SELECT AVG(rating) as avg, COUNT(*) as cnt FROM reviews WHERE worker_id = $1',
+      [order.worker_id],
+    )).rows[0] as { avg: number; cnt: number }
+
+    await client.query(
+      'UPDATE workers SET rating = $1, review_count = $2 WHERE id = $3',
+      [Math.round(stats.avg * 10) / 10, stats.cnt, order.worker_id],
+    )
+
+    await client.query(
+      `UPDATE orders SET status = 'rated', updated_at = NOW() WHERE id = $1`,
+      [orderId],
+    )
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 
   return NextResponse.json({ success: true, data: undefined }, { status: 201 })
 }

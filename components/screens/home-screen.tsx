@@ -1,8 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { Bell, Search, Sparkles, Droplets, Zap, Wrench, Paintbrush, Wind, Star, ChevronRight } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Bell, Sparkles, Droplets, Zap, Wrench, Paintbrush, Wind, Star, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
@@ -10,10 +9,8 @@ import type { Worker } from '@/lib/types'
 
 interface HomeScreenProps {
   userName: string
-  onSearch: () => void
-  onCategorySelect: (category: string) => void
+  onCreateOrder: () => void
   onActiveBookingClick?: () => void
-  onWorkerSelect?: (workerId: string) => void
   hasActiveBooking?: boolean
 }
 
@@ -28,10 +25,8 @@ const categories = [
 
 export function HomeScreen({
   userName,
-  onSearch,
-  onCategorySelect,
+  onCreateOrder,
   onActiveBookingClick,
-  onWorkerSelect,
   hasActiveBooking = false,
 }: HomeScreenProps) {
   const { data: featuredWorkers, isLoading } = useSWR<Worker[]>(
@@ -57,35 +52,23 @@ export function HomeScreen({
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="mt-6 px-6">
-        <div className="relative" onClick={onSearch}>
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Үйлчилгээ хайх..."
-            className="h-12 cursor-pointer rounded-2xl border-border bg-card pl-12 shadow-sm"
-            readOnly
-          />
-        </div>
-      </div>
-
-      {/* Active Booking Banner */}
+      {/* Active booking banner */}
       {hasActiveBooking && (
         <div className="mt-4 px-6">
           <button
             onClick={onActiveBookingClick}
-            className="flex w-full items-center justify-between rounded-2xl bg-primary p-4 text-left shadow-md"
+            className="flex w-full items-center justify-between rounded-2xl bg-primary p-4 text-left shadow-md active:scale-95 transition-all"
           >
             <div>
               <p className="text-sm font-medium text-primary-foreground/80">Идэвхтэй захиалга</p>
-              <p className="text-base font-bold text-primary-foreground">Цэвэрлэгээ - Ирж байна</p>
+              <p className="text-base font-bold text-primary-foreground">Цэвэрлэгээ — Ирж байна</p>
             </div>
             <ChevronRight className="h-5 w-5 text-primary-foreground" />
           </button>
         </div>
       )}
 
-      {/* Promo Banner */}
+      {/* Promo banner */}
       <div className="mt-4 px-6">
         <div className="rounded-2xl bg-accent p-4 shadow-md">
           <p className="text-sm font-medium text-white/90">Шинэ хэрэглэгчдэд</p>
@@ -102,7 +85,7 @@ export function HomeScreen({
             return (
               <button
                 key={category.id}
-                onClick={() => onCategorySelect(category.id)}
+                onClick={onCreateOrder}
                 className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-sm transition-all hover:shadow-md active:scale-95"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
@@ -115,16 +98,13 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Featured Workers */}
+      {/* Featured workers — display only (auto-match, no direct booking) */}
       <div className="mt-6">
-        <div className="flex items-center justify-between px-6">
+        <div className="px-6">
           <h2 className="text-lg font-bold text-foreground">Шилдэг ажилтнууд</h2>
-          <button
-            onClick={onSearch}
-            className="text-sm font-medium text-primary"
-          >
-            Бүгдийг харах
-          </button>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Захиалга үүсгэхэд автоматаар хамгийн ойр ажилтантай холбоно
+          </p>
         </div>
 
         <div className="mt-4 flex gap-3 overflow-x-auto px-6 pb-2 scrollbar-hide">
@@ -138,10 +118,9 @@ export function HomeScreen({
                 </div>
               ))
             : (featuredWorkers ?? []).slice(0, 6).map((worker) => (
-                <button
+                <div
                   key={worker.id}
-                  onClick={() => onWorkerSelect?.(worker.id)}
-                  className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm active:scale-95 transition-all"
+                  className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm"
                 >
                   <Avatar className="h-16 w-16">
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -155,7 +134,7 @@ export function HomeScreen({
                     <span className="text-xs font-medium text-foreground">{worker.rating}</span>
                     <span className="text-xs text-muted-foreground">({worker.reviewCount})</span>
                   </div>
-                </button>
+                </div>
               ))}
         </div>
       </div>

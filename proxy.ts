@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
 // Routes that don't require a session
-const AUTH_ROUTES = ['/onboarding', '/login', '/otp', '/dan-success']
+const AUTH_ROUTES = ['/onboarding', '/login', '/register', '/otp', '/dan-success']
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const token = req.cookies.get('token')?.value
   const session = token ? await verifyToken(token) : null
@@ -12,7 +12,7 @@ export async function middleware(req: NextRequest) {
   const isAuthRoute = AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))
 
   if (!session && !isAuthRoute) {
-    return NextResponse.redirect(new URL('/onboarding', req.url))
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   if (session && isAuthRoute) {

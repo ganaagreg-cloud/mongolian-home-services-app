@@ -18,3 +18,13 @@ node_modules
 app.db
 app.db-shm
 app.db-wal
+dev.db
+dev.db-shm
+dev.db-wal
+
+# Build cache
+tsconfig.tsbuildinfo
+
+# Generated / uploaded content
+public/uploads/
+screenshots/

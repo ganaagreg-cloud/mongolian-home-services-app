@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import type { AdminStats, AdminRecentOrder } from '@/lib/types'
-
-type CountRow = { count: number }
-type SumRow   = { total: number }
-type OrderRow = {
-  id: string
-  customer_name: string
-  worker_name: string | null
-  service: string
-  status: string
-  total_amount: number
-}
 
 export async function GET(req: NextRequest) {
   const session = await requireAdmin(req)
@@ -20,23 +9,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, { status: 403 })
   }
 
-  const { count: todayOrders } = db.prepare(
-    `SELECT COUNT(*) as count FROM orders WHERE date(created_at) = date('now')`,
-  ).get() as CountRow
+  await dbReady
 
-  const { total: totalRevenue } = db.prepare(
+  const todayOrders = Number((await db.query(
+    `SELECT COUNT(*) as count FROM orders WHERE created_at::date = CURRENT_DATE`,
+  )).rows[0].count)
+
+  const totalRevenue = Number((await db.query(
     `SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status = 'completed'`,
-  ).get() as SumRow
+  )).rows[0].total)
 
-  const { count: activeWorkers } = db.prepare(
-    `SELECT COUNT(*) as count FROM workers WHERE is_active = 1`,
-  ).get() as CountRow
+  const activeWorkers = Number((await db.query(
+    `SELECT COUNT(*) as count FROM workers WHERE is_active = true`,
+  )).rows[0].count)
 
-  const { count: openDisputes } = db.prepare(
+  const openDisputes = Number((await db.query(
     `SELECT COUNT(*) as count FROM disputes WHERE status = 'open'`,
-  ).get() as CountRow
+  )).rows[0].count)
 
-  const rows = db.prepare(`
+  const recentRows = (await db.query(`
     SELECT o.id, u1.name as customer_name, u2.name as worker_name,
            o.service, o.status, o.total_amount
     FROM   orders o
@@ -45,10 +36,10 @@ export async function GET(req: NextRequest) {
     LEFT JOIN users   u2 ON u2.id = w.user_id
     ORDER  BY o.created_at DESC
     LIMIT  5
-  `).all() as OrderRow[]
+  `)).rows as { id: string; customer_name: string; worker_name: string | null; service: string; status: string; total_amount: number }[]
 
-  const recentOrders: AdminRecentOrder[] = rows.map((r) => ({
-    id:           r.id,
+  const recentOrders: AdminRecentOrder[] = recentRows.map((r) => ({
+    id:           String(r.id),
     customerName: r.customer_name,
     workerName:   r.worker_name ?? '—',
     service:      r.service,

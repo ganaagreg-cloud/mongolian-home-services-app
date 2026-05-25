@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { HomeScreen } from '@/components/screens/home-screen'
-import { SearchScreen } from '@/components/screens/search-screen'
-import { BookingScreen } from '@/components/screens/booking-screen'
+import { CreateOrderScreen } from '@/components/screens/create-order-screen'
+import { SearchingWorkerScreen } from '@/components/screens/searching-worker-screen'
+import { ConfirmWorkerScreen } from '@/components/screens/confirm-worker-screen'
+import { ScheduledJobsBoardScreen } from '@/components/screens/scheduled-jobs-board-screen'
+import { ConfirmScheduledWorkerScreen } from '@/components/screens/confirm-scheduled-worker-screen'
 import { ActiveBookingScreen } from '@/components/screens/active-booking-screen'
 import { ReviewScreen } from '@/components/screens/review-screen'
 import { OrdersScreen } from '@/components/screens/orders-screen'
@@ -23,9 +26,13 @@ import { AdminVerifyScreen } from '@/components/screens/admin-verify-screen'
 import { AdminDisputesScreen } from '@/components/screens/admin-disputes-screen'
 import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
+import type { MatchedWorker, OrderAcceptance, MatchingStrategy } from '@/lib/types'
 
 type Screen =
-  | 'home' | 'search' | 'booking' | 'active-booking' | 'review' | 'profile' | 'chat' | 'orders'
+  | 'home' | 'create-order'
+  | 'searching-worker' | 'confirm-worker'
+  | 'scheduled-jobs-board' | 'confirm-scheduled-worker'
+  | 'active-booking' | 'review' | 'profile' | 'chat' | 'orders'
   | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
   | 'admin' | 'admin-verify' | 'admin-disputes'
@@ -33,12 +40,32 @@ type Screen =
 type UserRole = 'user' | 'worker' | 'admin'
 
 export default function Home() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home')
-  const [userName] = useState('Бат')
-  const [userRole, setUserRole] = useState<UserRole>('user')
-  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
+  const [currentScreen,  setCurrentScreen]  = useState<Screen>('home')
+  const [userName,       setUserName]       = useState('...')
+  const [userPhone,      setUserPhone]      = useState('')
+  const [userRole,       setUserRole]       = useState<UserRole>('user')
   const [hasActiveBooking, setHasActiveBooking] = useState(false)
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
+  const [activeOrderId,  setActiveOrderId]  = useState<string | null>(null)
+
+  // New booking-flow state
+  const [matchedWorker,       setMatchedWorker]       = useState<MatchedWorker | null>(null)
+  const [selectedAcceptor,    setSelectedAcceptor]    = useState<OrderAcceptance | null>(null)
+  const [activeWorkerOrderId, setActiveWorkerOrderId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data: { success: boolean; data?: { username: string; name: string; role: string; phone: string } }) => {
+        if (data.success && data.data) {
+          setUserName(data.data.username || data.data.name || 'Хэрэглэгч')
+          setUserPhone(`+976 ${data.data.phone}`)
+          setUserRole(data.data.role as UserRole)
+          if (data.data.role === 'worker') setCurrentScreen('worker-jobs')
+          else if (data.data.role === 'admin') setCurrentScreen('admin')
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -52,28 +79,63 @@ export default function Home() {
 
   // Worker navigation
   const handleWorkerBottomNav = (screen: 'jobs' | 'active' | 'earnings' | 'profile') => {
-    if (screen === 'jobs') setCurrentScreen('worker-jobs')
-    else if (screen === 'active') setCurrentScreen('worker-active')
+    if (screen === 'jobs')     { setCurrentScreen('worker-jobs') }
+    else if (screen === 'active')   { setActiveWorkerOrderId(null); setCurrentScreen('worker-active') }
     else if (screen === 'earnings') setCurrentScreen('worker-earnings')
-    else if (screen === 'profile') setCurrentScreen('worker-profile')
+    else if (screen === 'profile')  setCurrentScreen('worker-profile')
   }
 
-  // Screen-specific handlers
-  const handleBookWorker = (workerId: string) => {
-    setSelectedWorkerId(workerId)
-    setCurrentScreen('booking')
-  }
-  const handleBookingConfirm = (orderId: string) => {
+  // Called when create-order Step 5 submits
+  const handleOrderCreated = (orderId: string, strategy: MatchingStrategy) => {
     setActiveOrderId(orderId)
     setHasActiveBooking(true)
+    if (strategy === 'instant') {
+      setCurrentScreen('searching-worker')
+    } else {
+      setCurrentScreen('scheduled-jobs-board')
+    }
+  }
+
+  // Instant flow: worker found → confirm
+  const handleWorkerFound = (worker: MatchedWorker) => {
+    setMatchedWorker(worker)
+    setCurrentScreen('confirm-worker')
+  }
+
+  // Instant flow: no workers → offer scheduled fallback
+  const handleNoWorkers = () => {
+    // Navigate back to create-order to switch to scheduled
+    setCurrentScreen('create-order')
+  }
+
+  // Instant flow: user confirmed + paid → active booking
+  const handleInstantConfirmed = () => {
     setCurrentScreen('active-booking')
   }
-  const handleSOS = () => alert('SOS илгээгдлээ!')
+
+  // Scheduled flow: user picks an acceptor → confirm
+  const handleWorkerPicked = (acceptor: OrderAcceptance) => {
+    setSelectedAcceptor(acceptor)
+    setCurrentScreen('confirm-scheduled-worker')
+  }
+
+  // Scheduled flow: user confirmed + paid → active booking
+  const handleScheduledConfirmed = () => {
+    setCurrentScreen('active-booking')
+  }
+
   const handleJobComplete = () => setCurrentScreen('review')
   const handleBecomeWorker = () => setCurrentScreen('worker-register')
 
-  // Role switcher for demo
-  const handleRoleSwitch = (role: UserRole) => {
+  // Role switcher for demo — also updates the JWT session so worker/admin APIs work
+  const handleRoleSwitch = async (role: UserRole) => {
+    try {
+      await fetch('/api/auth/test-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      })
+    } catch { /* dev-only endpoint; ignore on failure */ }
     setUserRole(role)
     if (role === 'user') setCurrentScreen('home')
     else if (role === 'worker') setCurrentScreen('worker-jobs')
@@ -88,82 +150,102 @@ export default function Home() {
     else if (menu === 'privacy') setCurrentScreen('privacy')
   }
 
-  const showUserBottomNav = ['home', 'search', 'orders', 'chat', 'profile', 'active-booking'].includes(currentScreen)
-  const showWorkerBottomNav = ['worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile'].includes(currentScreen)
+  const showUserBottomNav = [
+    'home', 'orders', 'chat', 'profile', 'active-booking',
+  ].includes(currentScreen)
+
+  const showWorkerBottomNav = [
+    'worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile',
+  ].includes(currentScreen)
 
   const getActiveUserTab = (): 'home' | 'orders' | 'chat' | 'profile' => {
-    if (currentScreen === 'home' || currentScreen === 'search') return 'home'
+    if (currentScreen === 'home')   return 'home'
     if (currentScreen === 'orders') return 'orders'
-    if (currentScreen === 'chat') return 'chat'
+    if (currentScreen === 'chat')   return 'chat'
     return 'profile'
   }
 
   const getActiveWorkerTab = (): 'jobs' | 'active' | 'earnings' | 'profile' => {
-    if (currentScreen === 'worker-jobs') return 'jobs'
-    if (currentScreen === 'worker-active') return 'active'
+    if (currentScreen === 'worker-jobs')     return 'jobs'
+    if (currentScreen === 'worker-active')   return 'active'
     if (currentScreen === 'worker-earnings') return 'earnings'
-    if (currentScreen === 'worker-profile') return 'profile'
+    if (currentScreen === 'worker-profile')  return 'profile'
     return 'jobs'
   }
 
   return (
     <main className="mx-auto max-w-[390px] min-h-screen bg-background">
-      {/* Role Switcher - Demo only */}
+      {/* Role switcher — demo only */}
       <div className="fixed top-2 right-2 z-50 flex gap-1 rounded-full bg-card p-1 shadow-lg">
-        <button
-          onClick={() => handleRoleSwitch('user')}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            userRole === 'user' ? 'bg-primary text-white' : 'text-muted-foreground'
-          }`}
-        >
-          User
-        </button>
-        <button
-          onClick={() => handleRoleSwitch('worker')}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            userRole === 'worker' ? 'bg-primary text-white' : 'text-muted-foreground'
-          }`}
-        >
-          Worker
-        </button>
-        <button
-          onClick={() => handleRoleSwitch('admin')}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            userRole === 'admin' ? 'bg-primary text-white' : 'text-muted-foreground'
-          }`}
-        >
-          Admin
-        </button>
+        {(['user', 'worker', 'admin'] as UserRole[]).map((role) => (
+          <button
+            key={role}
+            onClick={() => { void handleRoleSwitch(role) }}
+            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+              userRole === role ? 'bg-primary text-white' : 'text-muted-foreground'
+            }`}
+          >
+            {role === 'user' ? 'User' : role === 'worker' ? 'Worker' : 'Admin'}
+          </button>
+        ))}
       </div>
 
-      {/* User Screens */}
+      {/* ── User Screens ───────────────────────────────── */}
       {currentScreen === 'home' && (
         <HomeScreen
           userName={userName}
-          onSearch={() => setCurrentScreen('search')}
-          onCategorySelect={() => setCurrentScreen('search')}
+          onCreateOrder={() => setCurrentScreen('create-order')}
           onActiveBookingClick={() => setCurrentScreen('active-booking')}
           hasActiveBooking={hasActiveBooking}
         />
       )}
-      {currentScreen === 'search' && (
-        <SearchScreen
+      {currentScreen === 'create-order' && (
+        <CreateOrderScreen
           onBack={() => setCurrentScreen('home')}
-          onBookWorker={handleBookWorker}
+          onOrderCreated={handleOrderCreated}
         />
       )}
-      {currentScreen === 'booking' && (
-        <BookingScreen
-          workerId={selectedWorkerId || '1'}
-          onBack={() => setCurrentScreen('search')}
-          onConfirm={handleBookingConfirm}
+
+      {/* ── New: Instant match flow ─────────────────────── */}
+      {currentScreen === 'searching-worker' && activeOrderId && (
+        <SearchingWorkerScreen
+          orderId={activeOrderId}
+          onWorkerFound={handleWorkerFound}
+          onNoWorkers={handleNoWorkers}
+          onBack={() => setCurrentScreen('home')}
         />
       )}
+      {currentScreen === 'confirm-worker' && activeOrderId && matchedWorker && (
+        <ConfirmWorkerScreen
+          orderId={activeOrderId}
+          worker={matchedWorker}
+          onConfirm={handleInstantConfirmed}
+          onBack={() => setCurrentScreen('searching-worker')}
+        />
+      )}
+
+      {/* ── New: Scheduled post flow ────────────────────── */}
+      {currentScreen === 'scheduled-jobs-board' && activeOrderId && (
+        <ScheduledJobsBoardScreen
+          orderId={activeOrderId}
+          onWorkerPicked={handleWorkerPicked}
+          onBack={() => setCurrentScreen('home')}
+        />
+      )}
+      {currentScreen === 'confirm-scheduled-worker' && activeOrderId && selectedAcceptor && (
+        <ConfirmScheduledWorkerScreen
+          orderId={activeOrderId}
+          worker={selectedAcceptor}
+          onConfirm={handleScheduledConfirmed}
+          onBack={() => setCurrentScreen('scheduled-jobs-board')}
+        />
+      )}
+
+      {/* ── Shared post-booking screens ─────────────────── */}
       {currentScreen === 'active-booking' && (
         <ActiveBookingScreen
           orderId={activeOrderId ?? undefined}
           onChat={() => setCurrentScreen('chat')}
-          onSOS={handleSOS}
           onBack={() => setCurrentScreen('home')}
         />
       )}
@@ -174,15 +256,17 @@ export default function Home() {
           onHome={() => {
             setHasActiveBooking(false)
             setActiveOrderId(null)
+            setMatchedWorker(null)
+            setSelectedAcceptor(null)
             setCurrentScreen('home')
           }}
-          onRebook={() => setCurrentScreen('search')}
+          onRebook={() => setCurrentScreen('create-order')}
         />
       )}
       {currentScreen === 'profile' && (
         <ProfileScreen
           userName={userName}
-          phone="+976 9911 2233"
+          phone={userPhone}
           onMenuClick={handleProfileMenuClick}
           onBecomeWorker={handleBecomeWorker}
           onLogout={handleLogout}
@@ -191,15 +275,12 @@ export default function Home() {
       {currentScreen === 'personal-info' && (
         <PersonalInfoScreen
           userName={userName}
-          phone="+976 9911 2233"
+          phone={userPhone}
           onBack={() => setCurrentScreen('profile')}
         />
       )}
       {currentScreen === 'saved-workers' && (
-        <SavedWorkersScreen
-          onBack={() => setCurrentScreen('profile')}
-          onBookWorker={handleBookWorker}
-        />
+        <SavedWorkersScreen onBack={() => setCurrentScreen('profile')} />
       )}
       {currentScreen === 'help' && (
         <HelpScreen onBack={() => setCurrentScreen('profile')} />
@@ -210,13 +291,13 @@ export default function Home() {
       {currentScreen === 'orders' && (
         <OrdersScreen
           onBack={() => setCurrentScreen('profile')}
-          onRebook={(workerId) => {
-            setSelectedWorkerId(workerId)
-            setCurrentScreen('booking')
-          }}
           onViewActive={(orderId) => {
             setActiveOrderId(orderId)
             setCurrentScreen('active-booking')
+          }}
+          onViewScheduledBoard={(orderId) => {
+            setActiveOrderId(orderId)
+            setCurrentScreen('scheduled-jobs-board')
           }}
         />
       )}
@@ -227,7 +308,7 @@ export default function Home() {
         />
       )}
 
-      {/* Worker Screens */}
+      {/* ── Worker Screens ─────────────────────────────── */}
       {currentScreen === 'worker-register' && (
         <WorkerRegisterScreen
           onBack={() => setCurrentScreen('profile')}
@@ -236,12 +317,16 @@ export default function Home() {
       )}
       {currentScreen === 'worker-jobs' && (
         <WorkerJobsScreen
-          onAcceptJob={() => setCurrentScreen('worker-active')}
+          onAcceptJob={(jobId) => {
+            setActiveWorkerOrderId(jobId)
+            setCurrentScreen('worker-active')
+          }}
           onDeclineJob={() => {}}
         />
       )}
       {currentScreen === 'worker-active' && (
         <WorkerActiveScreen
+          orderId={activeWorkerOrderId}
           onChat={() => {}}
           onComplete={handleJobComplete}
         />
@@ -252,7 +337,7 @@ export default function Home() {
       {currentScreen === 'worker-profile' && (
         <WorkerProfileScreen
           workerName={userName}
-          phone="+976 9911 2233"
+          phone={userPhone}
           onMenuClick={(menu) => {
             if (menu === 'personal-info') setCurrentScreen('personal-info')
             else if (menu === 'help') setCurrentScreen('help')
@@ -262,7 +347,7 @@ export default function Home() {
         />
       )}
 
-      {/* Admin Screens */}
+      {/* ── Admin Screens ──────────────────────────────── */}
       {currentScreen === 'admin' && (
         <AdminDashboardScreen
           onViewVerifications={() => setCurrentScreen('admin-verify')}
@@ -270,17 +355,13 @@ export default function Home() {
         />
       )}
       {currentScreen === 'admin-verify' && (
-        <AdminVerifyScreen
-          onBack={() => setCurrentScreen('admin')}
-        />
+        <AdminVerifyScreen onBack={() => setCurrentScreen('admin')} />
       )}
       {currentScreen === 'admin-disputes' && (
-        <AdminDisputesScreen
-          onBack={() => setCurrentScreen('admin')}
-        />
+        <AdminDisputesScreen onBack={() => setCurrentScreen('admin')} />
       )}
 
-      {/* Bottom Navigation */}
+      {/* ── Bottom Navigation ──────────────────────────── */}
       {showUserBottomNav && (
         <BottomNav active={getActiveUserTab()} onNavigate={handleBottomNav} />
       )}

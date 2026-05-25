@@ -1,7 +1,28 @@
 import { SignJWT, jwtVerify } from 'jose'
+import { scryptSync, randomBytes, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import type { SessionPayload } from './types'
+
+// ── Password hashing (Node built-in crypto, no extra deps) ──────────────────
+
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(password, salt, 64).toString('hex')
+  return `${salt}:${hash}`
+}
+
+export function verifyPassword(password: string, stored: string): boolean {
+  try {
+    const [salt, hash] = stored.split(':')
+    if (!salt || !hash) return false
+    const hashBuffer = Buffer.from(hash, 'hex')
+    const suppliedHash = scryptSync(password, salt, 64)
+    return timingSafeEqual(hashBuffer, suppliedHash)
+  } catch {
+    return false
+  }
+}
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? 'dev-secret-replace-before-production'

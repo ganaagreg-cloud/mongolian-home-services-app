@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { ArrowLeft, RotateCcw, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,38 +12,65 @@ import type { Order, OrderStatus } from '@/lib/types'
 
 interface OrdersScreenProps {
   onBack: () => void
-  onRebook: (workerId: string) => void
   onViewActive: (orderId: string) => void
+  onViewScheduledBoard: (orderId: string) => void
 }
 
-const ACTIVE_STATUSES: OrderStatus[] = ['pending', 'accepted', 'arriving', 'working']
+const ACTIVE_STATUSES: OrderStatus[] = [
+  'searching_worker', 'pending_acceptances', 'pending_worker_acceptance', 'worker_assigned', 'worker_on_the_way', 'in_progress',
+]
 
 const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg: string; text: string }> = {
-  pending:   { label: 'Хүлээгдэж байна', icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
-  accepted:  { label: 'Зөвшөөрсөн',     icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
-  arriving:  { label: 'Ирж байна',       icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
-  working:   { label: 'Ажиллаж байна',  icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent' },
-  completed: { label: 'Дууссан',        icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
-  cancelled: { label: 'Цуцлагдсан',     icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  pending_acceptances:       { label: 'Санал хүлээж байна',       icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
+  searching_worker:          { label: 'Ажилтан хайж байна',       icon: Search,       bg: 'bg-primary/10',     text: 'text-primary' },
+  pending_worker_acceptance: { label: 'Ажилтан хариу өгөхийг хүлээж байна', icon: Clock, bg: 'bg-primary/10', text: 'text-primary' },
+  pending_payment:           { label: 'Төлбөр хүлээж байна',      icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
+  worker_assigned:     { label: 'Ажилтан олдлоо',      icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
+  worker_on_the_way:   { label: 'Ирж байна',            icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
+  in_progress:         { label: 'Ажиллаж байна',        icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent' },
+  completed:           { label: 'Дууссан',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
+  rated:               { label: 'Үнэлсэн',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
+  cancelled_by_user:   { label: 'Цуцлагдсан',           icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  cancelled_by_worker: { label: 'Ажилтан цуцалсан',     icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  no_workers_found:    { label: 'Ажилтан олдсонгүй',    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
 }
 
-function OrderCard({ order, onRebook, onViewActive }: { order: Order; onRebook: (id: string) => void; onViewActive: (id: string) => void }) {
+function OrderCard({
+  order,
+  onViewActive,
+  onViewScheduledBoard,
+}: {
+  order: Order
+  onViewActive: (id: string) => void
+  onViewScheduledBoard: (id: string) => void
+}) {
   const cfg = statusConfig[order.status]
   const StatusIcon = cfg.icon
   const isActive = ACTIVE_STATUSES.includes(order.status)
-  const dateLabel = order.scheduledDate.split('T')[0]
+  const isPendingAcceptances = order.status === 'pending_acceptances'
+  const dateLabel = order.scheduledDate.split('T')[0] ?? order.scheduledDate
+
+  const handleViewClick = () => {
+    if (isPendingAcceptances) {
+      onViewScheduledBoard(order.id)
+    } else {
+      onViewActive(order.id)
+    }
+  }
 
   return (
     <div className="rounded-2xl bg-card p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <Avatar className="h-12 w-12 shrink-0">
           <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
-            {(order.workerName ?? '?')[0]}
+            {isPendingAcceptances ? order.service[0] : (order.workerName ?? '?')[0]}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate font-semibold text-foreground">{order.workerName ?? '—'}</p>
+            <p className="truncate font-semibold text-foreground">
+              {isPendingAcceptances ? order.service : (order.workerName ?? '—')}
+            </p>
             <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
               <StatusIcon className="h-3 w-3" />
               {cfg.label}
@@ -56,31 +83,21 @@ function OrderCard({ order, onRebook, onViewActive }: { order: Order; onRebook: 
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <p className="text-sm font-semibold text-primary">₮{order.totalAmount.toLocaleString()}</p>
-        {isActive ? (
+        {isActive && (
           <Button
-            onClick={() => onViewActive(order.id)}
+            onClick={handleViewClick}
             size="sm"
             className="h-9 rounded-2xl bg-primary text-sm font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
           >
-            Харах
+            {isPendingAcceptances ? 'Саналууд харах' : 'Харах'}
           </Button>
-        ) : order.status === 'completed' ? (
-          <Button
-            onClick={() => onRebook(order.workerId)}
-            size="sm"
-            variant="outline"
-            className="h-9 rounded-2xl border-border bg-card text-sm font-semibold shadow-sm active:scale-95 transition-all"
-          >
-            <RotateCcw className="mr-1.5 h-4 w-4" />
-            Дахин захиалах
-          </Button>
-        ) : null}
+        )}
       </div>
     </div>
   )
 }
 
-export function OrdersScreen({ onBack, onRebook, onViewActive }: OrdersScreenProps) {
+export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: OrdersScreenProps) {
   const [tab, setTab] = useState<'active' | 'past'>('active')
   const { data: orders, isLoading, error } = useSWR<Order[]>('/api/orders', fetcher)
 
@@ -149,7 +166,12 @@ export function OrdersScreen({ onBack, onRebook, onViewActive }: OrdersScreenPro
           </div>
         ) : (
           filtered.map((order) => (
-            <OrderCard key={order.id} order={order} onRebook={onRebook} onViewActive={onViewActive} />
+            <OrderCard
+              key={order.id}
+              order={order}
+              onViewActive={onViewActive}
+              onViewScheduledBoard={onViewScheduledBoard}
+            />
           ))
         )}
       </div>

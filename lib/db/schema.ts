@@ -1,105 +1,159 @@
-// Each entry is a standalone DDL statement executed once on DB init.
-// Order matters — referenced tables must come before referencing tables.
+// PostgreSQL DDL — executed once on DB init via lib/db/index.ts
+// Order matters: referenced tables must be created before referencing tables.
 export const TABLES: string[] = [
   `CREATE TABLE IF NOT EXISTS users (
-    id           TEXT PRIMARY KEY,
-    phone        TEXT UNIQUE NOT NULL,
-    name         TEXT NOT NULL DEFAULT '',
-    role         TEXT NOT NULL DEFAULT 'user',
-    dan_verified INTEGER NOT NULL DEFAULT 0,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    id               SERIAL PRIMARY KEY,
+    phone            VARCHAR(20) UNIQUE NOT NULL,
+    name             TEXT NOT NULL DEFAULT '',
+    username         TEXT NOT NULL DEFAULT '',
+    password_hash    TEXT NOT NULL DEFAULT '',
+    first_name       TEXT NOT NULL DEFAULT '',
+    last_name        TEXT NOT NULL DEFAULT '',
+    firstname        VARCHAR(100) NOT NULL DEFAULT '',
+    lastname         VARCHAR(100) NOT NULL DEFAULT '',
+    registernumber   VARCHAR(20) NOT NULL DEFAULT '',
+    email            TEXT NOT NULL DEFAULT '',
+    role             VARCHAR(20) NOT NULL DEFAULT 'user',
+    dan_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+    is_verified      BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+    ON users(username) WHERE username != ''`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email
+    ON users(email) WHERE email != ''`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_registernumber
+    ON users(registernumber) WHERE registernumber != ''`,
+
   `CREATE TABLE IF NOT EXISTS workers (
-    id             TEXT PRIMARY KEY,
-    user_id        TEXT NOT NULL REFERENCES users(id),
+    id             SERIAL PRIMARY KEY,
+    user_id        INTEGER NOT NULL REFERENCES users(id),
     specialty      TEXT NOT NULL DEFAULT '',
     price_per_hour INTEGER NOT NULL DEFAULT 0,
-    rating         REAL NOT NULL DEFAULT 0,
+    rating         DOUBLE PRECISION NOT NULL DEFAULT 0,
     review_count   INTEGER NOT NULL DEFAULT 0,
     imei           TEXT,
     police_file    TEXT,
-    is_available   INTEGER NOT NULL DEFAULT 1,
-    is_active      INTEGER NOT NULL DEFAULT 0,
-    created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    is_available   BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active      BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS banking_info (
-    id                  TEXT PRIMARY KEY,
-    worker_id           TEXT NOT NULL UNIQUE REFERENCES workers(id),
+    id                  SERIAL PRIMARY KEY,
+    worker_id           INTEGER NOT NULL UNIQUE REFERENCES workers(id),
     bank_name           TEXT NOT NULL,
     account_number      TEXT NOT NULL,
     account_holder_name TEXT NOT NULL,
     iban                TEXT NOT NULL,
     account_type        TEXT NOT NULL DEFAULT 'checking',
-    verified            INTEGER NOT NULL DEFAULT 0,
-    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    verified            BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS orders (
-    id             TEXT PRIMARY KEY,
-    user_id        TEXT NOT NULL REFERENCES users(id),
-    worker_id      TEXT NOT NULL REFERENCES workers(id),
-    service        TEXT NOT NULL,
-    status         TEXT NOT NULL DEFAULT 'pending',
-    address        TEXT NOT NULL,
-    scheduled_date TEXT NOT NULL,
-    hours          INTEGER NOT NULL DEFAULT 1,
-    total_amount   INTEGER NOT NULL DEFAULT 0,
-    property_type  TEXT,
-    notes          TEXT,
-    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    id                  SERIAL PRIMARY KEY,
+    user_id             INTEGER NOT NULL REFERENCES users(id),
+    worker_id           INTEGER REFERENCES workers(id),
+    service             TEXT NOT NULL,
+    status              VARCHAR(40) NOT NULL DEFAULT 'searching_worker',
+    address             TEXT NOT NULL,
+    scheduled_date      TIMESTAMPTZ NOT NULL,
+    hours               INTEGER NOT NULL DEFAULT 1,
+    total_amount        INTEGER NOT NULL DEFAULT 0,
+    urgent              BOOLEAN NOT NULL DEFAULT FALSE,
+    rooms               INTEGER,
+    area_sqm            INTEGER,
+    property_type       TEXT,
+    notes               TEXT,
+    matching_strategy   VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+    payment_status      VARCHAR(20) NOT NULL DEFAULT 'unpaid',
+    payment_gateway     VARCHAR(20) NOT NULL DEFAULT 'qpay',
+    gateway_invoice_id  VARCHAR(100),
+    before_photo_url    TEXT,
+    after_photo_url     TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS messages (
-    id         TEXT PRIMARY KEY,
-    order_id   TEXT NOT NULL REFERENCES orders(id),
-    sender_id  TEXT NOT NULL REFERENCES users(id),
+    id         SERIAL PRIMARY KEY,
+    order_id   INTEGER NOT NULL REFERENCES orders(id),
+    sender_id  INTEGER NOT NULL REFERENCES users(id),
     text       TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS reviews (
-    id         TEXT PRIMARY KEY,
-    order_id   TEXT NOT NULL UNIQUE REFERENCES orders(id),
-    worker_id  TEXT NOT NULL REFERENCES workers(id),
+    id         SERIAL PRIMARY KEY,
+    order_id   INTEGER NOT NULL UNIQUE REFERENCES orders(id),
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
     rating     INTEGER NOT NULL,
     comment    TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS transactions (
-    id         TEXT PRIMARY KEY,
-    worker_id  TEXT NOT NULL REFERENCES workers(id),
+    id         SERIAL PRIMARY KEY,
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
     amount     INTEGER NOT NULL,
     type       TEXT NOT NULL,
     service    TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS disputes (
-    id                  TEXT PRIMARY KEY,
-    order_id            TEXT NOT NULL REFERENCES orders(id),
+    id                  SERIAL PRIMARY KEY,
+    order_id            INTEGER NOT NULL REFERENCES orders(id),
     issue               TEXT NOT NULL,
-    status              TEXT NOT NULL DEFAULT 'open',
+    status              VARCHAR(20) NOT NULL DEFAULT 'open',
     compensation_amount INTEGER,
-    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS saved_workers (
-    user_id    TEXT NOT NULL REFERENCES users(id),
-    worker_id  TEXT NOT NULL REFERENCES workers(id),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, worker_id)
   )`,
 
-  // OTP codes — short-lived, no foreign key needed
   `CREATE TABLE IF NOT EXISTS otp_codes (
-    phone      TEXT NOT NULL,
+    phone      VARCHAR(20) NOT NULL PRIMARY KEY,
     code       TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    PRIMARY KEY (phone)
+    expires_at TIMESTAMPTZ NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS order_match_attempts (
+    id           SERIAL PRIMARY KEY,
+    order_id     INTEGER NOT NULL REFERENCES orders(id),
+    worker_id    INTEGER NOT NULL REFERENCES workers(id),
+    status       VARCHAR(20) NOT NULL DEFAULT 'offered',
+    offered_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    responded_at TIMESTAMPTZ
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS order_acceptances (
+    id         SERIAL PRIMARY KEY,
+    order_id   INTEGER NOT NULL REFERENCES orders(id),
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    picked_at  TIMESTAMPTZ,
+    UNIQUE (order_id, worker_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS sos_alerts (
+    id               SERIAL PRIMARY KEY,
+    order_id         INTEGER REFERENCES orders(id),
+    triggered_by_id  INTEGER NOT NULL REFERENCES users(id),
+    role             VARCHAR(20) NOT NULL,
+    latitude         DOUBLE PRECISION,
+    longitude        DOUBLE PRECISION,
+    status           VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 ]

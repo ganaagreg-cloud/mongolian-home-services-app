@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 
 const schema = z.object({
@@ -30,15 +30,15 @@ export async function PATCH(
   const { id } = await params
   const { action } = parsed.data
 
-  const worker = db.prepare('SELECT id FROM workers WHERE id = ?').get(id)
+  await dbReady
+  const worker = (await db.query('SELECT id FROM workers WHERE id = $1', [id])).rows[0]
   if (!worker) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
 
   if (action === 'approve') {
-    db.prepare(`UPDATE workers SET is_active = 1 WHERE id = ?`).run(id)
+    await db.query('UPDATE workers SET is_active = true WHERE id = $1', [id])
   }
-  // reject: leave is_active = 0 (no change needed, reason is informational only)
 
   return NextResponse.json({ success: true, data: undefined })
 }

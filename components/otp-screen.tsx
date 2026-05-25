@@ -9,9 +9,10 @@ interface OTPScreenProps {
   phone: string
   onBack: () => void
   onVerify: (otp: string) => void
+  onResend?: () => void | Promise<void>
 }
 
-export function OTPScreen({ phone, onBack, onVerify }: OTPScreenProps) {
+export function OTPScreen({ phone, onBack, onVerify, onResend }: OTPScreenProps) {
   const [otp, setOtp] = useState('')
   const [countdown, setCountdown] = useState(60)
   const [canResend, setCanResend] = useState(false)
@@ -25,10 +26,11 @@ export function OTPScreen({ phone, onBack, onVerify }: OTPScreenProps) {
     }
   }, [countdown])
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setCountdown(60)
     setCanResend(false)
     setOtp('')
+    await onResend?.()
   }
 
   const handleVerify = () => {

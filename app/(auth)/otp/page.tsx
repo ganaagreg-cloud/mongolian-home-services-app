@@ -10,6 +10,19 @@ function OTPPageInner() {
   const phone = searchParams.get('phone') ?? ''
   const [error, setError] = useState<string | null>(null)
 
+  const handleResend = async () => {
+    setError(null)
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    const data = (await res.json()) as { success: boolean; error?: string }
+    if (!data.success) {
+      setError(data.error ?? 'Дахин илгээхэд алдаа гарлаа.')
+    }
+  }
+
   const handleVerify = async (otp: string) => {
     setError(null)
     const res = await fetch('/api/auth/verify-otp', {
@@ -27,9 +40,9 @@ function OTPPageInner() {
 
   return (
     <div className="relative">
-      <OTPScreen phone={phone} onBack={() => router.push('/login')} onVerify={handleVerify} />
+      <OTPScreen phone={phone} onBack={() => router.push('/login')} onVerify={handleVerify} onResend={handleResend} />
       {error && (
-        <div className="fixed bottom-6 left-4 right-4 rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive shadow-md">
+        <div className="fixed bottom-24 left-4 right-4 rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive shadow-md">
           {error}
         </div>
       )}

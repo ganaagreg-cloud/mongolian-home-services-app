@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { mockSMS } from '@/lib/mocks/sms'
 
 const schema = z.object({
@@ -22,18 +22,17 @@ export async function POST(req: NextRequest) {
   }
 
   const { phone } = parsed.data
-  const otp = String(Math.floor(100000 + Math.random() * 900000))
-  // SQLite datetime('now') format: YYYY-MM-DD HH:MM:SS (UTC)
+  const otp = process.env.NODE_ENV === 'development'
+    ? '123456'
+    : String(Math.floor(100000 + Math.random() * 900000))
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
-    .toISOString()
-    .replace('T', ' ')
-    .slice(0, 19)
 
-  // phone is PRIMARY KEY — replace atomically
-  db.prepare('INSERT OR REPLACE INTO otp_codes (phone, code, expires_at) VALUES (?, ?, ?)').run(
-    phone,
-    otp,
-    expiresAt,
+  await dbReady
+  await db.query(
+    `INSERT INTO otp_codes (phone, code, expires_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (phone) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at`,
+    [phone, otp, expiresAt],
   )
 
   const result = await mockSMS(phone, `Таны баталгаажуулах код: ${otp}`)

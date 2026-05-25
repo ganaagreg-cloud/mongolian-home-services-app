@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
+import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
 const schema = z.object({ isAvailable: z.boolean() })
@@ -21,11 +21,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Буруу өгөгдөл' }, { status: 400 })
   }
 
-  const result = db
-    .prepare('UPDATE workers SET is_available = ? WHERE user_id = ?')
-    .run(parsed.data.isAvailable ? 1 : 0, session.sub)
+  await dbReady
+  const result = await db.query(
+    'UPDATE workers SET is_available = $1 WHERE user_id = $2',
+    [parsed.data.isAvailable, session.sub],
+  )
 
-  if (result.changes === 0) {
+  if (!result.rowCount) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
 

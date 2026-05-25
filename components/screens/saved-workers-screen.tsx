@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import { ArrowLeft, Star, Heart, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 
 interface SavedWorkersScreenProps {
   onBack: () => void
-  onBookWorker: (workerId: string) => void
 }
 
 const savedWorkers = [
@@ -40,7 +38,7 @@ const savedWorkers = [
   },
 ]
 
-export function SavedWorkersScreen({ onBack, onBookWorker }: SavedWorkersScreenProps) {
+export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
   const [workers, setWorkers] = useState(savedWorkers)
 
   const handleRemove = (id: string) => {
@@ -108,12 +106,6 @@ export function SavedWorkersScreen({ onBack, onBookWorker }: SavedWorkersScreenP
                   </div>
                 </div>
               </div>
-              <Button
-                onClick={() => onBookWorker(worker.id)}
-                className="mt-3 h-11 w-full rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
-              >
-                Захиалах
-              </Button>
             </div>
           ))}
         </div>
