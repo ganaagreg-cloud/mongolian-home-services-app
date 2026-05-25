@@ -52,11 +52,17 @@ export default function Home() {
   const [selectedAcceptor,    setSelectedAcceptor]    = useState<OrderAcceptance | null>(null)
   const [activeWorkerOrderId, setActiveWorkerOrderId] = useState<string | null>(null)
 
+  // Chat state
+  const [userId,      setUserId]      = useState<string>('')
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null)
+  const [chatBack,    setChatBack]    = useState<Screen>('active-booking')
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data: { success: boolean; data?: { username: string; name: string; role: string; phone: string } }) => {
+      .then((data: { success: boolean; data?: { id: string; username: string; name: string; role: string; phone: string } }) => {
         if (data.success && data.data) {
+          setUserId(data.data.id)
           setUserName(data.data.username || data.data.name || 'Хэрэглэгч')
           setUserPhone(`+976 ${data.data.phone}`)
           setUserRole(data.data.role as UserRole)
@@ -245,7 +251,11 @@ export default function Home() {
       {currentScreen === 'active-booking' && (
         <ActiveBookingScreen
           orderId={activeOrderId ?? undefined}
-          onChat={() => setCurrentScreen('chat')}
+          onChat={() => {
+            setChatOrderId(activeOrderId)
+            setChatBack('active-booking')
+            setCurrentScreen('chat')
+          }}
           onBack={() => setCurrentScreen('home')}
         />
       )}
@@ -301,10 +311,11 @@ export default function Home() {
           }}
         />
       )}
-      {currentScreen === 'chat' && (
+      {currentScreen === 'chat' && chatOrderId && userId && (
         <ChatScreen
-          workerName="Батболд Д."
-          onBack={() => setCurrentScreen('active-booking')}
+          orderId={chatOrderId}
+          currentUserId={userId}
+          onBack={() => setCurrentScreen(chatBack)}
         />
       )}
 
@@ -327,7 +338,11 @@ export default function Home() {
       {currentScreen === 'worker-active' && (
         <WorkerActiveScreen
           orderId={activeWorkerOrderId}
-          onChat={() => {}}
+          onChat={() => {
+            setChatOrderId(activeWorkerOrderId)
+            setChatBack('worker-active')
+            setCurrentScreen('chat')
+          }}
           onComplete={handleJobComplete}
         />
       )}
