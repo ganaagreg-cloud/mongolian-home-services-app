@@ -16,6 +16,11 @@ export const TABLES: string[] = [
     role             VARCHAR(20) NOT NULL DEFAULT 'user',
     dan_verified     BOOLEAN NOT NULL DEFAULT FALSE,
     is_verified      BOOLEAN NOT NULL DEFAULT FALSE,
+    is_worker        BOOLEAN NOT NULL DEFAULT FALSE,
+    active_mode      TEXT NOT NULL DEFAULT 'user' CHECK (active_mode IN ('user', 'worker')),
+    google_id        TEXT,
+    facebook_id      TEXT,
+    better_auth_id   TEXT,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
@@ -159,6 +164,26 @@ export const TABLES: string[] = [
 
   // Idempotent column and constraint migrations — safe to re-run on every boot
   `ALTER TABLE transactions ALTER COLUMN worker_id DROP NOT NULL`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`,
-  `ALTER TABLE disputes ADD COLUMN IF NOT EXISTS photo_urls TEXT[] NOT NULL DEFAULT '{}'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url    TEXT    NOT NULL DEFAULT ''`,
+  `ALTER TABLE disputes ADD COLUMN IF NOT EXISTS photo_urls TEXT[]  NOT NULL DEFAULT '{}'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_worker     BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS active_mode   TEXT    NOT NULL DEFAULT 'user'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id     TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_id   TEXT`,
+  `DO $$ BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'users_active_mode_check'
+    ) THEN
+      ALTER TABLE users ADD CONSTRAINT users_active_mode_check
+        CHECK (active_mode IN ('user', 'worker'));
+    END IF;
+  END $$`,
+  // OAuth users have no phone — make the column nullable so BA hook inserts work
+  `ALTER TABLE users ALTER COLUMN phone DROP NOT NULL`,
+  // Seed workers predate is_worker column; backfill so routing works
+  `UPDATE users SET is_worker = true WHERE role = 'worker' AND is_worker = false`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id      ON users(google_id)      WHERE google_id      IS NOT NULL`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_facebook_id    ON users(facebook_id)    WHERE facebook_id    IS NOT NULL`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS better_auth_id  TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_better_auth_id ON users(better_auth_id) WHERE better_auth_id IS NOT NULL`,
 ]

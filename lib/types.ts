@@ -12,9 +12,11 @@ export type ApiResponse<T = undefined> =
 export type UserRole = 'user' | 'worker' | 'admin'
 
 export interface SessionPayload {
-  sub: string   // userId
+  sub: string   // userId (integer as string)
   role: UserRole
   phone: string
+  is_worker?: boolean
+  active_mode?: 'user' | 'worker'
 }
 
 // ── Entities ────────────────────────────────────────────────────────────────
@@ -30,6 +32,11 @@ export interface User {
   role: UserRole
   danVerified: boolean
   isVerified: boolean
+  isWorker: boolean
+  activeMode: 'user' | 'worker'
+  googleId?: string
+  facebookId?: string
+  avatarUrl?: string
   createdAt: string
 }
 

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { authClient } from '@/lib/auth-client'
+import { LoginScreen } from '@/components/login-screen'
 import { HomeScreen } from '@/components/screens/home-screen'
 import { CreateOrderScreen } from '@/components/screens/create-order-screen'
 import { SearchingWorkerScreen } from '@/components/screens/searching-worker-screen'
@@ -39,7 +41,17 @@ type Screen =
 
 type UserRole = 'user' | 'worker' | 'admin'
 
+type MeResponse = {
+  success: boolean
+  data?: {
+    name: string; username: string; phone: string; role: string
+    isWorker: boolean; activeMode: string
+  }
+}
+
 export default function Home() {
+  const { data: sessionData, isPending } = authClient.useSession()
+
   const [currentScreen,  setCurrentScreen]  = useState<Screen>('home')
   const [userName,       setUserName]       = useState('...')
   const [userPhone,      setUserPhone]      = useState('')
@@ -56,23 +68,24 @@ export default function Home() {
   const [chatBack,           setChatBack]           = useState<Screen>('active-booking')
 
   useEffect(() => {
+    if (!sessionData?.user) return
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data: { success: boolean; data?: { username: string; name: string; role: string; phone: string } }) => {
+      .then((data: MeResponse) => {
         if (data.success && data.data) {
           setUserName(data.data.username || data.data.name || 'Хэрэглэгч')
-          setUserPhone(`+976 ${data.data.phone}`)
+          setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
           setUserRole(data.data.role as UserRole)
-          if (data.data.role === 'worker') setCurrentScreen('worker-jobs')
-          else if (data.data.role === 'admin') setCurrentScreen('admin')
+          if (data.data.role === 'admin') setCurrentScreen('admin')
+          else if (data.data.isWorker && data.data.activeMode === 'worker') setCurrentScreen('worker-jobs')
+          else setCurrentScreen('home')
         }
       })
       .catch(() => {})
-  }, [])
+  }, [sessionData?.user?.id])
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    window.location.href = '/login'
+    await authClient.signOut()
   }
 
   // User navigation
@@ -139,21 +152,6 @@ export default function Home() {
   const handleJobComplete = () => setCurrentScreen('worker-jobs')
   const handleBecomeWorker = () => setCurrentScreen('worker-register')
 
-  // Role switcher for demo — also updates the JWT session so worker/admin APIs work
-  const handleRoleSwitch = async (role: UserRole) => {
-    try {
-      await fetch('/api/auth/test-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      })
-    } catch { /* dev-only endpoint; ignore on failure */ }
-    setUserRole(role)
-    if (role === 'user') setCurrentScreen('home')
-    else if (role === 'worker') setCurrentScreen('worker-jobs')
-    else if (role === 'admin') setCurrentScreen('admin')
-  }
-
   const handleProfileMenuClick = (menu: string) => {
     if (menu === 'personal-info') setCurrentScreen('personal-info')
     else if (menu === 'history') setCurrentScreen('orders')
@@ -187,23 +185,27 @@ export default function Home() {
     return 'jobs'
   }
 
+  if (isPending) {
+    return (
+      <main className="mx-auto max-w-[390px] flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Нэвтрэлт шалгаж байна...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!sessionData) {
+    return (
+      <main className="mx-auto max-w-[390px]">
+        <LoginScreen />
+      </main>
+    )
+  }
+
   return (
     <main className="mx-auto max-w-[390px] min-h-screen bg-background">
-      {/* Role switcher — demo only */}
-      <div className="fixed top-2 right-2 z-50 flex gap-1 rounded-full bg-card p-1 shadow-lg">
-        {(['user', 'worker', 'admin'] as UserRole[]).map((role) => (
-          <button
-            key={role}
-            onClick={() => { void handleRoleSwitch(role) }}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-              userRole === role ? 'bg-primary text-white' : 'text-muted-foreground'
-            }`}
-          >
-            {role === 'user' ? 'User' : role === 'worker' ? 'Worker' : 'Admin'}
-          </button>
-        ))}
-      </div>
-
       {/* ── User Screens ───────────────────────────────── */}
       {currentScreen === 'home' && (
         <HomeScreen

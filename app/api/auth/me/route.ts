@@ -10,11 +10,14 @@ export async function GET(req: NextRequest) {
 
   await dbReady
   const user = (await db.query(
-    'SELECT id, phone, name, username, first_name, last_name, role FROM users WHERE id = $1',
+    `SELECT id, phone, name, username, first_name, last_name, email,
+            role, is_worker, active_mode, avatar_url
+     FROM users WHERE id = $1`,
     [session.sub],
   )).rows[0] as {
-    id: string; phone: string; name: string; username: string
-    first_name: string; last_name: string; role: string
+    id: string; phone: string | null; name: string; username: string
+    first_name: string; last_name: string; email: string
+    role: string; is_worker: boolean; active_mode: string; avatar_url: string
   } | undefined
 
   if (!user) {
@@ -24,13 +27,17 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     success: true,
     data: {
-      id:        user.id,
-      phone:     user.phone,
-      name:      user.name,
-      username:  user.username,
-      firstName: user.first_name,
-      lastName:  user.last_name,
-      role:      user.role,
+      id:         user.id,
+      phone:      user.phone ?? '',
+      name:       user.name,
+      username:   user.username,
+      firstName:  user.first_name,
+      lastName:   user.last_name,
+      email:      user.email,
+      role:       user.role,
+      isWorker:   user.is_worker,
+      activeMode: user.active_mode,
+      avatarUrl:  user.avatar_url,
     },
   })
 }
