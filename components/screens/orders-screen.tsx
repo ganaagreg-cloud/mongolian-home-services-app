@@ -7,6 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
 import type { Order, OrderStatus } from '@/lib/types'
 
@@ -35,19 +43,33 @@ const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg:
   no_workers_found:    { label: 'Ажилтан олдсонгүй',    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
 }
 
+const DISPUTE_REASONS = [
+  { value: 'хохирол',           label: 'Хохирол учруулсан' },
+  { value: 'чанар муу',         label: 'Ажлын чанар муу' },
+  { value: 'ажилтан ирээгүй',   label: 'Ажилтан ирээгүй' },
+  { value: 'бусад',             label: 'Бусад' },
+] as const
+
+function isWithin7Days(dateStr: string): boolean {
+  return new Date(dateStr) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+}
+
 function OrderCard({
   order,
   onViewActive,
   onViewScheduledBoard,
+  onDispute,
 }: {
   order: Order
   onViewActive: (id: string) => void
   onViewScheduledBoard: (id: string) => void
+  onDispute: (order: Order) => void
 }) {
   const cfg = statusConfig[order.status]
   const StatusIcon = cfg.icon
   const isActive = ACTIVE_STATUSES.includes(order.status)
   const isPendingAcceptances = order.status === 'pending_acceptances'
+  const canDispute = order.status === 'completed' && isWithin7Days(order.updatedAt)
   const dateLabel = order.scheduledDate.split('T')[0] ?? order.scheduledDate
 
   const handleViewClick = () => {
@@ -83,15 +105,27 @@ function OrderCard({
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <p className="text-sm font-semibold text-primary">₮{order.totalAmount.toLocaleString()}</p>
-        {isActive && (
-          <Button
-            onClick={handleViewClick}
-            size="sm"
-            className="h-9 rounded-2xl bg-primary text-sm font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
-          >
-            {isPendingAcceptances ? 'Саналууд харах' : 'Харах'}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canDispute && (
+            <Button
+              onClick={() => onDispute(order)}
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-2xl border-destructive/30 text-destructive text-xs font-medium active:scale-95 transition-all"
+            >
+              Асуудал мэдэгдэх
+            </Button>
+          )}
+          {isActive && (
+            <Button
+              onClick={handleViewClick}
+              size="sm"
+              className="h-9 rounded-2xl bg-primary text-sm font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+            >
+              {isPendingAcceptances ? 'Саналууд харах' : 'Харах'}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -101,9 +135,49 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
   const [tab, setTab] = useState<'active' | 'past'>('active')
   const { data: orders, isLoading, error } = useSWR<Order[]>('/api/orders', fetcher)
 
+  const [disputeOrder, setDisputeOrder] = useState<Order | null>(null)
+  const [reason, setReason] = useState('')
+  const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [disputeError, setDisputeError] = useState('')
+
   const filtered = (orders ?? []).filter((o) =>
     tab === 'active' ? ACTIVE_STATUSES.includes(o.status) : !ACTIVE_STATUSES.includes(o.status)
   )
+
+  const handleOpenDispute = (order: Order) => {
+    setDisputeOrder(order)
+    setReason('')
+    setDescription('')
+    setDisputeError('')
+  }
+
+  const handleDisputeSubmit = async () => {
+    if (!disputeOrder) return
+    if (!reason) { setDisputeError('Шалтгаан сонгоно уу'); return }
+    if (description.length < 20) { setDisputeError('Тайлбар хамгийн багадаа 20 тэмдэгт байх ёстой'); return }
+
+    setSubmitting(true)
+    setDisputeError('')
+    try {
+      const res = await fetch('/api/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: parseInt(disputeOrder.id), reason, description }),
+      })
+      const json = await res.json() as { success: boolean; error?: string }
+      if (!json.success) {
+        setDisputeError(json.error ?? 'Алдаа гарлаа')
+      } else {
+        setDisputeOrder(null)
+        toast.success('Гомдол амжилттай илгээгдлээ. Админ ажиллана.')
+      }
+    } catch {
+      setDisputeError('Алдаа гарлаа')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
@@ -171,10 +245,75 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
               order={order}
               onViewActive={onViewActive}
               onViewScheduledBoard={onViewScheduledBoard}
+              onDispute={handleOpenDispute}
             />
           ))
         )}
       </div>
+
+      {/* Dispute Modal */}
+      <Dialog open={disputeOrder !== null} onOpenChange={(open) => { if (!open) setDisputeOrder(null) }}>
+        <DialogContent className="rounded-2xl mx-4 max-w-[340px]">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Асуудал мэдэгдэх</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Reason */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Шалтгаан</p>
+              <Select value={reason} onValueChange={setReason}>
+                <SelectTrigger className="h-12 rounded-2xl border-border bg-card shadow-sm">
+                  <SelectValue placeholder="Шалтгаан сонгоно уу" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  {DISPUTE_REASONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                Тайлбар
+                <span className="ml-1 text-xs text-muted-foreground">({description.length}/20 тэмдэгт)</span>
+              </p>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Болсон зүйлийг дэлгэрэнгүй тайлбарлана уу…"
+                className="min-h-[100px] rounded-2xl border-border bg-card shadow-sm resize-none"
+              />
+            </div>
+
+            {disputeError && (
+              <p className="text-sm text-destructive">{disputeError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-row gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-12 rounded-2xl"
+              onClick={() => setDisputeOrder(null)}
+              disabled={submitting}
+            >
+              Болих
+            </Button>
+            <Button
+              className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+              onClick={() => { void handleDisputeSubmit() }}
+              disabled={submitting || !reason || description.length < 20}
+            >
+              {submitting ? 'Илгээж байна…' : 'Илгээх'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

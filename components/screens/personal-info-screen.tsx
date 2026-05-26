@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, User, Phone, Mail, Calendar, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
 
 interface PersonalInfoScreenProps {
   userName: string
@@ -14,14 +15,48 @@ interface PersonalInfoScreenProps {
 
 export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScreenProps) {
   const [name, setName] = useState(userName)
-  const [email, setEmail] = useState('bat@example.com')
+  const [email, setEmail] = useState('')
   const [birthDate, setBirthDate] = useState('1990-01-15')
   const [address, setAddress] = useState('Улаанбаатар, Сүхбаатар дүүрэг')
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((json: { success: boolean; data?: { name: string; email: string } }) => {
+        if (json.success && json.data) {
+          setName(json.data.name || userName)
+          setEmail(json.data.email)
+        }
+      })
+      .catch(() => {})
+  }, [userName])
+
+  const handleSave = async () => {
+    setError('')
+    setSaving(true)
+    try {
+      const body: Record<string, string> = {}
+      if (name.trim())  body.name  = name.trim()
+      if (email.trim()) body.email = email.trim()
+
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json() as { success: boolean; error?: string }
+      if (!json.success) {
+        setError(json.error ?? 'Алдаа гарлаа')
+      } else {
+        toast.success('Мэдээлэл амжилттай хадгалагдлаа')
+      }
+    } catch {
+      setError('Алдаа гарлаа')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -126,15 +161,21 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
             Таны мэдээлэл Монгол улсын үндэсний цахим системээр баталгаажсан байна
           </p>
         </div>
+
+        {/* Inline error */}
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
       </div>
 
       {/* Save Button */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
         <Button
-          onClick={handleSave}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+          onClick={() => { void handleSave() }}
+          disabled={saving}
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
         >
-          {saved ? 'Хадгалагдлаа!' : 'Хадгалах'}
+          {saving ? 'Хадгалж байна…' : 'Хадгалах'}
         </Button>
       </div>
     </div>

@@ -156,4 +156,9 @@ export const TABLES: string[] = [
     status           VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
+
+  // Idempotent column and constraint migrations — safe to re-run on every boot
+  `ALTER TABLE transactions ALTER COLUMN worker_id DROP NOT NULL`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE disputes ADD COLUMN IF NOT EXISTS photo_urls TEXT[] NOT NULL DEFAULT '{}'`,
 ]

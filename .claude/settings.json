@@ -1,0 +1,16 @@
+{
+  "enabledMcpjsonServers": ["postgres", "context7"],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/typecheck-gate.sh" },
+          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/ui-token-lint.sh" },
+          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/api-security-lint.sh" },
+          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/business-rules-lint.sh" }
+        ]
+      }
+    ]
+  }
+}

@@ -177,7 +177,7 @@ export interface DANIdentity {
   registernumber: string
 }
 
-export type TransactionType = 'earning' | 'withdrawal'
+export type TransactionType = 'earning' | 'withdrawal' | 'refund'
 
 export interface Transaction {
   id: string

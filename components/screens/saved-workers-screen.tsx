@@ -1,48 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import useSWR from 'swr'
 import { ArrowLeft, Star, Heart, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { fetcher } from '@/lib/fetcher'
+import type { Worker } from '@/lib/types'
 
 interface SavedWorkersScreenProps {
   onBack: () => void
 }
 
-const savedWorkers = [
-  {
-    id: '1',
-    name: 'Дулмаа Б.',
-    service: 'Гэрийн цэвэрлэгч',
-    rating: 4.9,
-    reviews: 128,
-    price: 25000,
-    verified: true,
-  },
-  {
-    id: '2',
-    name: 'Нарантуяа О.',
-    service: 'Гэрийн цэвэрлэгч',
-    rating: 4.8,
-    reviews: 97,
-    price: 22000,
-    verified: true,
-  },
-  {
-    id: '3',
-    name: 'Эрдэнэчимэг Д.',
-    service: 'Угаалгын өрөө цэвэрлэгч',
-    rating: 4.7,
-    reviews: 54,
-    price: 20000,
-    verified: false,
-  },
-]
-
 export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
-  const [workers, setWorkers] = useState(savedWorkers)
+  const { data: workers, isLoading, mutate } = useSWR<Worker[]>('/api/me/saved-workers', fetcher)
 
-  const handleRemove = (id: string) => {
-    setWorkers((prev) => prev.filter((w) => w.id !== id))
+  const handleRemove = async (workerId: string) => {
+    // Optimistic remove
+    await mutate((prev) => prev?.filter((w) => w.id !== workerId) ?? [], { revalidate: false })
+    try {
+      await fetch(`/api/me/saved-workers/${workerId}`, { method: 'DELETE' })
+    } finally {
+      void mutate()
+    }
   }
 
   return (
@@ -58,7 +37,19 @@ export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
         <h1 className="text-xl font-bold text-foreground">Хадгалсан ажилтнууд</h1>
       </div>
 
-      {workers.length === 0 ? (
+      {isLoading ? (
+        <div className="mt-6 space-y-3 px-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !workers || workers.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center py-16">
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-sm">
             <Search className="h-10 w-10 text-muted-foreground" />
@@ -80,28 +71,28 @@ export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <p className="truncate font-semibold text-foreground">{worker.name}</p>
-                      {worker.verified && (
+                      {worker.danVerified && (
                         <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
                           ДАН
                         </span>
                       )}
                     </div>
                     <button
-                      onClick={() => handleRemove(worker.id)}
+                      onClick={() => { void handleRemove(worker.id) }}
                       className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 transition-colors active:scale-95"
                     >
                       <Heart className="h-4 w-4 fill-accent text-accent" />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">{worker.service}</p>
+                  <p className="text-xs text-muted-foreground">{worker.specialty}</p>
                   <div className="mt-1 flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                      <span className="text-sm font-medium text-foreground">{worker.rating}</span>
-                      <span className="text-xs text-muted-foreground">({worker.reviews})</span>
+                      <span className="text-sm font-medium text-foreground">{worker.rating.toFixed(1)}</span>
+                      <span className="text-xs text-muted-foreground">({worker.reviewCount})</span>
                     </div>
                     <span className="text-sm font-semibold text-primary">
-                      ₮{worker.price.toLocaleString()}/цаг
+                      ₮{worker.pricePerHour.toLocaleString()}/цаг
                     </span>
                   </div>
                 </div>
