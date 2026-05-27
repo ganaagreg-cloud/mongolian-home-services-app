@@ -36,6 +36,11 @@ const TEST_USERS = [
   { id: 10, phone: '99000002', name: 'Test Admin', role: 'admin', danVerified: true },
 ]
 
+// Admin account with phone+password login (phone: 95342321, password: 12345678)
+const ADMIN_BA_ID    = 'ba-admin-95342321'
+const ADMIN_EMAIL    = '95342321@homeservice.local'
+const ADMIN_PW_HASH  = 'f01f236cdd7d2a3694ba5f14f71f6fb4:e1a77eed648115674e4a5fba36aa951d2d8c051b7ba6da5398c9402a497ab915ef3898b4b8bd180207a4fe5da60a4e24f07a815c0d9b93220fb757cee81d341b'
+
 const SEED_ORDERS = [
   { id: 1, userId: 9, workerId: null, service: 'Цэвэрлэгээ', status: 'searching_worker',  address: 'Чингэлтэй дүүрэг, 5-р хороо, Наран гудамж 12',            scheduledDate: '2026-05-27 10:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 60,   propertyType: 'apartment', notes: null },
   { id: 2, userId: 9, workerId: 1,    service: 'Цэвэрлэгээ', status: 'worker_assigned',   address: 'Баянзүрх дүүрэг, 14-р хороо, Их тойруу 8',                scheduledDate: '2026-05-25 14:00:00', hours: 2, totalAmount:  50000, urgent: false, rooms: 1,    areaSqm: 45,   propertyType: 'apartment', notes: 'Гал тогооны өрөөг онцгойлон анхаарна уу' },
@@ -74,6 +79,32 @@ export async function seed(pool: Pool): Promise<void> {
         [u.id, u.phone, u.name, u.role, u.danVerified],
       )
     }
+
+    // Provision admin phone+password login via Better Auth tables
+    // phone: 95342321 / password: 12345678
+    await client.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+       VALUES ($1, 'Admin', $2, true, NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [ADMIN_BA_ID, ADMIN_EMAIL],
+    )
+    await client.query(
+      `INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+       VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [`acct-admin-95342321`, ADMIN_EMAIL, ADMIN_BA_ID, ADMIN_PW_HASH],
+    )
+    await client.query(
+      `INSERT INTO users (phone, name, role, dan_verified, better_auth_id, email)
+       VALUES ('95342321', 'Admin', 'admin', true, $1, $2)
+       ON CONFLICT DO NOTHING`,
+      [ADMIN_BA_ID, ADMIN_EMAIL],
+    )
+    // Link better_auth_id in case the row already existed without it
+    await client.query(
+      `UPDATE users SET better_auth_id = $1 WHERE phone = '95342321' AND better_auth_id IS NULL`,
+      [ADMIN_BA_ID],
+    )
 
     const { rows: [{ n: workerCount }] } = await client.query('SELECT COUNT(*) as n FROM workers')
     if (Number(workerCount) === 0) {
