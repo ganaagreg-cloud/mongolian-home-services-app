@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { MapPin, Clock, Check, X, Briefcase, Zap, CalendarDays, Star } from 'lucide-react'
+import { MapPin, Clock, Check, X, Zap, CalendarDays, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
 import type { Order } from '@/lib/types'
@@ -189,7 +188,6 @@ function ScheduledJobCard({
 
 // ── Main screen ─────────────────────────────────────────────
 export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, activeMode = 'worker', onModeToggle }: WorkerJobsScreenProps) {
-  const [isActive,    setIsActive]    = useState(true)
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set())
   const [acceptError, setAcceptError] = useState<string | null>(null)
 
@@ -248,19 +246,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
 
       {/* Header */}
       <div className="px-6 pt-12">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">Ажлын самбар</h1>
-          <div className="flex items-center gap-3">
-            <span className={`text-sm font-medium ${isActive ? 'text-success' : 'text-muted-foreground'}`}>
-              {isActive ? 'Идэвхтэй' : 'Амарч байна'}
-            </span>
-            <Switch
-              checked={isActive}
-              onCheckedChange={setIsActive}
-              className="data-[state=checked]:bg-success"
-            />
-          </div>
-        </div>
+        <h1 className="text-xl font-bold text-foreground">Ажлын самбар</h1>
 
         {/* Mode toggle — always visible when is_worker */}
         {isWorker && (
@@ -284,18 +270,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
         )}
       </div>
 
-      {!isActive ? (
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-8 shadow-sm text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mx-auto">
-            <Briefcase className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <p className="mt-4 font-medium text-foreground">Амарч байна</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Идэвхжүүлснээр захиалга хүлээн авах боломжтой
-          </p>
-        </div>
-      ) : (
-        <>
+      <>
           {/* ── INSTANT SECTION ──────────────────────────── */}
           <div className="mt-6 px-6">
             <div className="flex items-center gap-2">
@@ -398,8 +373,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
               </p>
             </div>
           </div>
-        </>
-      )}
+      </>
 
       {/* Accept error toast */}
       {acceptError && (
