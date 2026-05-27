@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Home } from 'lucide-react'
+import { Home, Phone, Eye, EyeOff, Lock } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
 
 // Brand SVGs — exception to lucide-only rule for OAuth provider identity
 const GoogleIcon = () => (
@@ -21,8 +23,46 @@ const FacebookIcon = () => (
   </svg>
 )
 
-export function LoginScreen() {
-  const [loading, setLoading] = useState<'google' | 'facebook' | null>(null)
+interface LoginScreenProps {
+  onGoRegister: () => void
+}
+
+export function LoginScreen({ onGoRegister }: LoginScreenProps) {
+  const [phone,       setPhone]       = useState('')
+  const [password,    setPassword]    = useState('')
+  const [showPw,      setShowPw]      = useState(false)
+  const [loading,     setLoading]     = useState<'phone' | 'google' | 'facebook' | null>(null)
+  const [error,       setError]       = useState('')
+
+  const handlePhoneLogin = async () => {
+    setError('')
+    const normalized = normalizePhone(phone)
+    if (!validateMongolianPhone(normalized)) {
+      setError('Утасны дугаар буруу байна (8 оронтой, 8x эсвэл 9x-ээр эхэлнэ)')
+      return
+    }
+    if (!password) {
+      setError('Нууц үгийг оруулна уу')
+      return
+    }
+    setLoading('phone')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ phone: normalized, password }),
+      })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (!data.success) {
+        setError(data.error ?? 'Нэвтрэх боломжгүй байна')
+      }
+      // On success: Better Auth sets cookie → Better Auth's useSession re-triggers
+    } catch {
+      setError('Сүлжээний алдаа гарлаа')
+    } finally {
+      setLoading(null)
+    }
+  }
 
   const handleGoogle = () => {
     setLoading('google')
@@ -36,21 +76,81 @@ export function LoginScreen() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background px-6">
-      {/* Logo + tagline */}
-      <div className="flex flex-1 flex-col items-center justify-center">
+      {/* Logo */}
+      <div className="flex flex-col items-center pt-16">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-lg">
           <Home className="h-10 w-10 text-primary-foreground" />
         </div>
         <h1 className="mt-4 text-2xl font-bold text-foreground">HomeService</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Гэрийн Үйлчилгээ</p>
+        <p className="mt-1 text-sm text-muted-foreground">Гэрийн Үйлчилгээ</p>
       </div>
 
-      {/* OAuth buttons */}
-      <div className="mb-12 flex flex-col gap-4">
+      {/* Phone + password form */}
+      <div className="mt-10 space-y-4">
+        {/* Phone */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
+          <div className="relative">
+            <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              inputMode="numeric"
+              placeholder="99001234"
+              value={phone}
+              onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Password */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Нууц үг</p>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type={showPw ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => { setError(''); setPassword(e.target.value) }}
+              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+            >
+              {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <Button
+          onClick={() => { void handlePhoneLogin() }}
+          disabled={!!loading}
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+        >
+          {loading === 'phone' ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
+        </Button>
+      </div>
+
+      {/* OR divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-4 text-sm text-muted-foreground">эсвэл</span>
+        </div>
+      </div>
+
+      {/* Social buttons */}
+      <div className="flex flex-col gap-3">
         <Button
           onClick={handleGoogle}
           disabled={!!loading}
-          className="h-14 w-full rounded-2xl bg-background border border-border text-base font-semibold text-foreground shadow-md hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl border border-border bg-background text-base font-semibold text-foreground shadow-sm hover:bg-card active:scale-95 transition-all disabled:opacity-50"
         >
           {loading === 'google' ? (
             'Нэвтрэж байна...'
@@ -77,12 +177,17 @@ export function LoginScreen() {
             </span>
           )}
         </Button>
+      </div>
 
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Нэвтрэх үед та{' '}
-          <span className="text-primary">Үйлчилгээний нөхцөлийг</span>{' '}
-          зөвшөөрч байна
-        </p>
+      {/* Register link */}
+      <div className="mb-12 mt-6 text-center">
+        <span className="text-sm text-muted-foreground">Бүртгэлгүй юу? </span>
+        <button
+          onClick={onGoRegister}
+          className="text-sm font-semibold text-primary active:scale-95 transition-all"
+        >
+          Бүртгүүлэх
+        </button>
       </div>
     </div>
   )

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { authClient } from '@/lib/auth-client'
 import { LoginScreen } from '@/components/login-screen'
+import { RegisterScreen } from '@/components/register-screen'
+import { OAuthOnboardingScreen } from '@/components/oauth-onboarding-screen'
 import { HomeScreen } from '@/components/screens/home-screen'
 import { CreateOrderScreen } from '@/components/screens/create-order-screen'
 import { SearchingWorkerScreen } from '@/components/screens/searching-worker-screen'
@@ -38,6 +40,7 @@ type Screen =
   | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
   | 'admin' | 'admin-verify' | 'admin-disputes'
+  | 'oauth-onboarding'
 
 type MeResponse = {
   success: boolean
@@ -47,9 +50,12 @@ type MeResponse = {
   }
 }
 
+type PreAuthScreen = 'login' | 'register'
+
 export default function Home() {
   const { data: sessionData, isPending } = authClient.useSession()
 
+  const [preAuthScreen,  setPreAuthScreen]  = useState<PreAuthScreen>('login')
   const [currentScreen,  setCurrentScreen]  = useState<Screen>('home')
   const [userName,       setUserName]       = useState('...')
   const [userPhone,      setUserPhone]      = useState('')
@@ -76,9 +82,16 @@ export default function Home() {
           setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
           setIsWorker(data.data.isWorker)
           setActiveMode(data.data.activeMode as 'user' | 'worker')
-          if (data.data.role === 'admin') setCurrentScreen('admin')
-          else if (data.data.isWorker && data.data.activeMode === 'worker') setCurrentScreen('worker-jobs')
-          else setCurrentScreen('home')
+          // needs-profile: OAuth user with no phone → collect phone before routing
+          if (!data.data.phone) {
+            setCurrentScreen('oauth-onboarding')
+          } else if (data.data.role === 'admin') {
+            setCurrentScreen('admin')
+          } else if (data.data.isWorker && data.data.activeMode === 'worker') {
+            setCurrentScreen('worker-jobs')
+          } else {
+            setCurrentScreen('home')
+          }
         }
       })
       .catch(() => {})
@@ -210,14 +223,43 @@ export default function Home() {
     )
   }
 
+  // State 1: unauthenticated
   if (!sessionData) {
     return (
       <main className="mx-auto max-w-[390px]">
-        <LoginScreen />
+        {preAuthScreen === 'register' ? (
+          <RegisterScreen onGoLogin={() => setPreAuthScreen('login')} />
+        ) : (
+          <LoginScreen onGoRegister={() => setPreAuthScreen('register')} />
+        )}
       </main>
     )
   }
 
+  // State 2: authenticated but phone not yet collected (OAuth onboarding)
+  if (currentScreen === 'oauth-onboarding') {
+    const handleOAuthComplete = () => {
+      // Re-fetch user data to pick up the new phone and route normally
+      fetch('/api/auth/me')
+        .then((r) => r.json())
+        .then((data: MeResponse) => {
+          if (data.success && data.data) {
+            setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
+            if (data.data.role === 'admin') setCurrentScreen('admin')
+            else if (data.data.isWorker && data.data.activeMode === 'worker') setCurrentScreen('worker-jobs')
+            else setCurrentScreen('home')
+          }
+        })
+        .catch(() => {})
+    }
+    return (
+      <main className="mx-auto max-w-[390px]">
+        <OAuthOnboardingScreen onComplete={handleOAuthComplete} />
+      </main>
+    )
+  }
+
+  // State 3: authenticated with phone — full app
   return (
     <main className="mx-auto max-w-[390px] min-h-screen bg-background">
       {/* ── User Screens ───────────────────────────────── */}

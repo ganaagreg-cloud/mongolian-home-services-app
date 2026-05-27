@@ -89,7 +89,7 @@ export const auth = betterAuth({
   database: authPool,
   secret: process.env.BETTER_AUTH_SECRET ?? 'dev-secret-replace-before-production',
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
-  emailAndPassword: { enabled: false },
+  emailAndPassword: { enabled: true },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,

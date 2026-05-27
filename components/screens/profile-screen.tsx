@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, History, Heart, Bell, HelpCircle, Shield, LogOut, BadgeCheck, Briefcase, UserCircle } from 'lucide-react'
+import { ChevronRight, History, Heart, Bell, HelpCircle, Shield, LogOut, Briefcase, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -47,11 +47,9 @@ export function ProfileScreen({
         </Avatar>
         <div className="flex-1">
           <p className="text-lg font-semibold text-foreground">{userName}</p>
-          <p className="text-sm text-muted-foreground">{phone}</p>
-          <div className="mt-1 flex items-center gap-1">
-            <BadgeCheck className="h-4 w-4 text-success" />
-            <span className="text-xs font-medium text-success">ДАН баталгаажсан</span>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            {phone || 'Утас нэмааг?й'}
+          </p>
         </div>
       </div>
 

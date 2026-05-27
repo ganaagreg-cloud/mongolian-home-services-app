@@ -146,7 +146,9 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold text-foreground">{displayName}</p>
-          <p className="text-sm text-muted-foreground">{phone}</p>
+          <p className="text-sm text-muted-foreground">
+            {phone || 'Утас нэмааг?й'}
+          </p>
           <div className="mt-1 flex items-center gap-2">
             <div className="flex items-center gap-1">
               <BadgeCheck className="h-4 w-4 text-success" />
