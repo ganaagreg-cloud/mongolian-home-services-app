@@ -1,36 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { auth } from '@/lib/auth'
-import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
+import { NextResponse } from 'next/server'
 
-const schema = z.object({
-  phone:    z.string().min(1),
-  password: z.string().min(1),
-})
+// This endpoint is no longer used. Authentication is now handled by:
+// 1. authClient.signIn.email() for login (client-side)
+// 2. /api/auth/[...all]/route.ts (Better Auth handler) for OAuth callbacks
 
-export async function POST(req: NextRequest) {
-  let body: unknown
-  try { body = await req.json() } catch {
-    return NextResponse.json({ success: false, error: 'Буруу өгөгдөл' }, { status: 400 })
-  }
+// Keeping this file as a placeholder to avoid 404s during migration.
+// Delete this file once confident the new auth flow is stable.
 
-  const parsed = schema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ success: false, error: 'Утасны дугаар болон нууц үгийг оруулна уу' }, { status: 400 })
-  }
-
-  const phone = normalizePhone(parsed.data.phone)
-  if (!validateMongolianPhone(phone)) {
-    return NextResponse.json({ success: false, error: 'Утасны дугаар буруу байна' }, { status: 400 })
-  }
-
-  try {
-    await auth.api.signInEmail({
-      body:    { email: phoneToEmail(phone), password: parsed.data.password },
-      headers: req.headers,
-    })
-    return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ success: false, error: 'Утасны дугаар эсвэл нууц үг буруу байна' }, { status: 401 })
-  }
+export async function POST() {
+  return NextResponse.json(
+    { error: 'This endpoint is deprecated. Use authClient.signIn.email() instead.' },
+    { status: 410 },
+  )
 }

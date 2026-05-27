@@ -89,3 +89,26 @@ fi
 echo "Business rule violations in $FILE_PATH:" >&2
 echo "$RESPONSE" >&2
 exit 2
+
+# Middleware must not redirect
+if grep -rn "NextResponse.redirect" middleware.ts proxy.ts 2>/dev/null \
+   | grep -v "//"; then
+  echo "ERROR: Middleware must not redirect. See .claude/decisions/auth.md"
+  exit 1
+fi
+
+# Wrong cookie name (legacy JWT)
+if grep -rn "cookies.get('token')" app/ lib/ 2>/dev/null \
+   | grep -v "//"; then
+  echo "ERROR: Legacy JWT cookie check. Use authClient.useSession() instead."
+  exit 1
+fi
+
+# Worker phone leaking to client
+if grep -rn "worker\.phone\|\.phone.*worker" \
+   --include="*.ts" \
+   app/api/orders/ app/api/workers/ 2>/dev/null \
+   | grep -v "//"; then
+  echo "ERROR: Worker phone must never reach client API responses."
+  exit 1
+fi

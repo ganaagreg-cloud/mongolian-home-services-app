@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { ArrowLeft, User, Phone, Lock, Eye, EyeOff } from 'lucide-react'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
 
 interface RegisterScreenProps {
   onGoLogin: () => void
@@ -30,22 +32,46 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
 
   const handleSubmit = async () => {
     setError('')
+    const normalized = normalizePhone(phone)
+    if (!validateMongolianPhone(normalized)) {
+      setError('Утасны дугаар буруу байна (8 оронтой, 8x эсвэл 9x-ээр эхэлнэ)')
+      return
+    }
     if (password !== confirmPassword) {
       setError('Нууц үг таарахгүй байна')
       return
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/register', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ firstName, lastName, phone, password, confirmPassword }),
+      const email = phoneToEmail(normalized)
+      const name = `${firstName} ${lastName}`
+      
+      const { error: signUpError } = await authClient.signUp.email({
+        email,
+        password,
+        name,
       })
-      const data = await res.json() as { success: boolean; error?: string }
-      if (!data.success) {
-        setError(data.error ?? 'Бүртгэл үүсгэхэд алдаа гарлаа')
+      
+      if (signUpError) {
+        setError('Бүртгэл үүсгэхэд алдаа гарлаа')
       } else {
-        window.location.reload()
+        // Update phone + name breakdown after signup
+        try {
+          const updateRes = await fetch('/api/me', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: normalized }),
+          })
+          const updateData = await updateRes.json() as { success: boolean }
+          if (updateData.success || updateRes.ok) {
+            window.location.reload()
+          } else {
+            setError('Профиль шинэчлэхэд алдаа гарлаа')
+          }
+        } catch {
+          // Even if phone update fails, account is created + cookie is set
+          window.location.reload()
+        }
       }
     } catch {
       setError('Сүлжээний алдаа гарлаа')

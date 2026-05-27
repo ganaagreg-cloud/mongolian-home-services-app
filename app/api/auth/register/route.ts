@@ -1,77 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { auth } from '@/lib/auth'
-import { db, dbReady } from '@/lib/db'
-import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
+import { NextResponse } from 'next/server'
 
-const schema = z.object({
-  firstName:       z.string().min(1),
-  lastName:        z.string().min(1),
-  phone:           z.string().min(1),
-  password:        z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой'),
-  confirmPassword: z.string().min(1),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: 'Нууц үг таарахгүй байна',
-  path:    ['confirmPassword'],
-})
+// This endpoint is no longer used. Authentication is now handled by:
+// 1. authClient.signUp.email() for registration (client-side)
+// 2. authClient.signIn.email() for login (client-side)
+// 3. /api/auth/[...all]/route.ts (Better Auth handler) for OAuth callbacks
+// 4. /api/me PATCH for phone/profile updates (after auth is established)
 
-export async function POST(req: NextRequest) {
-  let body: unknown
-  try { body = await req.json() } catch {
-    return NextResponse.json({ success: false, error: 'Буруу өгөгдөл' }, { status: 400 })
-  }
+// Keeping this file as a placeholder to avoid 404s during migration.
+// Delete this file once confident the new auth flow is stable.
 
-  const parsed = schema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' },
-      { status: 400 },
-    )
-  }
-
-  const { firstName, lastName, password } = parsed.data
-  const phone = normalizePhone(parsed.data.phone)
-
-  if (!validateMongolianPhone(phone)) {
-    return NextResponse.json({ success: false, error: 'Утасны дугаар буруу байна' }, { status: 400 })
-  }
-
-  await dbReady
-
-  // Reject if phone already registered
-  const existing = (await db.query('SELECT id FROM users WHERE phone = $1', [phone])).rows[0]
-  if (existing) {
-    return NextResponse.json(
-      { success: false, error: 'Энэ утасны дугаартай хэрэглэгч аль хэдийн бүртгэлтэй байна' },
-      { status: 409 },
-    )
-  }
-
-  const email = phoneToEmail(phone)
-  const name  = `${firstName} ${lastName}`
-
-  try {
-    await auth.api.signUpEmail({
-      body:    { name, email, password },
-      headers: req.headers,
-    })
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Бүртгэл үүсгэхэд алдаа гарлаа' },
-      { status: 500 },
-    )
-  }
-
-  // Provision phone + name breakdown on the users row the hook just inserted
-  try {
-    await db.query(
-      `UPDATE users SET phone = $1, first_name = $2, last_name = $3
-       WHERE email = $4`,
-      [phone, firstName, lastName, email],
-    )
-  } catch {
-    // Non-fatal: user is created, phone can be added in onboarding
-  }
-
-  return NextResponse.json({ success: true })
+export async function POST() {
+  return NextResponse.json(
+    { error: 'This endpoint is deprecated. Use authClient.signUp.email() instead.' },
+    { status: 410 },
+  )
 }

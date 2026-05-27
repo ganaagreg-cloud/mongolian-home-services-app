@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
 
-// Routes that don't require a session
+// Routes that are part of the auth flow (OAuth callbacks, etc.)
 const AUTH_ROUTES = ['/onboarding', '/login', '/register', '/otp', '/dan-success']
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const token = req.cookies.get('token')?.value
-  const session = token ? await verifyToken(token) : null
-
   const isAuthRoute = AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))
 
-  if (!session && !isAuthRoute) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  // For auth routes, just pass through to Next.js
+  // The routes themselves handle redirects (e.g., /login redirects to /)
+  if (isAuthRoute) {
+    return NextResponse.next()
   }
 
-  if (session && isAuthRoute) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
+  // For all other routes, pass through to Next.js
+  // The app/page.tsx (single-page app) will handle auth logic via useSession()
   return NextResponse.next()
 }
 
