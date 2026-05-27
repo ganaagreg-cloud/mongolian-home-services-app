@@ -107,10 +107,10 @@ export function SearchingWorkerScreen({
   }, [phase, orderId, worker])
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
+    <div className="flex min-h-screen flex-col bg-background pb-32 lg:ml-64">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12">
+      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
@@ -318,7 +318,7 @@ export function SearchingWorkerScreen({
 
       {/* Bottom CTA — only when found */}
       {phase === 'found' && worker && (
-        <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+        <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-0 lg:pt-6">
           <Button
             onClick={() => onWorkerFound(worker)}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"

@@ -100,9 +100,9 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-8">
+    <div className="flex min-h-screen flex-col bg-background pb-8 lg:ml-64">
       {/* Header */}
-      <div className="px-6 pt-12">
+      <div className="px-6 pt-12 lg:pt-8">
         <h1 className="text-xl font-bold text-foreground">Идэвхтэй захиалга</h1>
         {isLoading ? (
           <Skeleton className="mt-1 h-4 w-32" />

@@ -95,10 +95,10 @@ export function ConfirmScheduledWorkerScreen({
     : '—'
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
+    <div className="flex min-h-screen flex-col bg-background pb-32 lg:ml-64">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12">
+      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
@@ -247,7 +247,7 @@ export function ConfirmScheduledWorkerScreen({
       )}
 
       {/* Fixed bottom — dev sim only */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-6 lg:pt-6">
         <button
           onClick={() => { void handleDevSim() }}
           disabled={!invoice}

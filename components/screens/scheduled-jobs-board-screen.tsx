@@ -62,10 +62,10 @@ export function ScheduledJobsBoardScreen({
     : '—'
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24">
+    <div className="flex min-h-screen flex-col bg-background pb-24 lg:ml-64">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12">
+      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
