@@ -183,9 +183,9 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
             <Briefcase className={`h-5 w-5 ${isAvailable ? 'text-success' : 'text-muted-foreground'}`} />
           </div>
           <div>
-            <p className="font-medium text-foreground">Горим</p>
+            <p className="font-medium text-foreground">Ажлын горим</p>
             <p className={`text-xs font-medium ${isAvailable ? 'text-success' : 'text-muted-foreground'}`}>
-              {isAvailable ? 'Ажил хүлээн авч байна' : 'Амарч байна'}
+              {isAvailable ? 'Ажил хүлээн авч байна' : 'Ажил хүлээн авахгүй'}
             </p>
           </div>
         </div>
