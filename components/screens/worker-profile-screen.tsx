@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import {
   UserCircle, HelpCircle, Shield, LogOut, BadgeCheck, Star, Briefcase,
-  ToggleLeft, ToggleRight, Pencil, X, Check, Clock, AlertTriangle, ChevronDown,
+  ToggleLeft, ToggleRight, Pencil, X, Check, Clock, AlertTriangle, ChevronDown, DollarSign,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,17 @@ interface WorkerProfileScreenProps {
   onMenuClick: (menu: string) => void
   onLogout: () => void
 }
+
+const SPECIALTIES = [
+  { value: 'цэвэрлэгээ',   label: 'Цэвэрлэгээ' },
+  { value: 'угаалга',      label: 'Угаалга' },
+  { value: 'сантехник',    label: 'Сантехник' },
+  { value: 'цахилгаанчин', label: 'Цахилгаанчин' },
+  { value: 'будагч',       label: 'Будагч' },
+  { value: 'тавилгачин',   label: 'Тавилгачин' },
+  { value: 'гагнуурчин',   label: 'Гагнуурчин' },
+  { value: 'нүүлгэлт',     label: 'Нүүлгэлт' },
+] as const
 
 const BANKS = [
   'Хаан Банк', 'Голомт', 'ХХБ', 'Төрийн Банк',
@@ -48,7 +59,7 @@ const menuItems = [
 
 export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }: WorkerProfileScreenProps) {
   // ── Remote data ────────────────────────────────────────────────────────────
-  const { data: workerData } = useSWR<Worker | null>(
+  const { data: workerData, mutate: mutateWorker } = useSWR<Worker | null>(
     '/api/workers/me', fetcher, { shouldRetryOnError: false },
   )
   const {
@@ -71,6 +82,39 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isAvailable: next }),
     })
+  }
+
+  // ── Service edit form ─────────────────────────────────────────────────────
+  const [isEditingService, setIsEditingService] = useState(false)
+  const [editSpecialty, setEditSpecialty] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [serviceLoading, setServiceLoading] = useState(false)
+
+  const editPriceNum = parseInt(editPrice.replace(/\D/g, ''), 10)
+  const serviceEditValid = !!editSpecialty && !isNaN(editPriceNum) && editPriceNum >= 1000
+
+  const openServiceEdit = () => {
+    setEditSpecialty(workerData?.specialty ?? '')
+    setEditPrice(workerData?.pricePerHour ? String(workerData.pricePerHour) : '')
+    setIsEditingService(true)
+  }
+
+  const saveServiceEdit = async () => {
+    setServiceLoading(true)
+    try {
+      const res = await fetch('/api/workers/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ specialty: editSpecialty, pricePerHour: editPriceNum }),
+      })
+      const data = (await res.json()) as { success: boolean }
+      if (data.success) {
+        await mutateWorker()
+        setIsEditingService(false)
+      }
+    } finally {
+      setServiceLoading(false)
+    }
   }
 
   // ── Banking edit form ──────────────────────────────────────────────────────
@@ -194,6 +238,102 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
             ? <ToggleRight className="h-8 w-8 text-success" />
             : <ToggleLeft  className="h-8 w-8 text-muted-foreground" />}
         </button>
+      </div>
+
+      {/* Service Section */}
+      <div className="mx-6 mt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-foreground">Үйлчилгээ</h2>
+          {!isEditingService && (
+            <button
+              onClick={openServiceEdit}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm transition-colors hover:bg-card/80 active:scale-95"
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+
+        {!isEditingService && (
+          <div className="rounded-2xl bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Briefcase className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-foreground capitalize">
+                  {workerData?.specialty || '—'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {workerData?.pricePerHour
+                    ? `₮${workerData.pricePerHour.toLocaleString()}/цаг`
+                    : 'Тохируулаагүй'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isEditingService && (
+          <div className="space-y-4">
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+              {/* Specialty */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Мэргэжил</p>
+                <div className="relative">
+                  <select
+                    value={editSpecialty}
+                    onChange={(e) => setEditSpecialty(e.target.value)}
+                    className="h-12 w-full appearance-none rounded-2xl border border-border bg-background px-4 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Мэргэжил сонгох...</option>
+                    {SPECIALTIES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+
+              {/* Price */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Цагийн хөлс (₮)</p>
+                <div className="relative">
+                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    inputMode="numeric"
+                    placeholder="25000"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value.replace(/\D/g, ''))}
+                    className="h-12 w-full rounded-2xl border border-border bg-background pl-9 pr-4 font-mono text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                {editPrice && !isNaN(editPriceNum) && editPriceNum < 1000 && (
+                  <p className="mt-1 text-xs text-destructive">Хамгийн багадаа ₮1,000 байх ёстой</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setIsEditingService(false)}
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Болих
+              </Button>
+              <Button
+                onClick={saveServiceEdit}
+                disabled={!serviceEditValid || serviceLoading}
+                className="h-12 flex-1 rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                {serviceLoading ? 'Хадгалж байна...' : 'Хадгалах'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Banking Section */}

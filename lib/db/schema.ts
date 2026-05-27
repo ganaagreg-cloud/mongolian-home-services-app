@@ -174,12 +174,6 @@ export const TABLES: string[] = [
     PRIMARY KEY (user_id, worker_id)
   )`,
 
-  `CREATE TABLE IF NOT EXISTS otp_codes (
-    phone      VARCHAR(20) NOT NULL PRIMARY KEY,
-    code       TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL
-  )`,
-
   `CREATE TABLE IF NOT EXISTS order_match_attempts (
     id           SERIAL PRIMARY KEY,
     order_id     INTEGER NOT NULL REFERENCES orders(id),
@@ -235,9 +229,14 @@ export const TABLES: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_better_auth_id ON users(better_auth_id) WHERE better_auth_id IS NOT NULL`,
   // Normalize: workers are now users with is_worker=true; role column only tracks 'user' | 'admin'
   `UPDATE users SET role = 'user' WHERE role = 'worker'`,
-  // BA "user" table: add DEFAULT values for extra columns added after initial creation
-  `ALTER TABLE "user" ALTER COLUMN is_worker  SET DEFAULT false`,
-  `ALTER TABLE "user" ALTER COLUMN active_mode SET DEFAULT 'user'`,
-  `UPDATE "user" SET is_worker = false  WHERE is_worker  IS NULL`,
-  `UPDATE "user" SET active_mode = 'user' WHERE active_mode IS NULL`,
+  // Fix 3: is_worker and active_mode are owned by the app users table only — drop dead columns from BA "user" table
+  `ALTER TABLE "user" DROP COLUMN IF EXISTS is_worker`,
+  `ALTER TABLE "user" DROP COLUMN IF EXISTS active_mode`,
+  // Fix 2: soft-reject state for workers
+  `ALTER TABLE workers ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ`,
+  // Sprint 2: soft-delete support
+  `ALTER TABLE users   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+  `ALTER TABLE workers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+  // Sprint 2: drop obsolete OTP table (replaced by Better Auth)
+  `DROP TABLE IF EXISTS otp_codes`,
 ]

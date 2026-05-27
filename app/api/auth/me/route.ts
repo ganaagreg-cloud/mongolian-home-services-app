@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const user = (await db.query(
     `SELECT id, phone, name, username, first_name, last_name, email,
             role, is_worker, active_mode, avatar_url
-     FROM users WHERE id = $1`,
+     FROM users WHERE id = $1 AND deleted_at IS NULL`,
     [session.sub],
   )).rows[0] as {
     id: string; phone: string | null; name: string; username: string

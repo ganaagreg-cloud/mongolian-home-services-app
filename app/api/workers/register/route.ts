@@ -3,7 +3,14 @@ import { z } from 'zod'
 import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
+const SPECIALTIES = [
+  'цэвэрлэгээ', 'угаалга', 'сантехник', 'цахилгаанчин',
+  'будагч', 'тавилгачин', 'гагнуурчин', 'нүүлгэлт',
+] as const
+
 const schema = z.object({
+  specialty:          z.enum(SPECIALTIES),
+  pricePerHour:       z.number().int().min(1000),
   imei:               z.string().length(15),
   policeFile:         z.string().min(1),
   bankName:           z.string().min(1),
@@ -34,15 +41,26 @@ export async function POST(req: NextRequest) {
 
   await dbReady
 
-  const existing = (await db.query('SELECT id FROM workers WHERE user_id = $1', [session.sub])).rows[0]
-  if (existing) {
+  const existing = (await db.query(
+    'SELECT id, rejected_at FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
+    [session.sub],
+  )).rows[0] as { id: number; rejected_at: string | null } | undefined
+
+  if (existing && !existing.rejected_at) {
     return NextResponse.json(
       { success: false, error: 'Та ажилтнаар аль хэдийн бүртгүүлсэн байна' },
       { status: 409 },
     )
   }
 
-  const { imei, policeFile, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
+  if (existing && existing.rejected_at) {
+    return NextResponse.json(
+      { success: false, error: 'Таны өмнөх бүртгэл татгалзагдсан байна. Дэмжлэгтэй холбогдоно уу.' },
+      { status: 409 },
+    )
+  }
+
+  const { specialty, pricePerHour, imei, policeFile, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
 
   const client = await db.connect()
   let workerId: string
@@ -51,9 +69,9 @@ export async function POST(req: NextRequest) {
 
     const workerResult = (await client.query(
       `INSERT INTO workers (user_id, specialty, price_per_hour, rating, review_count, imei, police_file, is_available, is_active)
-       VALUES ($1, '', 0, 0, 0, $2, $3, true, false)
+       VALUES ($1, $2, $3, 0, 0, $4, $5, true, false)
        RETURNING id`,
-      [session.sub, imei, policeFile],
+      [session.sub, specialty, pricePerHour, imei, policeFile],
     )).rows[0] as { id: string }
     workerId = String(workerResult.id)
 

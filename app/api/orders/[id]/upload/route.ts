@@ -19,7 +19,7 @@ export async function POST(
   await dbReady
 
   const workerRow = (await db.query(
-    'SELECT id FROM workers WHERE user_id = $1',
+    'SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
     [session.sub],
   )).rows[0] as { id: string } | undefined
 

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   await dbReady
 
   const user = (await db.query(
-    'SELECT id, phone, name, email, avatar_url FROM users WHERE id = $1',
+    'SELECT id, phone, name, email, avatar_url FROM users WHERE id = $1 AND deleted_at IS NULL',
     [session.sub],
   )).rows[0] as { id: string; phone: string | null; name: string; email: string; avatar_url: string } | undefined
 
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest) {
 
   if (email !== undefined) {
     const conflict = (await db.query(
-      `SELECT id FROM users WHERE email = $1 AND id != $2 AND email != ''`,
+      `SELECT id FROM users WHERE email = $1 AND id != $2 AND email != '' AND deleted_at IS NULL`,
       [email, session.sub],
     )).rows[0]
     if (conflict) {
@@ -91,7 +91,7 @@ export async function PATCH(req: NextRequest) {
 
   if (normalizedPhone !== undefined) {
     const conflict = (await db.query(
-      `SELECT id FROM users WHERE phone = $1 AND id != $2`,
+      `SELECT id FROM users WHERE phone = $1 AND id != $2 AND deleted_at IS NULL`,
       [normalizedPhone, session.sub],
     )).rows[0]
     if (conflict) {

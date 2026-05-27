@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   )).rows[0].total)
 
   const activeWorkers = Number((await db.query(
-    `SELECT COUNT(*) as count FROM workers WHERE is_active = true`,
+    `SELECT COUNT(*) as count FROM workers WHERE is_active = true AND deleted_at IS NULL`,
   )).rows[0].count)
 
   const openDisputes = Number((await db.query(
@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
     SELECT o.id, u1.name as customer_name, u2.name as worker_name,
            o.service, o.status, o.total_amount
     FROM   orders o
-    JOIN   users u1 ON u1.id = o.user_id
-    LEFT JOIN workers w  ON w.id  = o.worker_id
-    LEFT JOIN users   u2 ON u2.id = w.user_id
+    JOIN   users u1 ON u1.id = o.user_id   AND u1.deleted_at IS NULL
+    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.deleted_at IS NULL
+    LEFT JOIN users   u2 ON u2.id = w.user_id   AND u2.deleted_at IS NULL
     ORDER  BY o.created_at DESC
     LIMIT  5
   `)).rows as { id: string; customer_name: string; worker_name: string | null; service: string; status: string; total_amount: number }[]

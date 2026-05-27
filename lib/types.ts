@@ -242,15 +242,6 @@ export interface LoginBody {
   password: string
 }
 
-export interface SendOtpBody {
-  phone: string
-}
-
-export interface VerifyOtpBody {
-  phone: string
-  otp: string
-}
-
 export interface CreateOrderBody {
   service: string
   address: string

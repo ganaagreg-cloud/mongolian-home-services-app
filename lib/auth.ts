@@ -106,9 +106,7 @@ export const auth = betterAuth({
   plugins: [nextCookies()],
   user: {
     additionalFields: {
-      is_worker:   { type: 'boolean', defaultValue: false, input: false },
-      active_mode: { type: 'string',  defaultValue: 'user', input: false },
-      phone:       { type: 'string',  required: false },
+      phone: { type: 'string', required: false },
     },
   },
   databaseHooks: {
@@ -161,7 +159,7 @@ export async function requireAuth(req: NextRequest): Promise<SessionPayload | nu
   await dbReady
   const { rows } = await db.query(
     `SELECT id, role, phone, is_worker, active_mode
-     FROM users WHERE better_auth_id = $1`,
+     FROM users WHERE better_auth_id = $1 AND deleted_at IS NULL`,
     [session.user.id],
   )
   const user = rows[0] as {

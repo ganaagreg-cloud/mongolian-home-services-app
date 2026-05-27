@@ -105,7 +105,7 @@ export async function POST(
     [id, session.sub, parsed.data.text],
   )).rows[0] as { id: string; order_id: string; sender_id: string; text: string; created_at: string }
 
-  const nameRow = (await db.query('SELECT name FROM users WHERE id = $1', [session.sub]))
+  const nameRow = (await db.query('SELECT name FROM users WHERE id = $1 AND deleted_at IS NULL', [session.sub]))
     .rows[0] as { name: string }
 
   const message: Message = {

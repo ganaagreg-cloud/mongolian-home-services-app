@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
   const rows = (await db.query(`
     SELECT w.id, u.name, u.phone, w.imei, w.police_file, w.created_at
     FROM   workers w
-    JOIN   users   u ON u.id = w.user_id
+    JOIN   users   u ON u.id = w.user_id AND u.deleted_at IS NULL
     WHERE  w.is_active = false
+      AND  w.deleted_at IS NULL
     ORDER  BY w.created_at ASC
   `)).rows as Row[]
 

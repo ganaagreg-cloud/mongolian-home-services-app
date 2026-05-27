@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Building2, FileText, Smartphone, Check, Clock, Upload, CreditCard, AlertTriangle, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Building2, FileText, Smartphone, Check, Clock, Upload, CreditCard, AlertTriangle, ChevronDown, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -21,9 +21,20 @@ const BANKS = [
   'Чингис Хаан Банк',
 ]
 
+const SPECIALTIES = [
+  { value: 'цэвэрлэгээ',   label: 'Цэвэрлэгээ' },
+  { value: 'угаалга',      label: 'Угаалга' },
+  { value: 'сантехник',    label: 'Сантехник' },
+  { value: 'цахилгаанчин', label: 'Цахилгаанчин' },
+  { value: 'будагч',       label: 'Будагч' },
+  { value: 'тавилгачин',   label: 'Тавилгачин' },
+  { value: 'гагнуурчин',   label: 'Гагнуурчин' },
+  { value: 'нүүлгэлт',     label: 'Нүүлгэлт' },
+] as const
+
 const IBAN_RE = /^MN\d{2}[A-Z0-9]{18}$/
 
-function fieldError(field: string, value: string): string {
+function bankFieldError(field: string, value: string): string {
   switch (field) {
     case 'bankName':
       return !value ? 'Банкны нэрийг сонгоно уу' : ''
@@ -48,7 +59,11 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   const [policeFile, setPoliceFile] = useState<string | null>(null)
   const [imei, setImei] = useState('')
 
-  // Step 4 — bank info
+  // Step 4 — service info
+  const [specialty, setSpecialty] = useState('')
+  const [pricePerHour, setPricePerHour] = useState('')
+
+  // Step 5 — bank info
   const [bankName, setBankName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [accountHolderName, setAccountHolderName] = useState('')
@@ -64,6 +79,9 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
   const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }))
 
+  const priceNum = parseInt(pricePerHour.replace(/\D/g, ''), 10)
+  const serviceValid = !!specialty && !isNaN(priceNum) && priceNum >= 1000
+
   const bankValid =
     !!bankName &&
     /^\d{10,20}$/.test(accountNumber) &&
@@ -74,7 +92,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
     if (currentStep === 1) return danConnected
     if (currentStep === 2) return policeFile !== null
     if (currentStep === 3) return imei.length >= 15
-    if (currentStep === 4) return bankValid
+    if (currentStep === 4) return serviceValid
+    if (currentStep === 5) return bankValid
     return false
   }
 
@@ -86,6 +105,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          specialty,
+          pricePerHour: priceNum,
           imei,
           policeFile: policeFile ?? 'police_clearance.pdf',
           bankName,
@@ -107,7 +128,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   }
 
   const nextStep = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1)
     } else {
       void handleSubmit()
@@ -150,7 +171,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
       {/* Step Indicator */}
       <div className="mt-6 px-6">
         <div className="flex items-center">
-          {[1, 2, 3, 4].map((step, idx) => (
+          {[1, 2, 3, 4, 5].map((step, idx) => (
             <div key={step} className="flex flex-1 items-center">
               <div
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
@@ -163,7 +184,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               >
                 {step < currentStep ? <Check className="h-4 w-4" /> : step}
               </div>
-              {idx < 3 && (
+              {idx < 4 && (
                 <div
                   className={`mx-1 h-1 flex-1 rounded-full ${
                     step < currentStep ? 'bg-success' : 'bg-muted'
@@ -174,7 +195,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
           ))}
         </div>
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Алхам {currentStep}/4
+          Алхам {currentStep}/5
         </p>
       </div>
 
@@ -258,7 +279,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
             ) : (
               <button
                 onClick={() => setPoliceFile('police_clearance.pdf')}
-                className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border py-8 transition-colors hover:border-primary hover:bg-primary/5"
+                className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border py-8 transition-colors hover:border-primary hover:bg-primary/5 active:scale-95"
               >
                 <Upload className="h-10 w-10 text-muted-foreground" />
                 <span className="mt-2 font-medium text-muted-foreground">Файл оруулах</span>
@@ -288,10 +309,64 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
           </div>
         )}
 
-        {/* Step 4 — Banking info */}
+        {/* Step 4 — Service info */}
         {currentStep === 4 && (
           <div className="space-y-4">
-            {/* Icon + title */}
+            <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
+                <Briefcase className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="mt-4 text-lg font-bold text-foreground">Үйлчилгээний мэдээлэл</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Та ямар үйлчилгээ үзүүлэх, цагийн хөлс хэд байхаа тохируулна уу
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+              {/* Specialty */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Мэргэжил</p>
+                <div className="relative">
+                  <select
+                    value={specialty}
+                    onChange={(e) => setSpecialty(e.target.value)}
+                    className="h-12 w-full appearance-none rounded-2xl border border-border bg-background px-4 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Мэргэжил сонгох...</option>
+                    {SPECIALTIES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+
+              {/* Price per hour */}
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Цагийн хөлс (₮)</p>
+                <Input
+                  placeholder="Жишээ: 25000"
+                  inputMode="numeric"
+                  value={pricePerHour}
+                  onChange={(e) => setPricePerHour(e.target.value.replace(/\D/g, ''))}
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                />
+                {pricePerHour && (!isNaN(priceNum) && priceNum < 1000) && (
+                  <p className="mt-1 text-xs text-destructive">Хамгийн багадаа ₮1,000 байх ёстой</p>
+                )}
+                {pricePerHour && !isNaN(priceNum) && priceNum >= 1000 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Та цагт ₮{priceNum.toLocaleString()} авна (платформ 17% авна)
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5 — Banking info */}
+        {currentStep === 5 && (
+          <div className="space-y-4">
             <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
                 <CreditCard className="h-8 w-8 text-primary" />
@@ -302,7 +377,6 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               </p>
             </div>
 
-            {/* Warning */}
             <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <p className="text-xs text-destructive">
@@ -328,8 +402,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
-                {touched.bankName && fieldError('bankName', bankName) && (
-                  <p className="mt-1 text-xs text-destructive">{fieldError('bankName', bankName)}</p>
+                {touched.bankName && bankFieldError('bankName', bankName) && (
+                  <p className="mt-1 text-xs text-destructive">{bankFieldError('bankName', bankName)}</p>
                 )}
               </div>
 
@@ -344,8 +418,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   onBlur={() => touch('accountNumber')}
                   className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
                 />
-                {touched.accountNumber && fieldError('accountNumber', accountNumber) && (
-                  <p className="mt-1 text-xs text-destructive">{fieldError('accountNumber', accountNumber)}</p>
+                {touched.accountNumber && bankFieldError('accountNumber', accountNumber) && (
+                  <p className="mt-1 text-xs text-destructive">{bankFieldError('accountNumber', accountNumber)}</p>
                 )}
               </div>
 
@@ -359,8 +433,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   onBlur={() => touch('accountHolderName')}
                   className="h-12 rounded-2xl border-border bg-background shadow-sm"
                 />
-                {touched.accountHolderName && fieldError('accountHolderName', accountHolderName) && (
-                  <p className="mt-1 text-xs text-destructive">{fieldError('accountHolderName', accountHolderName)}</p>
+                {touched.accountHolderName && bankFieldError('accountHolderName', accountHolderName) && (
+                  <p className="mt-1 text-xs text-destructive">{bankFieldError('accountHolderName', accountHolderName)}</p>
                 )}
               </div>
 
@@ -378,8 +452,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-sm"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">{iban.length}/22 тэмдэгт</p>
-                {touched.iban && fieldError('iban', iban) && (
-                  <p className="mt-1 text-xs text-destructive">{fieldError('iban', iban)}</p>
+                {touched.iban && bankFieldError('iban', iban) && (
+                  <p className="mt-1 text-xs text-destructive">{bankFieldError('iban', iban)}</p>
                 )}
               </div>
 
@@ -422,7 +496,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
           disabled={!canProceed() || isLoading}
           className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md disabled:opacity-50"
         >
-          {isLoading ? 'Илгээж байна...' : currentStep === 4 ? 'Илгээх' : 'Үргэлжлүүлэх'}
+          {isLoading ? 'Илгээж байна...' : currentStep === 5 ? 'Илгээх' : 'Үргэлжлүүлэх'}
         </Button>
       </div>
     </div>

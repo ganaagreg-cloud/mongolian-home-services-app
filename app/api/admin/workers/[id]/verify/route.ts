@@ -31,7 +31,7 @@ export async function PATCH(
   const { action } = parsed.data
 
   await dbReady
-  const worker = (await db.query('SELECT id FROM workers WHERE id = $1', [id])).rows[0]
+  const worker = (await db.query('SELECT id FROM workers WHERE id = $1 AND deleted_at IS NULL', [id])).rows[0]
   if (!worker) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
@@ -40,6 +40,12 @@ export async function PATCH(
     await db.query('UPDATE workers SET is_active = true WHERE id = $1', [id])
     await db.query(
       'UPDATE users SET is_worker = true WHERE id = (SELECT user_id FROM workers WHERE id = $1)',
+      [id],
+    )
+  } else {
+    await db.query('UPDATE workers SET rejected_at = NOW(), is_active = false WHERE id = $1', [id])
+    await db.query(
+      'UPDATE users SET is_worker = false WHERE id = (SELECT user_id FROM workers WHERE id = $1)',
       [id],
     )
   }
