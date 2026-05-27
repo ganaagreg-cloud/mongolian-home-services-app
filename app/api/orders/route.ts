@@ -77,12 +77,13 @@ export async function GET(req: NextRequest) {
       WHERE o.status = 'pending_acceptances'
         AND o.matching_strategy = 'scheduled'
         AND o.service = $1
+        AND o.user_id != $3
         AND NOT EXISTS (
           SELECT 1 FROM order_acceptances oa
           WHERE oa.order_id = o.id AND oa.worker_id = $2
         )
       ORDER BY o.created_at DESC
-    `, [workerRow.specialty, workerRow.id])).rows as OrderRow[]
+    `, [workerRow.specialty, workerRow.id, session.sub])).rows as OrderRow[]
     return NextResponse.json({ success: true, data: rows.map(toOrder) })
   }
 

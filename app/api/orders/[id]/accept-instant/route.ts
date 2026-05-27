@@ -27,15 +27,18 @@ export async function POST(
   const { id } = await params
 
   const order = (await db.query(
-    `SELECT id, status FROM orders WHERE id = $1 AND worker_id = $2 AND status = 'pending_worker_acceptance'`,
+    `SELECT id, status, user_id FROM orders WHERE id = $1 AND worker_id = $2 AND status = 'pending_worker_acceptance'`,
     [id, workerRow.id],
-  )).rows[0] as { id: string; status: string } | undefined
+  )).rows[0] as { id: string; status: string; user_id: string } | undefined
 
   if (!order) {
     return NextResponse.json(
       { success: false, error: 'Захиалга олдсонгүй эсвэл хүлээгдэж буй байдалд биш байна' },
       { status: 404 },
     )
+  }
+  if (String(order.user_id) === String(session.sub)) {
+    return NextResponse.json({ success: false, error: 'Өөрийн захиалгаа авах боломжгүй' }, { status: 403 })
   }
 
   await db.query(

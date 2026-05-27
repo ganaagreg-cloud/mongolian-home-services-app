@@ -12,6 +12,9 @@ import type { Order } from '@/lib/types'
 interface WorkerJobsScreenProps {
   onAcceptJob: (jobId: string) => void
   onDeclineJob: (jobId: string) => void
+  isWorker?: boolean
+  activeMode?: 'user' | 'worker'
+  onModeToggle?: (mode: 'user' | 'worker') => void
 }
 
 // ── Countdown hook ──────────────────────────────────────────
@@ -185,7 +188,7 @@ function ScheduledJobCard({
 }
 
 // ── Main screen ─────────────────────────────────────────────
-export function WorkerJobsScreen({ onAcceptJob, onDeclineJob }: WorkerJobsScreenProps) {
+export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, activeMode = 'worker', onModeToggle }: WorkerJobsScreenProps) {
   const [isActive,    setIsActive]    = useState(true)
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set())
   const [acceptError, setAcceptError] = useState<string | null>(null)
@@ -258,6 +261,27 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob }: WorkerJobsScreen
             />
           </div>
         </div>
+
+        {/* Mode toggle — always visible when is_worker */}
+        {isWorker && (
+          <div className="mt-4">
+            <div className="flex rounded-2xl bg-card p-1 shadow-sm">
+              {(['user', 'worker'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => onModeToggle?.(m)}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-95 ${
+                    activeMode === m
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {m === 'user' ? 'Хэрэглэгч' : 'Ажилтан'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {!isActive ? (

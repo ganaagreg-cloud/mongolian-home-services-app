@@ -30,12 +30,15 @@ export async function POST(
   }
 
   const order = (await db.query(
-    'SELECT id, status FROM orders WHERE id = $1',
+    'SELECT id, status, user_id FROM orders WHERE id = $1',
     [id],
-  )).rows[0] as { id: string; status: string } | undefined
+  )).rows[0] as { id: string; status: string; user_id: string } | undefined
 
   if (!order) {
     return NextResponse.json({ success: false, error: 'Захиалга олдсонгүй' }, { status: 404 })
+  }
+  if (String(order.user_id) === String(session.sub)) {
+    return NextResponse.json({ success: false, error: 'Өөрийн захиалгаа авах боломжгүй' }, { status: 403 })
   }
   if (order.status !== 'pending_acceptances') {
     return NextResponse.json(

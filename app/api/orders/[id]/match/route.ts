@@ -94,7 +94,8 @@ export async function POST(
       AND  w.is_active    = true
       AND  w.rating       >= 4.0
       AND  bi.verified    = true
-  `)).rows as WorkerMatchRow[]
+      AND  w.user_id      != $1
+  `, [session.sub])).rows as WorkerMatchRow[]
   const eligible = allEligible.filter((w) => !attempted.has(w.id))
 
   if (eligible.length === 0) {

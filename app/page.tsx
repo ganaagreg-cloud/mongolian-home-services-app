@@ -399,6 +399,9 @@ export default function Home() {
             setCurrentScreen('worker-active')
           }}
           onDeclineJob={() => {}}
+          isWorker={isWorker}
+          activeMode={activeMode}
+          onModeToggle={handleModeToggle}
         />
       )}
       {currentScreen === 'worker-active' && (
