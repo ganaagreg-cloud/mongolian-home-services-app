@@ -5,7 +5,7 @@ import { Home, Phone, Eye, EyeOff, Lock } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
+import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
 
 // Brand SVGs — exception to lucide-only rule for OAuth provider identity
 const GoogleIcon = () => (
@@ -47,16 +47,15 @@ export function LoginScreen({ onGoRegister }: LoginScreenProps) {
     }
     setLoading('phone')
     try {
-      const res = await fetch('/api/auth/login', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ phone: normalized, password }),
+      const { error } = await authClient.signIn.email({
+        email: phoneToEmail(normalized),
+        password,
       })
-      const data = await res.json() as { success: boolean; error?: string }
-      if (!data.success) {
-        setError(data.error ?? 'Нэвтрэх боломжгүй байна')
+      if (error) {
+        setError('Утасны дугаар эсвэл нууц үг буруу байна')
+      } else {
+        window.location.reload()
       }
-      // On success: Better Auth sets cookie → Better Auth's useSession re-triggers
     } catch {
       setError('Сүлжээний алдаа гарлаа')
     } finally {

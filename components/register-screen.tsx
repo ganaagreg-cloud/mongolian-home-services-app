@@ -44,8 +44,9 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
       const data = await res.json() as { success: boolean; error?: string }
       if (!data.success) {
         setError(data.error ?? 'Бүртгэл үүсгэхэд алдаа гарлаа')
+      } else {
+        window.location.reload()
       }
-      // On success: Better Auth sets cookie → useSession re-triggers in page.tsx
     } catch {
       setError('Сүлжээний алдаа гарлаа')
     } finally {

@@ -235,4 +235,9 @@ export const TABLES: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_better_auth_id ON users(better_auth_id) WHERE better_auth_id IS NOT NULL`,
   // Normalize: workers are now users with is_worker=true; role column only tracks 'user' | 'admin'
   `UPDATE users SET role = 'user' WHERE role = 'worker'`,
+  // BA "user" table: add DEFAULT values for extra columns added after initial creation
+  `ALTER TABLE "user" ALTER COLUMN is_worker  SET DEFAULT false`,
+  `ALTER TABLE "user" ALTER COLUMN active_mode SET DEFAULT 'user'`,
+  `UPDATE "user" SET is_worker = false  WHERE is_worker  IS NULL`,
+  `UPDATE "user" SET active_mode = 'user' WHERE active_mode IS NULL`,
 ]

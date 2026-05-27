@@ -82,28 +82,37 @@ export async function seed(pool: Pool): Promise<void> {
 
     // Provision admin phone+password login via Better Auth tables
     // phone: 95342321 / password: 12345678
+    // Step 1: ensure BA user row exists (insert or find by email)
     await client.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
-       VALUES ($1, 'Admin', $2, true, NOW(), NOW())
-       ON CONFLICT (id) DO NOTHING`,
+      `INSERT INTO "user" (id, name, email, "emailVerified", is_worker, active_mode, "createdAt", "updatedAt")
+       VALUES ($1, 'Admin', $2, true, false, 'user', NOW(), NOW())
+       ON CONFLICT (email) DO UPDATE SET "emailVerified" = true`,
       [ADMIN_BA_ID, ADMIN_EMAIL],
     )
+    // Resolve the actual BA user id (may differ from ADMIN_BA_ID if row already existed)
+    const { rows: [baRow] } = await client.query<{ id: string }>(
+      `SELECT id FROM "user" WHERE email = $1`,
+      [ADMIN_EMAIL],
+    )
+    const actualBaId = baRow?.id ?? ADMIN_BA_ID
+    // Step 2: upsert credential account with correct password hash
     await client.query(
       `INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-       VALUES ($1, $2, 'credential', $3, $4, NOW(), NOW())
-       ON CONFLICT (id) DO NOTHING`,
-      [`acct-admin-95342321`, ADMIN_EMAIL, ADMIN_BA_ID, ADMIN_PW_HASH],
+       VALUES ('acct-admin-95342321', $1, 'credential', $2, $3, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET password = $3`,
+      [ADMIN_EMAIL, actualBaId, ADMIN_PW_HASH],
     )
+    // Step 3: ensure app users row exists and is admin
     await client.query(
       `INSERT INTO users (phone, name, role, dan_verified, better_auth_id, email)
        VALUES ('95342321', 'Admin', 'admin', true, $1, $2)
        ON CONFLICT DO NOTHING`,
-      [ADMIN_BA_ID, ADMIN_EMAIL],
+      [actualBaId, ADMIN_EMAIL],
     )
-    // Link better_auth_id in case the row already existed without it
     await client.query(
-      `UPDATE users SET better_auth_id = $1 WHERE phone = '95342321' AND better_auth_id IS NULL`,
-      [ADMIN_BA_ID],
+      `UPDATE users SET role = 'admin', better_auth_id = $1
+       WHERE phone = '95342321'`,
+      [actualBaId],
     )
 
     const { rows: [{ n: workerCount }] } = await client.query('SELECT COUNT(*) as n FROM workers')
