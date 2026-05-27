@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Home, Phone, Eye, EyeOff, Lock } from 'lucide-react'
+import { Home, Phone, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,8 @@ const FacebookIcon = () => (
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
   </svg>
 )
+
+const TRUST_BADGES = ['ДАН баталгаажсан', 'Найдвартай үйлчилгээ', 'Хурдан захиалга'] as const
 
 interface LoginScreenProps {
   onGoRegister: () => void
@@ -74,119 +76,141 @@ export function LoginScreen({ onGoRegister }: LoginScreenProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background px-6">
-      {/* Logo */}
-      <div className="flex flex-col items-center pt-16">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-lg">
-          <Home className="h-10 w-10 text-primary-foreground" />
+    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+      {/* Left branding panel — desktop only */}
+      <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-primary px-12 gap-8">
+        <div className="flex flex-col items-center">
+          <Home className="h-16 w-16 text-primary-foreground" />
+          <h1 className="mt-4 text-3xl font-bold text-primary-foreground">HomeService</h1>
+          <p className="mt-2 text-primary-foreground/80">Гэрийн Үйлчилгээ</p>
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-foreground">HomeService</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Гэрийн Үйлчилгээ</p>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          {TRUST_BADGES.map((badge) => (
+            <div key={badge} className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
+              <CheckCircle className="h-5 w-5 shrink-0 text-primary-foreground" />
+              <span className="text-sm font-medium text-primary-foreground">{badge}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Phone + password form */}
-      <div className="mt-10 space-y-4">
-        {/* Phone */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              inputMode="numeric"
-              placeholder="99001234"
-              value={phone}
-              onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
-            />
+      {/* Right: form — unchanged on mobile, centered on desktop */}
+      <div className="flex flex-col flex-1 px-6 lg:w-1/2 lg:flex-none lg:items-center lg:justify-center lg:px-12">
+        <div className="w-full lg:max-w-sm">
+          {/* Logo */}
+          <div className="flex flex-col items-center pt-16 lg:pt-0">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-lg">
+              <Home className="h-10 w-10 text-primary-foreground" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-foreground">HomeService</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Гэрийн Үйлчилгээ</p>
           </div>
-        </div>
 
-        {/* Password */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Нууц үг</p>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type={showPw ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => { setError(''); setPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+          {/* Phone + password form */}
+          <div className="mt-10 space-y-4">
+            {/* Phone */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  inputMode="numeric"
+                  placeholder="99001234"
+                  value={phone}
+                  onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
+                  className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Нууц үг</p>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => { setError(''); setPassword(e.target.value) }}
+                  className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+                >
+                  {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <Button
+              onClick={() => { void handlePhoneLogin() }}
+              disabled={!!loading}
+              className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
             >
-              {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              {loading === 'phone' ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
+            </Button>
+          </div>
+
+          {/* OR divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-4 text-sm text-muted-foreground">эсвэл</span>
+            </div>
+          </div>
+
+          {/* Social buttons */}
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={handleGoogle}
+              disabled={!!loading}
+              className="h-14 w-full rounded-2xl border border-border bg-background text-base font-semibold text-foreground shadow-sm hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading === 'google' ? (
+                'Нэвтрэж байна...'
+              ) : (
+                <span className="flex items-center gap-3">
+                  <GoogleIcon />
+                  Google-ээр нэвтрэх
+                </span>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleFacebook}
+              disabled={!!loading}
+              style={{ backgroundColor: '#1877F2' }}
+              className="h-14 w-full rounded-2xl text-base font-semibold text-white shadow-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading === 'facebook' ? (
+                'Нэвтрэж байна...'
+              ) : (
+                <span className="flex items-center gap-3">
+                  <FacebookIcon />
+                  Facebook-ээр нэвтрэх
+                </span>
+              )}
+            </Button>
+          </div>
+
+          {/* Register link */}
+          <div className="mb-12 mt-6 text-center lg:mb-0">
+            <span className="text-sm text-muted-foreground">Бүртгэлгүй юу? </span>
+            <button
+              onClick={onGoRegister}
+              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+            >
+              Бүртгүүлэх
             </button>
           </div>
         </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <Button
-          onClick={() => { void handlePhoneLogin() }}
-          disabled={!!loading}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {loading === 'phone' ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
-        </Button>
-      </div>
-
-      {/* OR divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-background px-4 text-sm text-muted-foreground">эсвэл</span>
-        </div>
-      </div>
-
-      {/* Social buttons */}
-      <div className="flex flex-col gap-3">
-        <Button
-          onClick={handleGoogle}
-          disabled={!!loading}
-          className="h-14 w-full rounded-2xl border border-border bg-background text-base font-semibold text-foreground shadow-sm hover:bg-card active:scale-95 transition-all disabled:opacity-50"
-        >
-          {loading === 'google' ? (
-            'Нэвтрэж байна...'
-          ) : (
-            <span className="flex items-center gap-3">
-              <GoogleIcon />
-              Google-ээр нэвтрэх
-            </span>
-          )}
-        </Button>
-
-        <Button
-          onClick={handleFacebook}
-          disabled={!!loading}
-          style={{ backgroundColor: '#1877F2' }}
-          className="h-14 w-full rounded-2xl text-base font-semibold text-white shadow-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {loading === 'facebook' ? (
-            'Нэвтрэж байна...'
-          ) : (
-            <span className="flex items-center gap-3">
-              <FacebookIcon />
-              Facebook-ээр нэвтрэх
-            </span>
-          )}
-        </Button>
-      </div>
-
-      {/* Register link */}
-      <div className="mb-12 mt-6 text-center">
-        <span className="text-sm text-muted-foreground">Бүртгэлгүй юу? </span>
-        <button
-          onClick={onGoRegister}
-          className="text-sm font-semibold text-primary active:scale-95 transition-all"
-        >
-          Бүртгүүлэх
-        </button>
       </div>
     </div>
   )

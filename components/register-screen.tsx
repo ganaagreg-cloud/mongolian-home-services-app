@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, User, Phone, Lock, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, User, Phone, Lock, Eye, EyeOff, Home, CheckCircle } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
+
+const TRUST_BADGES = ['ДАН баталгаажсан', 'Найдвартай үйлчилгээ', 'Хурдан захиалга'] as const
 
 interface RegisterScreenProps {
   onGoLogin: () => void
@@ -45,13 +47,13 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
     try {
       const email = phoneToEmail(normalized)
       const name = `${firstName} ${lastName}`
-      
+
       const { error: signUpError } = await authClient.signUp.email({
         email,
         password,
         name,
       })
-      
+
       if (signUpError) {
         setError('Бүртгэл үүсгэхэд алдаа гарлаа')
       } else {
@@ -81,134 +83,156 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
-      {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12">
-        <button
-          onClick={onGoLogin}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
-        >
-          <ArrowLeft className="h-5 w-5 text-foreground" />
-        </button>
-        <h1 className="text-xl font-bold text-foreground">Бүртгүүлэх</h1>
+    <div className="flex min-h-screen flex-col bg-background pb-32 lg:flex-row lg:pb-0">
+      {/* Left branding panel — desktop only */}
+      <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-primary px-12 gap-8">
+        <div className="flex flex-col items-center">
+          <Home className="h-16 w-16 text-primary-foreground" />
+          <h1 className="mt-4 text-3xl font-bold text-primary-foreground">HomeService</h1>
+          <p className="mt-2 text-primary-foreground/80">Гэрийн Үйлчилгээ</p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          {TRUST_BADGES.map((badge) => (
+            <div key={badge} className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
+              <CheckCircle className="h-5 w-5 shrink-0 text-primary-foreground" />
+              <span className="text-sm font-medium text-primary-foreground">{badge}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="mt-6 space-y-4 px-6">
-        {/* Name row */}
-        <div className="flex gap-3">
-          <div className="flex-1 space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Нэр</p>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Нэр"
-                value={firstName}
-                onChange={(e) => { setError(''); setFirstName(e.target.value) }}
-                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
-              />
-            </div>
-          </div>
-          <div className="flex-1 space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Овог</p>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Овог"
-                value={lastName}
-                onChange={(e) => { setError(''); setLastName(e.target.value) }}
-                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Phone */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
-          <div className="flex gap-2">
-            <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-sm">
-              <span className="text-sm font-medium text-foreground">+976</span>
-            </div>
-            <div className="relative flex-1">
-              <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                inputMode="numeric"
-                placeholder="99001234"
-                value={phone}
-                onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-                className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Password */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Нууц үг (хамгийн багадаа 8 тэмдэгт)</p>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type={showPw ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => { setError(''); setPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
-            />
+      {/* Right: form — unchanged on mobile, centered on desktop */}
+      <div className="flex flex-col flex-1 lg:w-1/2 lg:flex-none lg:items-center lg:justify-center">
+        <div className="w-full lg:max-w-sm">
+          {/* Header */}
+          <div className="flex items-center gap-4 px-6 pt-12 lg:px-0 lg:pt-8">
             <button
-              type="button"
-              onClick={() => setShowPw((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              onClick={onGoLogin}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
             >
-              {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <h1 className="text-xl font-bold text-foreground">Бүртгүүлэх</h1>
+          </div>
+
+          <div className="mt-6 space-y-4 px-6 lg:px-0">
+            {/* Name row */}
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Нэр</p>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Нэр"
+                    value={firstName}
+                    onChange={(e) => { setError(''); setFirstName(e.target.value) }}
+                    className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Овог</p>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Овог"
+                    value={lastName}
+                    onChange={(e) => { setError(''); setLastName(e.target.value) }}
+                    className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
+              <div className="flex gap-2">
+                <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-sm">
+                  <span className="text-sm font-medium text-foreground">+976</span>
+                </div>
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    inputMode="numeric"
+                    placeholder="99001234"
+                    value={phone}
+                    onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
+                    className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Нууц үг (хамгийн багадаа 8 тэмдэгт)</p>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => { setError(''); setPassword(e.target.value) }}
+                  className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+                >
+                  {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm password */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Нууц үг давтах</p>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => { setError(''); setConfirmPassword(e.target.value) }}
+                  className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+                >
+                  {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+
+          {/* Login link */}
+          <div className="mt-6 px-6 text-center lg:px-0">
+            <span className="text-sm text-muted-foreground">Бүртгэлтэй юу? </span>
+            <button
+              onClick={onGoLogin}
+              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+            >
+              Нэвтрэх
             </button>
           </div>
-        </div>
 
-        {/* Confirm password */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Нууц үг давтах</p>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type={showConfirm ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => { setError(''); setConfirmPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+          {/* CTA — fixed on mobile, static on desktop */}
+          <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-6">
+            <Button
+              onClick={() => { void handleSubmit() }}
+              disabled={!canSubmit}
+              className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
             >
-              {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
+              {loading ? 'Бүртгэж байна...' : 'Бүртгүүлэх'}
+            </Button>
           </div>
         </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
-
-      {/* Нэвтрэх link */}
-      <div className="mt-6 text-center">
-        <span className="text-sm text-muted-foreground">Бүртгэлтэй юу? </span>
-        <button
-          onClick={onGoLogin}
-          className="text-sm font-semibold text-primary active:scale-95 transition-all"
-        >
-          Нэвтрэх
-        </button>
-      </div>
-
-      {/* Fixed CTA */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
-        <Button
-          onClick={() => { void handleSubmit() }}
-          disabled={!canSubmit}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {loading ? 'Бүртгэж байна...' : 'Бүртгүүлэх'}
-        </Button>
       </div>
     </div>
   )

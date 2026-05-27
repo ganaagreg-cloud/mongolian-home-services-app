@@ -19,7 +19,7 @@ async function resolveAccess(orderId: string, userId: string) {
   const row = (await db.query(
     `SELECT o.user_id, o.worker_id, o.status, w.user_id AS worker_user_id
      FROM orders o
-     LEFT JOIN workers w ON w.id = o.worker_id
+     LEFT JOIN workers w ON w.id = o.worker_id AND w.deleted_at IS NULL
      WHERE o.id = $1`,
     [orderId],
   )).rows[0] as { user_id: string; worker_id: string | null; status: string; worker_user_id: string | null } | undefined
@@ -51,7 +51,7 @@ export async function GET(
   const rows = (await db.query(
     `SELECT m.id, m.order_id, m.sender_id, u.name AS sender_name, m.text, m.created_at
      FROM messages m
-     JOIN users u ON u.id = m.sender_id
+     LEFT JOIN users u ON u.id = m.sender_id AND u.deleted_at IS NULL
      WHERE m.order_id = $1
      ORDER BY m.created_at ASC`,
     [id],

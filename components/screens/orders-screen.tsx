@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import useSWR from 'swr'
-import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search, Camera, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -138,8 +138,10 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
   const [disputeOrder, setDisputeOrder] = useState<Order | null>(null)
   const [reason, setReason] = useState('')
   const [description, setDescription] = useState('')
+  const [photos, setPhotos] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [disputeError, setDisputeError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filtered = (orders ?? []).filter((o) =>
     tab === 'active' ? ACTIVE_STATUSES.includes(o.status) : !ACTIVE_STATUSES.includes(o.status)
@@ -149,7 +151,14 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
     setDisputeOrder(order)
     setReason('')
     setDescription('')
+    setPhotos([])
     setDisputeError('')
+  }
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    setPhotos((prev) => [...prev, ...files].slice(0, 3))
+    e.target.value = ''
   }
 
   const handleDisputeSubmit = async () => {
@@ -165,13 +174,22 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: parseInt(disputeOrder.id), reason, description }),
       })
-      const json = await res.json() as { success: boolean; error?: string }
+      const json = await res.json() as { success: boolean; error?: string; data?: { id: string } }
       if (!json.success) {
         setDisputeError(json.error ?? 'Алдаа гарлаа')
-      } else {
-        setDisputeOrder(null)
-        toast.success('Гомдол амжилттай илгээгдлээ. Админ ажиллана.')
+        return
       }
+      if (photos.length > 0 && json.data?.id) {
+        const disputeId = json.data.id
+        for (const photo of photos) {
+          const fd = new FormData()
+          fd.append('photo', photo)
+          await fetch(`/api/disputes/${disputeId}/upload`, { method: 'POST', body: fd })
+        }
+      }
+      setDisputeOrder(null)
+      setPhotos([])
+      toast.success('Гомдол амжилттай илгээгдлээ. Админ ажиллана.')
     } catch {
       setDisputeError('Алдаа гарлаа')
     } finally {
@@ -288,6 +306,52 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
                 placeholder="Болсон зүйлийг дэлгэрэнгүй тайлбарлана уу…"
                 className="min-h-[100px] rounded-2xl border-border bg-card shadow-sm resize-none"
               />
+            </div>
+
+            {/* Photos */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                Зураг <span className="text-xs">(заавал биш, хамгийн ихдээ 3)</span>
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+              {photos.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-card py-3 text-sm text-muted-foreground active:scale-95 transition-all"
+                >
+                  <Camera className="h-4 w-4" />
+                  Зураг нэмэх {photos.length > 0 && `(${photos.length}/3)`}
+                </button>
+              )}
+              {photos.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {photos.map((photo, i) => (
+                    <div key={i} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={URL.createObjectURL(photo)}
+                        alt=""
+                        className="h-16 w-16 rounded-xl object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {disputeError && (

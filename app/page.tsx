@@ -28,6 +28,7 @@ import { WorkerEarningsScreen } from '@/components/screens/worker-earnings-scree
 import { AdminDashboardScreen } from '@/components/screens/admin-dashboard-screen'
 import { AdminVerifyScreen } from '@/components/screens/admin-verify-screen'
 import { AdminDisputesScreen } from '@/components/screens/admin-disputes-screen'
+import { AdminBankingScreen } from '@/components/screens/admin-banking-screen'
 import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
 import type { MatchedWorker, OrderAcceptance, MatchingStrategy } from '@/lib/types'
@@ -39,7 +40,7 @@ type Screen =
   | 'active-booking' | 'review' | 'profile' | 'chat' | 'orders'
   | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
-  | 'admin' | 'admin-verify' | 'admin-disputes'
+  | 'admin' | 'admin-verify' | 'admin-disputes' | 'admin-banking'
   | 'oauth-onboarding'
 
 type MeResponse = {
@@ -432,6 +433,7 @@ export default function Home() {
         <AdminDashboardScreen
           onViewVerifications={() => setCurrentScreen('admin-verify')}
           onViewDisputes={() => setCurrentScreen('admin-disputes')}
+          onViewBanking={() => setCurrentScreen('admin-banking')}
         />
       )}
       {currentScreen === 'admin-verify' && (
@@ -439,6 +441,9 @@ export default function Home() {
       )}
       {currentScreen === 'admin-disputes' && (
         <AdminDisputesScreen onBack={() => setCurrentScreen('admin')} />
+      )}
+      {currentScreen === 'admin-banking' && (
+        <AdminBankingScreen onBack={() => setCurrentScreen('admin')} />
       )}
 
       {/* ── Bottom Navigation ──────────────────────────── */}

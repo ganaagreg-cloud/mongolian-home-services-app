@@ -356,6 +356,117 @@ className="drop-shadow-md"     // never drop-shadow-*
 <button onClick={...}>Click me</button>  // needs active:scale-95 transition-all
 ```
 
+## Responsive & Desktop Design
+
+### Breakpoints
+```
+mobile:  < 768px   → current mobile layout
+tablet:  768-1024px → transitional
+desktop: > 1024px  → full desktop layout
+```
+
+### Layout System
+```
+Mobile:  single column, bottom nav, max-w-[390px]
+Tablet:  single column, bottom nav, max-w-[600px]
+Desktop: two/three column, sidebar nav, max-w-7xl
+```
+
+### Desktop Spacing Scale
+```
+sidebar width:     w-64 (256px)
+content padding:   px-8
+section gap:       gap-6
+card grid:         grid-cols-2 (tablet) grid-cols-3 (desktop)
+max content width: max-w-7xl mx-auto
+```
+
+### Desktop Navigation Pattern (sidebar)
+```tsx
+// Desktop sidebar — replaces bottom nav on lg+
+<aside className="hidden lg:flex flex-col w-64 h-screen 
+  bg-card border-r border-border fixed left-0 top-0">
+  <div className="p-6">
+    <h1 className="text-xl font-bold text-foreground">
+      HomeService
+    </h1>
+  </div>
+  <nav className="flex-1 px-4 space-y-1">
+    {navItems.map(item => (
+      <button className={`flex items-center gap-3 w-full 
+        px-4 py-3 rounded-2xl transition-all active:scale-95
+        ${active ? 'bg-primary/10 text-primary font-semibold' 
+                 : 'text-muted-foreground hover:bg-muted/50'}`}>
+        <item.icon className="h-5 w-5" />
+        {item.label}
+      </button>
+    ))}
+  </nav>
+</aside>
+
+// Main content area — offset by sidebar on desktop
+<main className="lg:ml-64 min-h-screen bg-background">
+  <div className="max-w-4xl mx-auto px-4 lg:px-8">
+    {children}
+  </div>
+</main>
+```
+
+### Desktop Card Grid
+```tsx
+// Single on mobile, 2 cols on tablet, 3 on desktop
+<div className="grid grid-cols-1 md:grid-cols-2 
+  lg:grid-cols-3 gap-4 px-6 lg:px-0">
+```
+
+### Desktop Page Header
+```tsx
+// Mobile: pt-12 (safe area)
+// Desktop: pt-8 (no safe area needed)
+<div className="px-6 pt-12 lg:pt-8 lg:px-0">
+  <h1 className="text-xl lg:text-2xl font-bold">Title</h1>
+</div>
+```
+
+### Desktop Auth Layout
+```tsx
+// Split layout on desktop
+<div className="min-h-screen flex">
+  {/* Left: branding — desktop only */}
+  <div className="hidden lg:flex flex-col justify-center 
+    items-center w-1/2 bg-primary text-primary-foreground">
+    <Home className="h-16 w-16 mb-4" />
+    <h1 className="text-3xl font-bold">HomeService</h1>
+    <p className="text-primary-foreground/80 mt-2">
+      Гэрийн Үйлчилгээ
+    </p>
+  </div>
+  {/* Right: form */}
+  <div className="w-full lg:w-1/2 flex items-center 
+    justify-center px-6">
+    {/* existing form content */}
+  </div>
+</div>
+```
+
+### Desktop Admin Layout
+```tsx
+// Admin uses full width — no mobile max-w constraint
+<div className="min-h-screen bg-background">
+  <div className="max-w-7xl mx-auto px-8 py-8">
+    <div className="grid grid-cols-4 gap-4">
+      {/* KPI cards */}
+    </div>
+  </div>
+</div>
+```
+
+### Bottom Nav — Mobile Only
+```tsx
+// Always wrap bottom nav in:
+<div className="lg:hidden fixed bottom-0 ...">
+```
+
 ## Pre-Submit Checklist
 
 Before returning any UI component, verify:
@@ -375,3 +486,10 @@ Before returning any UI component, verify:
 - [ ] `text-muted-foreground` on metadata, labels, subtitles
 - [ ] Loading skeleton + empty state present for any list/grid
 - [ ] Semantic tokens used — no raw `gray-*`/`slate-*` on structural elements
+- [ ] Bottom nav wrapped in `lg:hidden`
+- [ ] Sidebar shown with `hidden lg:flex`
+- [ ] Main content has `lg:ml-64` offset
+- [ ] Page headers use `pt-12 lg:pt-8`
+- [ ] Cards use responsive grid not fixed columns
+- [ ] Auth screens have split layout on desktop
+- [ ] Admin uses `max-w-7xl` not `max-w-[390px]`

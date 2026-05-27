@@ -301,6 +301,19 @@ export interface AdminPendingWorker {
   createdAt: string
 }
 
+export interface AdminBankingWorker {
+  id: string              // banking_info.id
+  workerId: string
+  workerName: string
+  phone: string
+  bankName: string
+  accountNumber: string
+  accountHolderName: string
+  iban: string
+  accountType: AccountType
+  submittedAt: string     // banking_info.updated_at
+}
+
 export interface AdminDispute {
   id: string
   orderId: string

@@ -33,8 +33,8 @@ export async function GET(
            o.property_type, o.notes, o.payment_status,
            o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at
     FROM   orders o
-    LEFT JOIN workers w ON w.id = o.worker_id
-    LEFT JOIN users   u ON u.id = w.user_id
+    LEFT JOIN workers w ON w.id = o.worker_id AND w.deleted_at IS NULL
+    LEFT JOIN users   u ON u.id = w.user_id   AND u.deleted_at IS NULL
     WHERE  o.id = $1 AND (o.user_id = $2 OR w.user_id = $2)
   `, [id, session.sub])).rows[0] as OrderRow | undefined
 

@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { ClipboardList, DollarSign, Users, AlertTriangle, ChevronRight } from 'lucide-react'
+import { ClipboardList, DollarSign, Users, AlertTriangle, ChevronRight, Building2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
@@ -10,6 +10,7 @@ import type { AdminStats } from '@/lib/types'
 interface AdminDashboardScreenProps {
   onViewVerifications: () => void
   onViewDisputes: () => void
+  onViewBanking: () => void
 }
 
 const orderStatusConfig: Record<string, { label: string; className: string }> = {
@@ -27,7 +28,7 @@ function formatRevenue(amount: number): string {
   return `₮${amount.toLocaleString()}`
 }
 
-export function AdminDashboardScreen({ onViewVerifications, onViewDisputes }: AdminDashboardScreenProps) {
+export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onViewBanking }: AdminDashboardScreenProps) {
   const { data: stats, isLoading } = useSWR<AdminStats>('/api/admin/stats', fetcher, { refreshInterval: 30000 })
 
   return (
@@ -108,6 +109,17 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes }: Ad
           {(stats?.openDisputes ?? 0) > 0 && (
             <Badge className="bg-destructive text-white">{stats!.openDisputes} шийдэгдээгүй</Badge>
           )}
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+
+        <button
+          onClick={onViewBanking}
+          className="flex w-full items-center justify-between rounded-2xl bg-accent/10 p-4 active:scale-95 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-accent" />
+            <span className="font-medium text-foreground">Банкны мэдээлэл баталгаажуулалт</span>
+          </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
       </div>

@@ -91,6 +91,29 @@ The bottom nav components:
 4. Wire navigation from the relevant screen(s) via `setCurrentScreen`
 5. If the screen needs a bottom nav tab: update the relevant `*-bottom-nav.tsx`
 
+## Desktop Sidebar Navigation
+
+On desktop (lg+) bottom nav is hidden. A sidebar replaces it.
+
+The sidebar is a separate component per role:
+- components/sidebar-nav.tsx (user)
+- components/worker-sidebar-nav.tsx (worker)
+- components/admin-sidebar-nav.tsx (admin)
+
+Each mirrors the bottom nav items but renders vertically.
+
+## Responsive Nav Rule
+- Mobile (< 1024px): bottom nav visible, sidebar hidden
+- Desktop (≥ 1024px): sidebar visible, bottom nav hidden
+- NEVER show both at the same time
+- Use: `className="lg:hidden"` on bottom nav
+- Use: `className="hidden lg:flex"` on sidebar
+
+## Page content offset
+- Mobile: no left offset (full width)
+- Desktop: `lg:ml-64` on main content wrapper
+- This must be in app/page.tsx root wrapper
+
 ## Anti-Patterns
 
 ```ts
