@@ -12,6 +12,9 @@ interface HomeScreenProps {
   onCreateOrder: () => void
   onActiveBookingClick?: () => void
   hasActiveBooking?: boolean
+  isWorker?: boolean
+  activeMode?: 'user' | 'worker'
+  onModeToggle?: (mode: 'user' | 'worker') => void
 }
 
 const categories = [
@@ -28,6 +31,9 @@ export function HomeScreen({
   onCreateOrder,
   onActiveBookingClick,
   hasActiveBooking = false,
+  isWorker = false,
+  activeMode = 'user',
+  onModeToggle,
 }: HomeScreenProps) {
   const { data: featuredWorkers, isLoading } = useSWR<Worker[]>(
     '/api/workers?sort=rating',
@@ -51,6 +57,27 @@ export function HomeScreen({
           </span>
         </button>
       </div>
+
+      {/* Mode toggle — visible only to users who are also workers */}
+      {isWorker && (
+        <div className="mt-4 px-6">
+          <div className="flex rounded-2xl bg-card p-1 shadow-sm">
+            {(['user', 'worker'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => onModeToggle?.(m)}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-95 ${
+                  activeMode === m
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m === 'user' ? 'Хэрэглэгч' : 'Ажилтан'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Active booking banner */}
       {hasActiveBooking && (

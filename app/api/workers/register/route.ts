@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db, dbReady } from '@/lib/db'
-import { requireAuth, setSessionCookie } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 
 const schema = z.object({
   imei:               z.string().length(15),
@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
       [workerId, bankName, accountNumber, accountHolderName, iban, accountType],
     )
 
-    await client.query('UPDATE users SET role = $1 WHERE id = $2', ['worker', session.sub])
-
     await client.query('COMMIT')
   } catch (err) {
     await client.query('ROLLBACK')
@@ -73,6 +71,5 @@ export async function POST(req: NextRequest) {
     client.release()
   }
 
-  await setSessionCookie({ sub: session.sub, role: 'worker', phone: session.phone })
   return NextResponse.json({ success: true, data: { workerId } })
 }

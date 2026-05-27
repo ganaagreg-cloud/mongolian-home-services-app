@@ -14,7 +14,8 @@ interface LocationPickerProps {
 }
 
 export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
-  const mapRef    = useRef<HTMLDivElement>(null)
+  const mapRef         = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<import('leaflet').Map | null>(null)
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const latRef = useRef(DEFAULT_LAT)
@@ -23,7 +24,6 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
   useEffect(() => {
     if (!mapRef.current) return
 
-    let map: import('leaflet').Map
     let marker: import('leaflet').Marker
 
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -43,6 +43,9 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
     }
 
     const initMap = async (centerLat: number, centerLng: number) => {
+      // Guard: don't re-initialize if already mounted (React StrictMode double-invoke)
+      if (mapInstanceRef.current || !mapRef.current) return
+
       const L = (await import('leaflet')).default
 
       // Fix webpack asset path for default marker icons
@@ -56,14 +59,14 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
 
       if (!mapRef.current) return
 
-      map = L.map(mapRef.current).setView([centerLat, centerLng], 16)
+      mapInstanceRef.current = L.map(mapRef.current).setView([centerLat, centerLng], 16)
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
-      }).addTo(map)
+      }).addTo(mapInstanceRef.current)
 
-      marker = L.marker([centerLat, centerLng], { draggable: true }).addTo(map)
+      marker = L.marker([centerLat, centerLng], { draggable: true }).addTo(mapInstanceRef.current)
       latRef.current = centerLat
       lngRef.current = centerLng
       void reverseGeocode(centerLat, centerLng)
@@ -75,7 +78,7 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
         void reverseGeocode(lat, lng)
       })
 
-      map.on('click', (e: import('leaflet').LeafletMouseEvent) => {
+      mapInstanceRef.current.on('click', (e: import('leaflet').LeafletMouseEvent) => {
         marker.setLatLng(e.latlng)
         latRef.current = e.latlng.lat
         lngRef.current = e.latlng.lng
@@ -93,7 +96,10 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
       void initMap(DEFAULT_LAT, DEFAULT_LNG)
     }
 
-    return () => { map?.remove() }
+    return () => {
+      mapInstanceRef.current?.remove()
+      mapInstanceRef.current = null
+    }
   }, [])
 
   return (

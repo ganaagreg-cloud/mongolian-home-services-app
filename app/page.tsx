@@ -39,8 +39,6 @@ type Screen =
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
   | 'admin' | 'admin-verify' | 'admin-disputes'
 
-type UserRole = 'user' | 'worker' | 'admin'
-
 type MeResponse = {
   success: boolean
   data?: {
@@ -55,7 +53,8 @@ export default function Home() {
   const [currentScreen,  setCurrentScreen]  = useState<Screen>('home')
   const [userName,       setUserName]       = useState('...')
   const [userPhone,      setUserPhone]      = useState('')
-  const [userRole,       setUserRole]       = useState<UserRole>('user')
+  const [isWorker,       setIsWorker]       = useState(false)
+  const [activeMode,     setActiveMode]     = useState<'user' | 'worker'>('user')
   const [hasActiveBooking, setHasActiveBooking] = useState(false)
   const [activeOrderId,  setActiveOrderId]  = useState<string | null>(null)
 
@@ -75,7 +74,8 @@ export default function Home() {
         if (data.success && data.data) {
           setUserName(data.data.username || data.data.name || 'Хэрэглэгч')
           setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
-          setUserRole(data.data.role as UserRole)
+          setIsWorker(data.data.isWorker)
+          setActiveMode(data.data.activeMode as 'user' | 'worker')
           if (data.data.role === 'admin') setCurrentScreen('admin')
           else if (data.data.isWorker && data.data.activeMode === 'worker') setCurrentScreen('worker-jobs')
           else setCurrentScreen('home')
@@ -86,6 +86,20 @@ export default function Home() {
 
   const handleLogout = async () => {
     await authClient.signOut()
+  }
+
+  const handleModeToggle = async (mode: 'user' | 'worker') => {
+    const res = await fetch('/api/me/mode', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    })
+    const data = await res.json() as { success: boolean }
+    if (data.success) {
+      setActiveMode(mode)
+      if (mode === 'worker') setCurrentScreen('worker-jobs')
+      else setCurrentScreen('home')
+    }
   }
 
   // User navigation
@@ -166,7 +180,7 @@ export default function Home() {
 
   const showWorkerBottomNav = (
     ['worker-jobs', 'worker-active', 'worker-earnings', 'worker-profile'].includes(currentScreen) ||
-    (currentScreen === 'chat' && userRole === 'worker')
+    (currentScreen === 'chat' && isWorker && activeMode === 'worker')
   )
 
   const getActiveUserTab = (): 'home' | 'orders' | 'chat' | 'profile' => {
@@ -213,6 +227,9 @@ export default function Home() {
           onCreateOrder={() => setCurrentScreen('create-order')}
           onActiveBookingClick={() => setCurrentScreen('active-booking')}
           hasActiveBooking={hasActiveBooking}
+          isWorker={isWorker}
+          activeMode={activeMode}
+          onModeToggle={handleModeToggle}
         />
       )}
       {currentScreen === 'create-order' && (
@@ -284,6 +301,7 @@ export default function Home() {
         <ProfileScreen
           userName={userName}
           phone={userPhone}
+          isWorker={isWorker}
           onMenuClick={handleProfileMenuClick}
           onBecomeWorker={handleBecomeWorker}
           onLogout={handleLogout}

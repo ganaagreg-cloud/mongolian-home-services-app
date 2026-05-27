@@ -12,7 +12,7 @@ export async function POST(
   if (!session) {
     return NextResponse.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, { status: 401 })
   }
-  if (session.role !== 'worker') {
+  if (!session.is_worker) {
     return NextResponse.json({ success: false, error: 'Зөвхөн ажилтан хүлээж авах боломжтой' }, { status: 403 })
   }
 

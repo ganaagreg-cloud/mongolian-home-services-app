@@ -9,7 +9,7 @@ export type ApiResponse<T = undefined> =
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'user' | 'worker' | 'admin'
+export type UserRole = 'user' | 'admin'
 
 export interface SessionPayload {
   sub: string   // userId (integer as string)

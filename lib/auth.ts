@@ -98,6 +98,9 @@ export const auth = betterAuth({
     facebook: {
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      mapProfileToUser: (profile) => ({
+        email: profile.email ?? `${profile.id}@facebook.placeholder.local`,
+      }),
     },
   },
   plugins: [nextCookies()],
@@ -112,14 +115,33 @@ export const auth = betterAuth({
     user: {
       create: {
         // After Better Auth creates its own user record, provision our users row.
-        after: async (baUser) => {
+        // If a users row already has the same email (e.g. seeded worker), link it
+        // instead of inserting a duplicate — prevents unique-email constraint errors.
+        after: async (baUser: { id: string; name?: string | null; email?: string | null }) => {
           await dbReady
-          await db.query(
-            `INSERT INTO users (better_auth_id, name, email)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (better_auth_id) DO NOTHING`,
-            [baUser.id, baUser.name ?? '', baUser.email ?? ''],
-          )
+          const email = baUser.email ?? ''
+          try {
+            // Link to an existing unlinked users row that shares the same email
+            if (email) {
+              const linked = await db.query(
+                `UPDATE users SET better_auth_id = $1
+                 WHERE email = $2 AND better_auth_id IS NULL
+                 RETURNING id`,
+                [baUser.id, email],
+              )
+              if ((linked.rowCount ?? 0) > 0) return
+            }
+            // New user — ON CONFLICT DO NOTHING handles all unique violations
+            // (partial index on better_auth_id requires omitting the conflict target)
+            await db.query(
+              `INSERT INTO users (better_auth_id, name, email)
+               VALUES ($1, $2, $3)
+               ON CONFLICT DO NOTHING`,
+              [baUser.id, baUser.name ?? '', email],
+            )
+          } catch (err) {
+            console.error('[auth hook] failed to provision users row:', err)
+          }
         },
       },
     },

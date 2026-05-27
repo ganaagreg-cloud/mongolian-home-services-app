@@ -38,6 +38,10 @@ export async function PATCH(
 
   if (action === 'approve') {
     await db.query('UPDATE workers SET is_active = true WHERE id = $1', [id])
+    await db.query(
+      'UPDATE users SET is_worker = true WHERE id = (SELECT user_id FROM workers WHERE id = $1)',
+      [id],
+    )
   }
 
   return NextResponse.json({ success: true, data: undefined })

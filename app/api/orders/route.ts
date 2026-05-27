@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
   await dbReady
   const params = req.nextUrl.searchParams
 
-  if (session.role === 'worker' && params.get('scheduled') === '1') {
+  if (session.is_worker && params.get('scheduled') === '1') {
     const workerRow = (await db.query(
       'SELECT id, specialty, is_available, is_active FROM workers WHERE user_id = $1',
       [session.sub],
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: rows.map(toOrder) })
   }
 
-  if (session.role === 'worker' && params.get('worker_active') === '1') {
+  if (session.is_worker && params.get('worker_active') === '1') {
     const workerRow = (await db.query(
       'SELECT id FROM workers WHERE user_id = $1',
       [session.sub],
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: row ? toOrder(row) : null })
   }
 
-  if (session.role === 'worker' && params.get('offered') === '1') {
+  if (session.is_worker && params.get('offered') === '1') {
     const workerRow = (await db.query(
       'SELECT id FROM workers WHERE user_id = $1',
       [session.sub],

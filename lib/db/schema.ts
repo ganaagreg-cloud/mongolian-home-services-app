@@ -1,6 +1,53 @@
 // PostgreSQL DDL — executed once on DB init via lib/db/index.ts
 // Order matters: referenced tables must be created before referencing tables.
 export const TABLES: string[] = [
+  // ── Better Auth tables (camelCase columns — do not rename) ──────────────────
+  `CREATE TABLE IF NOT EXISTS "user" (
+    id              TEXT NOT NULL PRIMARY KEY,
+    name            TEXT NOT NULL,
+    email           TEXT NOT NULL UNIQUE,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    image           TEXT,
+    "createdAt"     TIMESTAMP NOT NULL DEFAULT NOW(),
+    "updatedAt"     TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_worker       BOOLEAN NOT NULL DEFAULT false,
+    active_mode     TEXT NOT NULL DEFAULT 'user',
+    phone           TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS session (
+    id          TEXT NOT NULL PRIMARY KEY,
+    "expiresAt" TIMESTAMP NOT NULL,
+    token       TEXT NOT NULL UNIQUE,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "userId"    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS account (
+    id                       TEXT NOT NULL PRIMARY KEY,
+    "accountId"              TEXT NOT NULL,
+    "providerId"             TEXT NOT NULL,
+    "userId"                 TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    "accessToken"            TEXT,
+    "refreshToken"           TEXT,
+    "idToken"                TEXT,
+    "accessTokenExpiresAt"   TIMESTAMP,
+    "refreshTokenExpiresAt"  TIMESTAMP,
+    scope                    TEXT,
+    password                 TEXT,
+    "createdAt"              TIMESTAMP NOT NULL DEFAULT NOW(),
+    "updatedAt"              TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS verification (
+    id          TEXT NOT NULL PRIMARY KEY,
+    identifier  TEXT NOT NULL,
+    value       TEXT NOT NULL,
+    "expiresAt" TIMESTAMP NOT NULL,
+    "createdAt" TIMESTAMP DEFAULT NOW(),
+    "updatedAt" TIMESTAMP DEFAULT NOW()
+  )`,
+  // ── App tables ──────────────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS users (
     id               SERIAL PRIMARY KEY,
     phone            VARCHAR(20) UNIQUE NOT NULL,
@@ -186,4 +233,6 @@ export const TABLES: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_facebook_id    ON users(facebook_id)    WHERE facebook_id    IS NOT NULL`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS better_auth_id  TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_better_auth_id ON users(better_auth_id) WHERE better_auth_id IS NOT NULL`,
+  // Normalize: workers are now users with is_worker=true; role column only tracks 'user' | 'admin'
+  `UPDATE users SET role = 'user' WHERE role = 'worker'`,
 ]

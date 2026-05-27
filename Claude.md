@@ -30,44 +30,41 @@ docker compose logs web -f       # Stream Next.js logs
 ## Testing Workflows
 
 ### User Flow Testing
-- Login: phone input → OTP → role selection → home screen
-- Worker registration: DAN verification → police clearance upload → activation
+- Login: Google/Facebook OAuth button → Better Auth callback → home screen
+- Worker registration: profile → "Ажилтнаар бүртгүүлэх" → DAN + police clearance → admin approves → `is_worker=true`
+- Mode toggle: home screen segmented control (Хэрэглэгч / Ажилтан) — only visible when `is_worker=true`
 - Booking: search → worker card → date/time → payment → confirmation
 - Admin: pending verifications → approve/reject → dispute resolution
 
-### Form Validation Testing
-- Submit empty forms — verify all required-field errors appear
-- Submit invalid phone numbers — verify format error
-- Submit mismatched OTP — verify error state and retry logic
-
 ### Login Flow
 1. Open `http://localhost:3000`
-2. Enter a valid Mongolian phone number (8 digits, starts with 9x/8x)
-3. Verify OTP screen appears, enter 6-digit OTP
-4. Verify redirect to home screen with correct role
+2. Click "Google-ээр нэвтрэх" or "Facebook-ээр нэвтрэх"
+3. Complete OAuth flow — redirects back to app
+4. App calls `/api/auth/me` and routes: admin → admin screen, worker mode → worker-jobs, else → home
 
 ### API Integration Testing
-- Auth header: `Authorization: Bearer <token>`
-- Test: `curl -X POST http://localhost:3000/api/auth/send-otp -d '{"phone":"99001234"}'`
+- Session cookie set by Better Auth (`better-auth.session_token`)
 - Verify Zod validation rejects malformed input with 400
 - Verify unauthenticated requests to protected routes return 401
 
 ## Architecture
 
-Full-stack Next.js 16 App Router app. The UI layer is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is JWT-based (stateless cookies via `jose`).
+Full-stack Next.js 16 App Router app. The UI layer is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies).
 
 ### Navigation: State Machine, Not Next.js Routing
 
 The entire app lives in a single page (`app/page.tsx`). Navigation is driven by `currentScreen` state of type `Screen` (~20 string literals). Every transition is `setCurrentScreen(...)`. No `<Link>` or `router.push()` anywhere.
 
-`app/page.tsx` owns all shared state (`userRole`, `currentScreen`, `phone`, `selectedWorkerId`, `hasActiveBooking`) and passes callbacks down as props.
+`app/page.tsx` owns all shared state (`isWorker`, `activeMode`, `currentScreen`, `hasActiveBooking`) and passes callbacks down as props.
 
-### Three User Roles
+### Two Roles + Worker Mode
 
-`UserRole = 'user' | 'worker' | 'admin'`
+`UserRole = 'user' | 'admin'`
 
-- **user** — home, search, booking, active-booking, review, profile, orders, chat
-- **worker** — worker-register, worker-jobs, worker-active, worker-earnings, worker-profile
+Workers are **users** with `is_worker = true` in the DB. They switch modes via a segmented toggle (stored as `active_mode = 'user' | 'worker'`).
+
+- **user mode** — home, search, booking, active-booking, review, profile, orders, chat
+- **worker mode** (requires `is_worker=true`) — worker-jobs, worker-active, worker-earnings, worker-profile
 - **admin** — admin, admin-verify, admin-disputes
 
 ### Component Organization
@@ -84,7 +81,8 @@ hooks/
   use-mobile.ts     # 768px breakpoint detector
   use-toast.ts
 lib/
-  auth.ts           # requireAuth(), setSessionCookie(), JWT sign/verify via jose
+  auth.ts           # Better Auth instance + requireAuth() + legacy JWT helpers
+  auth-client.ts    # Better Auth client (authClient.useSession, signOut, signIn.social)
   types.ts          # shared TypeScript types (UserRole, Screen, OrderStatus, …)
   utils.ts          # cn() = clsx + tailwind-merge
 lib/db/
@@ -92,7 +90,11 @@ lib/db/
   schema.ts         # CREATE TABLE IF NOT EXISTS DDL (PostgreSQL)
   seed.ts           # dev seed data (workers, orders, banking info)
 app/api/
-  auth/             # send-otp, verify-otp, login, register, logout, me, dan, test-login
+  auth/[...all]/    # Better Auth catch-all (OAuth callbacks, session, signout)
+  auth/me/          # GET — current user profile
+  auth/dan/         # POST — DAN identity verification
+  me/               # GET/PATCH — profile update
+  me/mode/          # PATCH — toggle active_mode ('user'|'worker')
   orders/           # CRUD + match, accept, decline, upload, review, status
   workers/          # list, register, [id], me, me/availability, me/banking
   admin/            # stats, disputes, workers/pending, workers/[id]/verify
@@ -130,13 +132,16 @@ Docker Compose injects `DATABASE_URL` automatically for the `web` service. For l
 
 ```
 DATABASE_URL=postgresql://postgres:mongolia_secure_pass@localhost:5432/homeservices
+BETTER_AUTH_SECRET=<64-char hex>
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=<from Google Cloud Console>
+GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+FACEBOOK_CLIENT_ID=<from Meta for Developers>
+FACEBOOK_CLIENT_SECRET=<from Meta for Developers>
 DAN_CLIENT_ID=
 DAN_CLIENT_SECRET=
 QPAY_API_KEY=
-SOCIALPAY_API_KEY=
-GOOGLE_MAPS_API_KEY=
-FCM_SERVER_KEY=
-JWT_SECRET=        # falls back to a hardcoded dev secret if unset
+JWT_SECRET=        # legacy fallback — only used by remaining jose helpers
 ```
 
 ## Engineering Principles

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 interface ProfileScreenProps {
   userName: string
   phone: string
+  isWorker?: boolean
   onMenuClick: (menu: string) => void
   onBecomeWorker: () => void
   onLogout: () => void
@@ -24,6 +25,7 @@ const menuItems = [
 export function ProfileScreen({
   userName,
   phone,
+  isWorker = false,
   onMenuClick,
   onBecomeWorker,
   onLogout,
@@ -75,17 +77,19 @@ export function ProfileScreen({
         })}
       </div>
 
-      {/* Become Worker Button */}
-      <div className="mt-6 mx-6">
-        <Button
-          onClick={onBecomeWorker}
-          variant="outline"
-          className="h-14 w-full rounded-2xl border-accent text-accent font-semibold shadow-sm hover:bg-accent/10"
-        >
-          <Briefcase className="mr-2 h-5 w-5" />
-          Ажилтнаар бүртгүүлэх
-        </Button>
-      </div>
+      {/* Become Worker Button — hidden once already a worker */}
+      {!isWorker && (
+        <div className="mt-6 mx-6">
+          <Button
+            onClick={onBecomeWorker}
+            variant="outline"
+            className="h-14 w-full rounded-2xl border-accent text-accent font-semibold shadow-sm hover:bg-accent/10"
+          >
+            <Briefcase className="mr-2 h-5 w-5" />
+            Ажилтнаар бүртгүүлэх
+          </Button>
+        </div>
+      )}
 
       {/* Logout Button */}
       <div className="mt-4 mx-6">
