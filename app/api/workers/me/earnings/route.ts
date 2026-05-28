@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     ),
   ])
 
-  const transactions: Transaction[] = txRows.rows.map((r) => ({
+  const transactions: Transaction[] = txRows.rows.map((r: TxRow) => ({
     id:        String(r.id),
     workerId:  String(r.worker_id),
     amount:    r.amount,
