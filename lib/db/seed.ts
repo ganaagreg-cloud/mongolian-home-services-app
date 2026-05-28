@@ -70,6 +70,17 @@ async function withTransaction(client: PoolClient, fn: () => Promise<void>): Pro
 export async function seed(pool: Pool): Promise<void> {
   const client = await pool.connect()
   try {
+    // Always ensure seeded worker users exist with their explicit IDs.
+    // Must run BEFORE admin insert so admin does not claim id=1 via auto-increment.
+    for (const u of SEED_USERS) {
+      await client.query(
+        `INSERT INTO users (id, phone, name, role, dan_verified)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO NOTHING`,
+        [u.id, u.phone, u.name, u.role, u.danVerified],
+      )
+    }
+
     // Always ensure test accounts exist
     for (const u of TEST_USERS) {
       await client.query(
@@ -118,14 +129,6 @@ export async function seed(pool: Pool): Promise<void> {
     const { rows: [{ n: workerCount }] } = await client.query('SELECT COUNT(*) as n FROM workers')
     if (Number(workerCount) === 0) {
       await withTransaction(client, async () => {
-        for (const u of SEED_USERS) {
-          await client.query(
-            `INSERT INTO users (id, phone, name, role, dan_verified)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (id) DO NOTHING`,
-            [u.id, u.phone, u.name, u.role, u.danVerified],
-          )
-        }
         for (const w of SEED_WORKERS) {
           await client.query(
             `INSERT INTO workers (id, user_id, specialty, price_per_hour, rating, review_count, is_available, is_active)
@@ -181,6 +184,31 @@ export async function seed(pool: Pool): Promise<void> {
       })
       console.log(`[seed] Inserted ${SEED_ORDERS.length} orders`)
     }
+
+    // Always-run patches: keep Admin out of the worker match pool, and
+    // ensure any loginable test worker (work1, user phone 99999999) is eligible.
+    await client.query(
+      `UPDATE workers SET is_active = false, is_available = false
+       WHERE user_id = (SELECT id FROM users WHERE phone = '95342321' LIMIT 1)`,
+    )
+    await client.query(
+      `UPDATE workers SET rating = 4.5, review_count = 10
+       WHERE user_id = (SELECT id FROM users WHERE phone = '99999999' LIMIT 1)
+         AND rating < 4.0`,
+    )
+    await client.query(
+      `INSERT INTO banking_info (worker_id, bank_name, account_number, account_holder_name, iban, account_type, verified)
+       SELECT w.id, 'Хаан банк', '5009001122', u.name, 'MN12KHAN0000005009001122', 'checking', true
+       FROM   workers w JOIN users u ON u.id = w.user_id
+       WHERE  u.phone = '99999999'
+         AND  NOT EXISTS (SELECT 1 FROM banking_info bi WHERE bi.worker_id = w.id)`,
+    )
+    await client.query(
+      `UPDATE banking_info SET verified = true
+       WHERE worker_id = (
+         SELECT w.id FROM workers w JOIN users u ON u.id = w.user_id WHERE u.phone = '99999999' LIMIT 1
+       ) AND verified = false`,
+    )
   } finally {
     client.release()
   }
