@@ -46,7 +46,7 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 lg:ml-64">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
           <Star className="h-10 w-10 fill-success text-success" />
         </div>
@@ -76,9 +76,9 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background px-6 pb-32 lg:ml-64">
+    <div className="flex min-h-screen flex-col bg-background px-6 pb-32">
       {/* Header */}
-      <div className="pt-12 lg:pt-8 text-center">
+      <div className="pt-12 text-center">
         <h1 className="text-2xl font-bold text-foreground">Ажил дууслаа!</h1>
         <p className="mt-2 text-muted-foreground">Ажилтны ажлыг үнэлнэ үү</p>
       </div>
@@ -147,7 +147,7 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
       </div>
 
       {/* Submit Button */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-6">
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
         {submitError && (
           <p className="mb-3 rounded-2xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
             {submitError}

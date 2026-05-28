@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Phone, Lock, Eye, EyeOff, Smartphone, Home, CheckCircle } from 'lucide-react'
+import { Phone, Lock, Eye, EyeOff, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
-
-const TRUST_BADGES = ['ДАН баталгаажсан', 'Найдвартай үйлчилгээ', 'Хурдан захиалга'] as const
 
 interface OAuthOnboardingScreenProps {
   onComplete: () => void
@@ -54,115 +52,93 @@ export function OAuthOnboardingScreen({ onComplete }: OAuthOnboardingScreenProps
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-      {/* Left branding panel — desktop only */}
-      <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-primary px-12 gap-8">
-        <div className="flex flex-col items-center">
-          <Home className="h-16 w-16 text-primary-foreground" />
-          <h1 className="mt-4 text-3xl font-bold text-primary-foreground">HomeService</h1>
-          <p className="mt-2 text-primary-foreground/80">Гэрийн Үйлчилгээ</p>
+    <div className="flex min-h-screen flex-col bg-background px-6 pb-32">
+      {/* Header */}
+      <div className="flex flex-col items-center pt-16">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <Smartphone className="h-10 w-10 text-primary" />
         </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          {TRUST_BADGES.map((badge) => (
-            <div key={badge} className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
-              <CheckCircle className="h-5 w-5 shrink-0 text-primary-foreground" />
-              <span className="text-sm font-medium text-primary-foreground">{badge}</span>
-            </div>
-          ))}
-        </div>
+        <h1 className="mt-4 text-2xl font-bold text-foreground">Утасны дугаар</h1>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          Захиалга хийхэд утасны дугаар шаардлагатай.{'\n'}Нэг удаа оруулахад болно.
+        </p>
       </div>
 
-      {/* Right: form — unchanged on mobile, centered on desktop */}
-      <div className="flex flex-col flex-1 px-6 pb-32 lg:w-1/2 lg:flex-none lg:items-center lg:justify-center lg:px-12 lg:pb-0">
-        <div className="w-full lg:max-w-sm">
-          {/* Header */}
-          <div className="flex flex-col items-center pt-16 lg:pt-0">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <Smartphone className="h-10 w-10 text-primary" />
+      <div className="mt-10 space-y-4">
+        {/* Phone */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
+          <div className="flex gap-2">
+            <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-sm">
+              <span className="text-sm font-medium text-foreground">+976</span>
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-foreground">Утасны дугаар</h1>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              Захиалга хийхэд утасны дугаар шаардлагатай.{'\n'}Нэг удаа оруулахад болно.
-            </p>
-          </div>
-
-          <div className="mt-10 space-y-4">
-            {/* Phone */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
-              <div className="flex gap-2">
-                <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-sm">
-                  <span className="text-sm font-medium text-foreground">+976</span>
-                </div>
-                <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    inputMode="numeric"
-                    placeholder="99001234"
-                    value={phone}
-                    onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-                    className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
-                  />
-                </div>
-              </div>
+            <div className="relative flex-1">
+              <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                inputMode="numeric"
+                placeholder="99001234"
+                value={phone}
+                onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
+                className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+              />
             </div>
-
-            {/* Optional password toggle */}
-            <button
-              onClick={() => { setAddPassword((v) => !v); setPassword('') }}
-              className="flex w-full items-center justify-between rounded-2xl bg-card p-4 shadow-sm active:scale-95 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                  <Lock className="h-5 w-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-foreground">Нууц үг тохируулах</p>
-                  <p className="text-xs text-muted-foreground">Утасны дугаараар нэвтрэх боломжтой болно</p>
-                </div>
-              </div>
-              <div className={`h-6 w-11 rounded-full transition-colors ${addPassword ? 'bg-primary' : 'bg-muted'}`}>
-                <div className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${addPassword ? 'translate-x-5.5 ml-0.5' : 'ml-0.5'}`} />
-              </div>
-            </button>
-
-            {addPassword && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Нууц үг (хамгийн багадаа 8 тэмдэгт)</p>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type={showPw ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => { setError(''); setPassword(e.target.value) }}
-                    className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
-                  >
-                    {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-
-          {/* CTA — fixed on mobile, static on desktop */}
-          <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-6">
-            <Button
-              onClick={() => { void handleSubmit() }}
-              disabled={!canSubmit}
-              className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {loading ? 'Хадгалж байна...' : 'Үргэлжлүүлэх'}
-            </Button>
           </div>
         </div>
+
+        {/* Optional password toggle */}
+        <button
+          onClick={() => { setAddPassword((v) => !v); setPassword('') }}
+          className="flex w-full items-center justify-between rounded-2xl bg-card p-4 shadow-sm active:scale-95 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Lock className="h-5 w-5 text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-foreground">Нууц үг тохируулах</p>
+              <p className="text-xs text-muted-foreground">Утасны дугаараар нэвтрэх боломжтой болно</p>
+            </div>
+          </div>
+          <div className={`h-6 w-11 rounded-full transition-colors ${addPassword ? 'bg-primary' : 'bg-muted'}`}>
+            <div className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${addPassword ? 'translate-x-5.5 ml-0.5' : 'ml-0.5'}`} />
+          </div>
+        </button>
+
+        {addPassword && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Нууц үг (хамгийн багадаа 8 тэмдэгт)</p>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type={showPw ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => { setError(''); setPassword(e.target.value) }}
+                className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              >
+                {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+
+      {/* Fixed CTA */}
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+        <Button
+          onClick={() => { void handleSubmit() }}
+          disabled={!canSubmit}
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+        >
+          {loading ? 'Хадгалж байна...' : 'Үргэлжлүүлэх'}
+        </Button>
       </div>
     </div>
   )

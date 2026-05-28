@@ -31,7 +31,6 @@ import { AdminDisputesScreen } from '@/components/screens/admin-disputes-screen'
 import { AdminBankingScreen } from '@/components/screens/admin-banking-screen'
 import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
-import { SidebarNav } from '@/components/sidebar-nav'
 import type { MatchedWorker, OrderAcceptance, MatchingStrategy } from '@/lib/types'
 
 type Screen =
@@ -216,7 +215,7 @@ export default function Home() {
 
   if (isPending) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="mx-auto max-w-[390px] flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Нэвтрэлт шалгаж байна...</p>
@@ -228,7 +227,7 @@ export default function Home() {
   // State 1: unauthenticated
   if (!sessionData) {
     return (
-      <main>
+      <main className="mx-auto max-w-[390px]">
         {preAuthScreen === 'register' ? (
           <RegisterScreen onGoLogin={() => setPreAuthScreen('login')} />
         ) : (
@@ -255,7 +254,7 @@ export default function Home() {
         .catch(() => {})
     }
     return (
-      <main>
+      <main className="mx-auto max-w-[390px]">
         <OAuthOnboardingScreen onComplete={handleOAuthComplete} />
       </main>
     )
@@ -263,7 +262,7 @@ export default function Home() {
 
   // State 3: authenticated with phone — full app
   return (
-    <main className="min-h-screen bg-background">
+    <main className="mx-auto max-w-[390px] min-h-screen bg-background">
       {/* ── User Screens ───────────────────────────────── */}
       {currentScreen === 'home' && (
         <HomeScreen
@@ -414,7 +413,7 @@ export default function Home() {
         />
       )}
       {currentScreen === 'worker-earnings' && (
-        <WorkerEarningsScreen onManageBank={() => setCurrentScreen('worker-profile')} />
+        <WorkerEarningsScreen onConnectBank={() => {}} />
       )}
       {currentScreen === 'worker-profile' && (
         <WorkerProfileScreen
@@ -447,10 +446,7 @@ export default function Home() {
         <AdminBankingScreen onBack={() => setCurrentScreen('admin')} />
       )}
 
-      {/* ── Bottom / Sidebar Navigation ───────────────── */}
-      {showUserBottomNav && (
-        <SidebarNav active={getActiveUserTab()} onNavigate={handleBottomNav} />
-      )}
+      {/* ── Bottom Navigation ──────────────────────────── */}
       {showUserBottomNav && (
         <BottomNav active={getActiveUserTab()} onNavigate={handleBottomNav} />
       )}

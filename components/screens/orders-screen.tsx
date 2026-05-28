@@ -198,9 +198,9 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24 lg:ml-64">
+    <div className="flex min-h-screen flex-col bg-background pb-24">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
+      <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"

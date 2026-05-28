@@ -151,10 +151,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
   const showTimeError     = step2Submitted && matchingStrategy === 'scheduled' && !selectedTime
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32 lg:ml-64">
+    <div className="flex min-h-screen flex-col bg-background pb-32">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
+      <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={step === 1 ? onBack : () => setStep((s) => s - 1)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
@@ -677,7 +677,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       )}
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-0 lg:pt-6">
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
         {step < 5 ? (
           <Button
             onClick={handleNext}

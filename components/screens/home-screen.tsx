@@ -41,9 +41,9 @@ export function HomeScreen({
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24 lg:ml-64">
+    <div className="flex min-h-screen flex-col bg-background pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-12 lg:pt-8">
+      <div className="flex items-center justify-between px-6 pt-12">
         <div>
           <h1 className="text-xl font-bold text-foreground">
             Сайн байна уу, {userName} 👋
