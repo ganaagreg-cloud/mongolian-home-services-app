@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import Script from 'next/script'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -10,6 +11,12 @@ export const metadata: Metadata = {
   title: 'HomeService - Гэрийн үйлчилгээний платформ',
   description: 'Монголын гэрийн үйлчилгээний платформ - аюулгүй, хурдан, найдвартай',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'HomeService',
+  },
   icons: {
     icon: [
       {
@@ -29,6 +36,10 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#1E40AF',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +50,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <Script id="sw-register" strategy="afterInteractive">
+          {`if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`}
+        </Script>
       </body>
     </html>
   )

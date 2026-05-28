@@ -413,7 +413,7 @@ export default function Home() {
         />
       )}
       {currentScreen === 'worker-earnings' && (
-        <WorkerEarningsScreen onConnectBank={() => {}} />
+        <WorkerEarningsScreen onManageBank={() => {}} />
       )}
       {currentScreen === 'worker-profile' && (
         <WorkerProfileScreen
