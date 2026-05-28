@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
            b.bank_name, b.account_number, b.account_holder_name,
            b.iban, b.account_type, b.updated_at
     FROM   banking_info b
-    JOIN   workers w ON w.id = b.worker_id AND w.deleted_at IS NULL
-    JOIN   users   u ON u.id = w.user_id   AND u.deleted_at IS NULL
+    JOIN   workers w ON w.id = b.worker_id AND w.rejected_at IS NULL
+    JOIN   users   u ON u.id = w.user_id  
     WHERE  b.verified = false
     ORDER  BY b.updated_at ASC
   `)).rows as Row[]

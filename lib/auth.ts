@@ -159,7 +159,7 @@ export async function requireAuth(req: NextRequest): Promise<SessionPayload | nu
   await dbReady
   const { rows } = await db.query(
     `SELECT id, role, phone, is_worker, active_mode
-     FROM users WHERE better_auth_id = $1 AND deleted_at IS NULL`,
+     FROM users WHERE better_auth_id = $1`,
     [session.user.id],
   )
   const user = rows[0] as {

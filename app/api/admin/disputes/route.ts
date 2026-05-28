@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
            o.service, o.total_amount
     FROM   disputes d
     JOIN   orders  o  ON o.id  = d.order_id
-    JOIN   users   u1 ON u1.id = o.user_id   AND u1.deleted_at IS NULL
-    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.deleted_at IS NULL
-    LEFT JOIN users   u2 ON u2.id = w.user_id   AND u2.deleted_at IS NULL
+    JOIN   users   u1 ON u1.id = o.user_id  
+    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
+    LEFT JOIN users   u2 ON u2.id = w.user_id  
     ORDER  BY d.created_at DESC
   `)).rows as Row[]
 

@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   }
 
   await dbReady
-  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL', [session.sub])).rows[0] as { id: string } | undefined
+  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1 AND rejected_at IS NULL', [session.sub])).rows[0] as { id: string } | undefined
   if (!workerRow) return NextResponse.json({ success: true, data: null })
 
   const row = (await db.query('SELECT * FROM banking_info WHERE worker_id = $1', [workerRow.id])).rows[0] as BankingRow | undefined
@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest) {
   }
 
   await dbReady
-  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL', [session.sub])).rows[0] as { id: string } | undefined
+  const workerRow = (await db.query('SELECT id FROM workers WHERE user_id = $1 AND rejected_at IS NULL', [session.sub])).rows[0] as { id: string } | undefined
   if (!workerRow) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }

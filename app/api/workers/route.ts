@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const sort      = sp.get('sort') ?? 'rating'
   const skipAvailabilityFilter = sp.get('available') === '0'
 
-  const conditions: string[] = ['w.is_active = true', 'w.deleted_at IS NULL', 'u.deleted_at IS NULL']
+  const conditions: string[] = ['w.is_active = true', 'w.rejected_at IS NULL']
   const qParams: unknown[]   = []
   let pIdx = 1
 

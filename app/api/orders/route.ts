@@ -51,8 +51,8 @@ const SELECT_COLS = `
   o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at`
 
 const JOIN_WORKER = `
-  LEFT JOIN workers w ON w.id = o.worker_id AND w.deleted_at IS NULL
-  LEFT JOIN users   u ON u.id = w.user_id   AND u.deleted_at IS NULL`
+  LEFT JOIN workers w ON w.id = o.worker_id AND w.rejected_at IS NULL
+  LEFT JOIN users   u ON u.id = w.user_id  `
 
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
   if (session.is_worker && params.get('scheduled') === '1') {
     const workerRow = (await db.query(
-      'SELECT id, specialty, is_available, is_active FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
+      'SELECT id, specialty, is_available, is_active FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
       [session.sub],
     )).rows[0] as { id: string; specialty: string | null; is_available: boolean; is_active: boolean } | undefined
 
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
 
   if (session.is_worker && params.get('worker_active') === '1') {
     const workerRow = (await db.query(
-      'SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
+      'SELECT id FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
       [session.sub],
     )).rows[0] as { id: string } | undefined
     if (!workerRow) return NextResponse.json({ success: true, data: null })
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
 
   if (session.is_worker && params.get('offered') === '1') {
     const workerRow = (await db.query(
-      'SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
+      'SELECT id FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
       [session.sub],
     )).rows[0] as { id: string } | undefined
     if (!workerRow) return NextResponse.json({ success: true, data: [] })

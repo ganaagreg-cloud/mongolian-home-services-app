@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
   if (session) {
     const user = (await db.query(
-      'SELECT id, name FROM users WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT id, name FROM users WHERE id = $1',
       [session.sub],
     )).rows[0] as { id: string; name: string } | undefined
 
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   const registernumber = result.registernumber ?? ''
 
   let user = (await db.query(
-    'SELECT id, phone, role FROM users WHERE phone = $1 AND deleted_at IS NULL',
+    'SELECT id, phone, role FROM users WHERE phone = $1',
     [phone],
   )).rows[0] as { id: string; phone: string; role: string } | undefined
 

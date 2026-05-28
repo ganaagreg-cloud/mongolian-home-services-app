@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
            w.rating, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   saved_workers sw
-    JOIN   workers w ON w.id = sw.worker_id AND w.deleted_at IS NULL
-    JOIN   users   u ON u.id = w.user_id   AND u.deleted_at IS NULL
+    JOIN   workers w ON w.id = sw.worker_id AND w.rejected_at IS NULL
+    JOIN   users   u ON u.id = w.user_id  
     WHERE  sw.user_id = $1
     ORDER  BY sw.created_at DESC
   `, [session.sub])).rows as WorkerRow[]
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   await dbReady
 
-  const worker = (await db.query('SELECT id FROM workers WHERE id = $1 AND deleted_at IS NULL', [parsed.data.worker_id])).rows[0]
+  const worker = (await db.query('SELECT id FROM workers WHERE id = $1 AND rejected_at IS NULL', [parsed.data.worker_id])).rows[0]
   if (!worker) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
