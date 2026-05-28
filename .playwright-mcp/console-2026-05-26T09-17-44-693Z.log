@@ -1,0 +1,5 @@
+[     166ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[     179ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login:0
+[     184ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[    9947ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[    9963ms] [LOG] [Fast Refresh] done in 117ms @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477

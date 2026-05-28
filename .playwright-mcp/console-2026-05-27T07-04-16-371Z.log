@@ -1,0 +1,2 @@
+[      86ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ chrome-error://chromewebdata/:0
+[   15721ms] [ERROR] Fetch API cannot load chrome-error://chromewebdata/api/auth/sign-out. URL scheme "chrome-error" is not supported. @ :0

@@ -1,0 +1,30 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - button "User" [ref=e4]
+      - button "Worker" [ref=e5]
+      - button "Admin" [ref=e6]
+    - generic [ref=e1023]:
+      - generic [ref=e1024]:
+        - button [ref=e1025]:
+          - img [ref=e1026]
+        - heading "Хадгалсан ажилтнууд" [level=1] [ref=e1028]
+      - generic [ref=e1031]:
+        - generic [ref=e1033]: Б
+        - generic [ref=e1034]:
+          - generic [ref=e1035]:
+            - generic [ref=e1036]:
+              - paragraph [ref=e1037]: Батболд Дорж
+              - generic [ref=e1038]: ДАН
+            - button [ref=e1039]:
+              - img [ref=e1040]
+          - paragraph [ref=e1042]: Цэвэрлэгээ
+          - generic [ref=e1043]:
+            - generic [ref=e1044]:
+              - img [ref=e1045]
+              - generic [ref=e1047]: "4.9"
+              - generic [ref=e1048]: (124)
+            - generic [ref=e1049]: ₮25,000/цаг
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert [ref=e110]

@@ -34,3 +34,12 @@
 - Never hard-delete users or workers (soft delete via deleted_at)
 - Money = integers in MNT, never floats
 - Parameterized queries only — never string concatenation
+## Self-matching prevention
+- Matching algorithm always excludes workers.user_id = orders.user_id
+- /api/orders/:id/accept returns 403 if worker is the order creator
+- Never remove this check — it prevents escrow fraud
+## Worker availability vs activation
+- is_active = admin approved this worker (only admin can set)
+- is_available = worker is open to new jobs (worker sets this)
+- Matching algorithm requires BOTH: is_active=true AND is_available=true
+- Never let workers set their own is_active

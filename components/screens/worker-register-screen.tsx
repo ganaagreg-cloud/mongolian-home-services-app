@@ -10,6 +10,16 @@ interface WorkerRegisterScreenProps {
   onComplete: () => void
 }
 
+const SPECIALTIES = [
+  { value: 'цэвэрлэгээ',    label: 'Цэвэрлэгээ' },
+  { value: 'угаалга',       label: 'Угаалга' },
+  { value: 'ерөнхий засвар', label: 'Ерөнхий засвар' },
+  { value: 'сантехник',     label: 'Сантехник' },
+  { value: 'цахилгаан',     label: 'Цахилгаан' },
+  { value: 'будаг',         label: 'Будаг' },
+  { value: 'цонх/хаалга',   label: 'Цонх / Хаалга' },
+] as const
+
 const BANKS = [
   'Хаан Банк',
   'Голомт',
@@ -21,20 +31,9 @@ const BANKS = [
   'Чингис Хаан Банк',
 ]
 
-const SPECIALTIES = [
-  { value: 'цэвэрлэгээ',   label: 'Цэвэрлэгээ' },
-  { value: 'угаалга',      label: 'Угаалга' },
-  { value: 'сантехник',    label: 'Сантехник' },
-  { value: 'цахилгаанчин', label: 'Цахилгаанчин' },
-  { value: 'будагч',       label: 'Будагч' },
-  { value: 'тавилгачин',   label: 'Тавилгачин' },
-  { value: 'гагнуурчин',   label: 'Гагнуурчин' },
-  { value: 'нүүлгэлт',     label: 'Нүүлгэлт' },
-] as const
-
 const IBAN_RE = /^MN\d{2}[A-Z0-9]{18}$/
 
-function bankFieldError(field: string, value: string): string {
+function fieldError(field: string, value: string): string {
   switch (field) {
     case 'bankName':
       return !value ? 'Банкны нэрийг сонгоно уу' : ''
@@ -59,7 +58,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   const [policeFile, setPoliceFile] = useState<string | null>(null)
   const [imei, setImei] = useState('')
 
-  // Step 4 — service info
+  // Step 4 — specialty + price
   const [specialty, setSpecialty] = useState('')
   const [pricePerHour, setPricePerHour] = useState('')
 
@@ -79,8 +78,9 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
   const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }))
 
-  const priceNum = parseInt(pricePerHour.replace(/\D/g, ''), 10)
-  const serviceValid = !!specialty && !isNaN(priceNum) && priceNum >= 1000
+  const priceNum = parseInt(pricePerHour, 10)
+  const specialtyValid = !!specialty
+  const priceValid = !isNaN(priceNum) && priceNum >= 1000 && priceNum <= 500000
 
   const bankValid =
     !!bankName &&
@@ -92,7 +92,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
     if (currentStep === 1) return danConnected
     if (currentStep === 2) return policeFile !== null
     if (currentStep === 3) return imei.length >= 15
-    if (currentStep === 4) return serviceValid
+    if (currentStep === 4) return specialtyValid && priceValid
     if (currentStep === 5) return bankValid
     return false
   }
@@ -105,10 +105,10 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          specialty,
-          pricePerHour: priceNum,
           imei,
           policeFile: policeFile ?? 'police_clearance.pdf',
+          specialty,
+          pricePerHour: priceNum,
           bankName,
           accountNumber,
           accountHolderName,
@@ -279,7 +279,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
             ) : (
               <button
                 onClick={() => setPoliceFile('police_clearance.pdf')}
-                className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border py-8 transition-colors hover:border-primary hover:bg-primary/5 active:scale-95"
+                className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border py-8 transition-colors hover:border-primary hover:bg-primary/5"
               >
                 <Upload className="h-10 w-10 text-muted-foreground" />
                 <span className="mt-2 font-medium text-muted-foreground">Файл оруулах</span>
@@ -309,16 +309,16 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
           </div>
         )}
 
-        {/* Step 4 — Service info */}
+        {/* Step 4 — Specialty + price */}
         {currentStep === 4 && (
           <div className="space-y-4">
             <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
                 <Briefcase className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="mt-4 text-lg font-bold text-foreground">Үйлчилгээний мэдээлэл</h2>
+              <h2 className="mt-4 text-lg font-bold text-foreground">Мэргэжил ба үнэ</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Та ямар үйлчилгээ үзүүлэх, цагийн хөлс хэд байхаа тохируулна уу
+                Таны үзүүлэх үйлчилгээ болон цагийн үнийг оруулна уу
               </p>
             </div>
 
@@ -343,20 +343,22 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
               {/* Price per hour */}
               <div>
-                <p className="mb-2 text-sm font-medium text-foreground">Цагийн хөлс (₮)</p>
+                <p className="mb-2 text-sm font-medium text-foreground">Цагийн үнэ (₮)</p>
                 <Input
-                  placeholder="Жишээ: 25000"
+                  placeholder="15000"
                   inputMode="numeric"
                   value={pricePerHour}
                   onChange={(e) => setPricePerHour(e.target.value.replace(/\D/g, ''))}
                   className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
                 />
-                {pricePerHour && (!isNaN(priceNum) && priceNum < 1000) && (
-                  <p className="mt-1 text-xs text-destructive">Хамгийн багадаа ₮1,000 байх ёстой</p>
+                {pricePerHour && !priceValid && (
+                  <p className="mt-1 text-xs text-destructive">
+                    Үнэ ₮1,000–₮500,000 хооронд байх ёстой
+                  </p>
                 )}
-                {pricePerHour && !isNaN(priceNum) && priceNum >= 1000 && (
+                {pricePerHour && priceValid && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Та цагт ₮{priceNum.toLocaleString()} авна (платформ 17% авна)
+                    Цагт ₮{parseInt(pricePerHour, 10).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -367,6 +369,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         {/* Step 5 — Banking info */}
         {currentStep === 5 && (
           <div className="space-y-4">
+            {/* Icon + title */}
             <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
                 <CreditCard className="h-8 w-8 text-primary" />
@@ -377,6 +380,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               </p>
             </div>
 
+            {/* Warning */}
             <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <p className="text-xs text-destructive">
@@ -402,8 +406,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
-                {touched.bankName && bankFieldError('bankName', bankName) && (
-                  <p className="mt-1 text-xs text-destructive">{bankFieldError('bankName', bankName)}</p>
+                {touched.bankName && fieldError('bankName', bankName) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('bankName', bankName)}</p>
                 )}
               </div>
 
@@ -418,8 +422,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   onBlur={() => touch('accountNumber')}
                   className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
                 />
-                {touched.accountNumber && bankFieldError('accountNumber', accountNumber) && (
-                  <p className="mt-1 text-xs text-destructive">{bankFieldError('accountNumber', accountNumber)}</p>
+                {touched.accountNumber && fieldError('accountNumber', accountNumber) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('accountNumber', accountNumber)}</p>
                 )}
               </div>
 
@@ -433,8 +437,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   onBlur={() => touch('accountHolderName')}
                   className="h-12 rounded-2xl border-border bg-background shadow-sm"
                 />
-                {touched.accountHolderName && bankFieldError('accountHolderName', accountHolderName) && (
-                  <p className="mt-1 text-xs text-destructive">{bankFieldError('accountHolderName', accountHolderName)}</p>
+                {touched.accountHolderName && fieldError('accountHolderName', accountHolderName) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('accountHolderName', accountHolderName)}</p>
                 )}
               </div>
 
@@ -452,8 +456,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-sm"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">{iban.length}/22 тэмдэгт</p>
-                {touched.iban && bankFieldError('iban', iban) && (
-                  <p className="mt-1 text-xs text-destructive">{bankFieldError('iban', iban)}</p>
+                {touched.iban && fieldError('iban', iban) && (
+                  <p className="mt-1 text-xs text-destructive">{fieldError('iban', iban)}</p>
                 )}
               </div>
 

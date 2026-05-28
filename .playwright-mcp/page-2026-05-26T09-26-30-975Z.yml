@@ -1,0 +1,64 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - button "User" [ref=e4]
+      - button "Worker" [ref=e5]
+      - button "Admin" [ref=e6]
+    - generic [ref=e422]:
+      - heading "Профайл" [level=1] [ref=e424]
+      - generic [ref=e425]:
+        - generic [ref=e427]: T
+        - generic [ref=e428]:
+          - paragraph [ref=e429]: Test User
+          - paragraph [ref=e430]: +976 99000001
+          - generic [ref=e431]:
+            - img [ref=e432]
+            - generic [ref=e435]: ДАН баталгаажсан
+      - generic [ref=e436]:
+        - button "Хувийн мэдээлэл" [ref=e437]:
+          - img [ref=e439]
+          - generic [ref=e443]: Хувийн мэдээлэл
+          - img [ref=e444]
+        - button "Захиалгын түүх" [ref=e446]:
+          - img [ref=e448]
+          - generic [ref=e452]: Захиалгын түүх
+          - img [ref=e453]
+        - button "Хадгалсан ажилтнууд" [ref=e455]:
+          - img [ref=e457]
+          - generic [ref=e459]: Хадгалсан ажилтнууд
+          - img [ref=e460]
+        - button "Мэдэгдэл" [ref=e462]:
+          - img [ref=e464]
+          - generic [ref=e467]: Мэдэгдэл
+          - img [ref=e468]
+        - button "Тусламж" [ref=e470]:
+          - img [ref=e472]
+          - generic [ref=e475]: Тусламж
+          - img [ref=e476]
+        - button "Нууцлал" [ref=e478]:
+          - img [ref=e480]
+          - generic [ref=e482]: Нууцлал
+          - img [ref=e483]
+      - button "Ажилтнаар бүртгүүлэх" [ref=e486]:
+        - img
+        - text: Ажилтнаар бүртгүүлэх
+      - button "Гарах" [ref=e488]:
+        - img
+        - text: Гарах
+    - navigation [ref=e489]:
+      - generic [ref=e490]:
+        - button "Нүүр" [ref=e491]:
+          - img [ref=e492]
+          - generic [ref=e495]: Нүүр
+        - button "Захиалга" [ref=e496]:
+          - img [ref=e497]
+          - generic [ref=e500]: Захиалга
+        - button "Чат" [ref=e501]:
+          - img [ref=e502]
+          - generic [ref=e504]: Чат
+        - button "Профайл" [ref=e505]:
+          - img [ref=e506]
+          - generic [ref=e509]: Профайл
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert [ref=e110]

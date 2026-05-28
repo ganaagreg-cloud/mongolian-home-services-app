@@ -27,6 +27,45 @@ docker compose logs web -f       # Stream Next.js logs
 | Context7 | Up-to-date library docs (Next.js, Tailwind, shadcn, Zod) |
 | GitHub | PR/issue management, repo operations |
 
+## Architecture Decisions — Read First
+
+Before ANY change to auth, routing, or middleware:
+→ Read `.claude/decisions/auth.md`
+
+Before ANY change to app/page.tsx, API routes, or DB:
+→ Read `.claude/decisions/architecture.md`
+
+Violations are caught by hooks and will block execution.
+
+## Skills — Read Before Acting
+
+| Task | Read first |
+|------|-----------|
+| Any UI / component work | `.claude/skills/production-ui-design/` |
+| Any API route | `.claude/skills/api-route-pattern/` |
+| Any DB query or migration | `.claude/skills/postgres-conventions/` |
+| Auth, tokens, logging | `.claude/skills/security-redaction/` |
+| Mongolian strings / i18n | `.claude/skills/mongolian-i18n/` |
+| SOS or any < 2s endpoint | `.claude/skills/sos-performance/` |
+| Screen transitions / nav | `.claude/skills/state-machine-navigation/` |
+
+## Agent Workflow
+
+After completing any implementation:
+1. Use `code-reviewer` agent to review changed files
+2. Use `ui-ux-tester` agent to verify affected screens at localhost:3000
+3. Fix critical issues before considering done
+
+## Hooks — Enforced Automatically
+
+| Hook | Catches |
+|------|---------|
+| `api-security-lint.sh` | Missing requireAuth, exposed errors, worker phone leak |
+| `business-rules-lint.sh` | Middleware redirects, wrong cookie, router.push in screens |
+| `typecheck-gate.sh` | TypeScript errors |
+| `ui-token-lint.sh` | Wrong Tailwind classes, raw hex colors |
+| `dead-code-lint.sh` | Unused imports, legacy JWT, deprecated endpoint calls |
+
 ## Testing Workflows
 
 ### User Flow Testing

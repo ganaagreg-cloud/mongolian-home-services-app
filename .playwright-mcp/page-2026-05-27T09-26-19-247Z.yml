@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Ажлын самбар" [level=1] [ref=e6]
+        - generic [ref=e7]:
+          - generic [ref=e8]: Идэвхтэй
+          - switch [checked] [ref=e9]
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - img [ref=e13]
+          - heading "Яг одоо хүсэлтүүд" [level=2] [ref=e15]
+        - paragraph [ref=e16]: 60 секундийн дотор хариулна уу
+        - generic [ref=e17]:
+          - paragraph [ref=e20]: Шуурхай захиалга байхгүй
+          - paragraph [ref=e21]: Захиалга ирэхэд мэдэгдэл ирнэ
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - img [ref=e25]
+          - heading "Цаг товлох ажлууд" [level=2] [ref=e27]
+        - paragraph [ref=e28]: Сонирхсон бол санал илгээгээрэй. Хэрэглэгч таныг сонговол мэдэгдэл ирнэ.
+        - generic [ref=e29]:
+          - img [ref=e31]
+          - paragraph [ref=e33]: Цаг товлох захиалга байхгүй
+          - paragraph [ref=e34]: Шинэ захиалга нийтлэгдэхэд энд харагдана
+      - generic [ref=e35]:
+        - img [ref=e37]
+        - generic [ref=e39]:
+          - paragraph [ref=e40]: Үнэлгээгээ нэмэгдүүлэх
+          - paragraph [ref=e41]: 4.0-аас дээш үнэлгээтэй ажилтнуудад шуурхай хүсэлт очдог
+    - navigation [ref=e42]:
+      - generic [ref=e43]:
+        - button "Ажил" [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e48]: Ажил
+        - button "Идэвхтэй" [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e53]: Идэвхтэй
+        - button "Чат" [ref=e54]:
+          - img [ref=e55]
+          - generic [ref=e57]: Чат
+        - button "Орлого" [ref=e58]:
+          - img [ref=e59]
+          - generic [ref=e62]: Орлого
+        - button "Профайл" [ref=e63]:
+          - img [ref=e64]
+          - generic [ref=e67]: Профайл
+  - button "Open Next.js Dev Tools" [ref=e73] [cursor=pointer]:
+    - img [ref=e74]
+  - alert [ref=e77]

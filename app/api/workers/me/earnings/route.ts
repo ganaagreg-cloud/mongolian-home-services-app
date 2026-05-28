@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
+import type { Transaction, TransactionType } from '@/lib/types'
 
+type EarningsRow = { total: string }
 type TxRow = {
-  id: number
-  amount: number
-  type: string
-  service: string
-  created_at: string
+  id: string; worker_id: string; amount: number
+  type: string; service: string; created_at: string
 }
-
-type SumRow = { total: string | null }
 
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
@@ -21,9 +18,9 @@ export async function GET(req: NextRequest) {
   await dbReady
 
   const workerRow = (await db.query(
-    'SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
+    'SELECT id FROM workers WHERE user_id = $1',
     [session.sub],
-  )).rows[0] as { id: number } | undefined
+  )).rows[0] as { id: string } | undefined
 
   if (!workerRow) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
@@ -31,55 +28,57 @@ export async function GET(req: NextRequest) {
 
   const wid = workerRow.id
 
-  const [totalRow, monthRow, weekRow, withdrawRow, txRows] = await Promise.all([
-    db.query<SumRow>(
-      `SELECT SUM(amount)::TEXT AS total FROM transactions WHERE worker_id = $1 AND type = 'earning'`,
+  const [totalRow, monthRow, pendingRow, txRows] = await Promise.all([
+    db.query<EarningsRow>(
+      `SELECT COALESCE(FLOOR(SUM(total_amount)::NUMERIC * 83 / 100), 0)::INTEGER AS total
+       FROM orders
+       WHERE worker_id = $1 AND status IN ('completed', 'rated')`,
       [wid],
     ),
-    db.query<SumRow>(
-      `SELECT SUM(amount)::TEXT AS total FROM transactions
-       WHERE worker_id = $1 AND type = 'earning'
-         AND date_trunc('month', created_at) = date_trunc('month', NOW())`,
+    db.query<EarningsRow>(
+      `SELECT COALESCE(FLOOR(SUM(total_amount)::NUMERIC * 83 / 100), 0)::INTEGER AS total
+       FROM orders
+       WHERE worker_id = $1
+         AND status IN ('completed', 'rated')
+         AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', NOW())`,
       [wid],
     ),
-    db.query<SumRow>(
-      `SELECT SUM(amount)::TEXT AS total FROM transactions
-       WHERE worker_id = $1 AND type = 'earning'
-         AND created_at >= date_trunc('week', NOW())`,
-      [wid],
-    ),
-    db.query<SumRow>(
-      `SELECT SUM(amount)::TEXT AS total FROM transactions WHERE worker_id = $1 AND type = 'withdrawal'`,
+    db.query<EarningsRow>(
+      `SELECT COALESCE(
+         FLOOR(SUM(total_amount)::NUMERIC * 83 / 100), 0
+       )::INTEGER AS total
+       FROM orders
+       WHERE worker_id = $1
+         AND status IN ('completed', 'rated')
+         AND payment_status = 'paid'`,
       [wid],
     ),
     db.query<TxRow>(
-      `SELECT id, amount, type, service, created_at
-       FROM transactions WHERE worker_id = $1
-       ORDER BY created_at DESC LIMIT 50`,
+      `SELECT id, worker_id, amount, type, service, created_at
+       FROM transactions
+       WHERE worker_id = $1
+       ORDER BY created_at DESC
+       LIMIT 50`,
       [wid],
     ),
   ])
 
-  const totalEarned     = parseInt(totalRow.rows[0]?.total    ?? '0', 10) || 0
-  const thisMonthEarned = parseInt(monthRow.rows[0]?.total    ?? '0', 10) || 0
-  const thisWeekEarned  = parseInt(weekRow.rows[0]?.total     ?? '0', 10) || 0
-  const totalWithdrawn  = parseInt(withdrawRow.rows[0]?.total ?? '0', 10) || 0
-  const pendingPayout   = Math.max(0, totalEarned - totalWithdrawn)
+  const transactions: Transaction[] = txRows.rows.map((r) => ({
+    id:        String(r.id),
+    workerId:  String(r.worker_id),
+    amount:    r.amount,
+    type:      r.type as TransactionType,
+    service:   r.service,
+    createdAt: r.created_at,
+  }))
 
   return NextResponse.json({
     success: true,
     data: {
-      totalEarned,
-      thisMonthEarned,
-      thisWeekEarned,
-      pendingPayout,
-      transactions: txRows.rows.map((r) => ({
-        id:        String(r.id),
-        amount:    r.amount,
-        type:      r.type as 'earning' | 'withdrawal',
-        service:   r.service,
-        createdAt: r.created_at,
-      })),
+      totalEarned:    Number(totalRow.rows[0]?.total   ?? 0),
+      thisMonthEarned: Number(monthRow.rows[0]?.total  ?? 0),
+      pendingPayout:  Number(pendingRow.rows[0]?.total ?? 0),
+      transactions,
     },
   })
 }

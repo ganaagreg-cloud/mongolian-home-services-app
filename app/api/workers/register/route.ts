@@ -4,15 +4,15 @@ import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
 const SPECIALTIES = [
-  'цэвэрлэгээ', 'угаалга', 'сантехник', 'цахилгаанчин',
-  'будагч', 'тавилгачин', 'гагнуурчин', 'нүүлгэлт',
+  'цэвэрлэгээ', 'угаалга', 'ерөнхий засвар',
+  'сантехник', 'цахилгаан', 'будаг', 'цонх/хаалга',
 ] as const
 
 const schema = z.object({
-  specialty:          z.enum(SPECIALTIES),
-  pricePerHour:       z.number().int().min(1000),
   imei:               z.string().length(15),
   policeFile:         z.string().min(1),
+  specialty:          z.enum(SPECIALTIES),
+  pricePerHour:       z.number().int().min(1000).max(500000),
   bankName:           z.string().min(1),
   accountNumber:      z.string().regex(/^\d{10,20}$/),
   accountHolderName:  z.string().min(3),
@@ -41,26 +41,15 @@ export async function POST(req: NextRequest) {
 
   await dbReady
 
-  const existing = (await db.query(
-    'SELECT id, rejected_at FROM workers WHERE user_id = $1 AND deleted_at IS NULL',
-    [session.sub],
-  )).rows[0] as { id: number; rejected_at: string | null } | undefined
-
-  if (existing && !existing.rejected_at) {
+  const existing = (await db.query('SELECT id FROM workers WHERE user_id = $1', [session.sub])).rows[0]
+  if (existing) {
     return NextResponse.json(
       { success: false, error: 'Та ажилтнаар аль хэдийн бүртгүүлсэн байна' },
       { status: 409 },
     )
   }
 
-  if (existing && existing.rejected_at) {
-    return NextResponse.json(
-      { success: false, error: 'Таны өмнөх бүртгэл татгалзагдсан байна. Дэмжлэгтэй холбогдоно уу.' },
-      { status: 409 },
-    )
-  }
-
-  const { specialty, pricePerHour, imei, policeFile, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
+  const { imei, policeFile, specialty, pricePerHour, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
 
   const client = await db.connect()
   let workerId: string

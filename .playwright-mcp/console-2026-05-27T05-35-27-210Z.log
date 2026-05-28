@@ -1,0 +1,13 @@
+[     457ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[     489ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[     603ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[     715ms] [LOG] [Fast Refresh] done in 217ms @ http://localhost:3000/_next/static/chunks/0vgw_next_dist_0dl7j9k._.js:2477
+[    4279ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://www.facebook.com/login.php?skip_api_login=1&api_key=1794848778154304&kid_directed_site=0&app_id=1794848778154304&signed_next=1&next=https%3A%2F%2Fwww.facebook.com%2Fv24.0%2Fdialog%2Foauth%3Fresponse_type%3Dcode%26client_id%3D1794848778154304%26state%3Dlfd6kVmp60c_ApGXB_Lh_kiYtVulGATb%26scope%3Demail%2Bpublic_profile%26redirect_uri%3Dhttp%253A%252F%252Flocalhost%253A3000%252Fapi%252Fauth%252Fcallback%252Ffacebook%26ret%3Dlogin%26fbapp_pres%3D0%26logger_id%3Debdedf2e-1743-4efe-9dff-08f081700008%26tp%3Dunspecified&cancel_url=https%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback%2Ffacebook%3Ferror%3Daccess_denied%26error_code%3D200%26error_description%3DPermissions%2Berror%26error_reason%3Duser_denied%26state%3Dlfd6kVmp60c_ApGXB_Lh_kiYtVulGATb%23_%3D_&display=page&locale=en_US&pl_dbl=0&is_business_login=0:0
+[    4357ms] [LOG] 
+%cStop! font-family:helvetica; font-size:20px; font-size:50px; font-weight:bold; color:red; -webkit-text-stroke:1px black; @ https://static.xx.fbcdn.net/rsrc.php/v4/ym/r/t_lX-67hSLT.js:244
+[    4357ms] [LOG] 
+%cThis is a browser feature intended for developers. If someone told you to copy-paste something here to enable a Facebook feature or "hack" someone's account, it's a scam and will give them access to your Facebook account. font-family:helvetica; font-size:20px;  @ https://static.xx.fbcdn.net/rsrc.php/v4/ym/r/t_lX-67hSLT.js:244
+[    4357ms] [LOG] 
+%cSee https://www.facebook.com/selfxss for more information. font-family:helvetica; font-size:20px;  @ https://static.xx.fbcdn.net/rsrc.php/v4/ym/r/t_lX-67hSLT.js:244
+[    4357ms] [LOG] 
+%c  @ https://static.xx.fbcdn.net/rsrc.php/v4/ym/r/t_lX-67hSLT.js:244

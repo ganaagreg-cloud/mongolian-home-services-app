@@ -1,0 +1,37 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - img [ref=e19]
+        - heading "HomeService" [level=1] [ref=e22]
+        - paragraph [ref=e23]: Гэрийн Үйлчилгээ
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - paragraph [ref=e26]: Утасны дугаар
+          - generic [ref=e27]:
+            - img [ref=e28]
+            - textbox "99001234" [ref=e30]: "95342321"
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: Нууц үг
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - textbox "••••••••" [ref=e37]: "12345678"
+            - button [ref=e38]:
+              - img [ref=e39]
+        - button "Нэвтрэх" [ref=e42]
+      - generic [ref=e47]: эсвэл
+      - generic [ref=e48]:
+        - button "Google-ээр нэвтрэх" [ref=e49]:
+          - generic [ref=e50]:
+            - img
+            - text: Google-ээр нэвтрэх
+        - button "Facebook-ээр нэвтрэх" [ref=e51]:
+          - generic [ref=e52]:
+            - img
+            - text: Facebook-ээр нэвтрэх
+      - generic [ref=e53]:
+        - text: Бүртгэлгүй юу?
+        - button "Бүртгүүлэх" [ref=e54]
+  - button "Open Next.js Dev Tools" [ref=e11] [cursor=pointer]:
+    - img [ref=e12]
+  - alert [ref=e15]

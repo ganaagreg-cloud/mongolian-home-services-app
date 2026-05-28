@@ -1,0 +1,111 @@
+- generic:
+  - main:
+    - generic:
+      - button: User
+      - button: Worker
+      - button: Admin
+    - generic:
+      - generic:
+        - button:
+          - img
+        - heading [level=1]: Захиалгын түүх
+      - generic:
+        - generic:
+          - tablist:
+            - tab: Идэвхтэй
+            - tab [selected]: Өнгөрсөн
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic: "?"
+            - generic:
+              - generic:
+                - paragraph: —
+                - generic:
+                  - img
+                  - text: Ажилтан олдсонгүй
+              - paragraph: Цэвэрлэгээ · 4ц
+              - paragraph: 2026-05-19
+          - generic:
+            - paragraph: ₮100,000
+        - generic:
+          - generic:
+            - generic:
+              - generic: "?"
+            - generic:
+              - generic:
+                - paragraph: —
+                - generic:
+                  - img
+                  - text: Цуцлагдсан
+              - paragraph: Цэвэрлэгээ · 3ц
+              - paragraph: 2026-05-18
+          - generic:
+            - paragraph: ₮75,000
+        - generic:
+          - generic:
+            - generic:
+              - generic: Д
+            - generic:
+              - generic:
+                - paragraph: Делгэрмаа Хүрэл
+                - generic:
+                  - img
+                  - text: Үнэлсэн
+              - paragraph: Цэвэрлэгээ · 2ц
+              - paragraph: 2026-05-15
+          - generic:
+            - paragraph: ₮44,000
+        - generic:
+          - generic:
+            - generic:
+              - generic: Б
+            - generic:
+              - generic:
+                - paragraph: Батболд Дорж
+                - generic:
+                  - img
+                  - text: Дууссан
+              - paragraph: Цэвэрлэгээ · 3ц
+              - paragraph: 2026-05-20
+          - generic:
+            - paragraph: ₮75,000
+            - generic:
+              - button: Асуудал мэдэгдэх
+    - navigation:
+      - generic:
+        - button:
+          - img
+          - generic: Нүүр
+        - button:
+          - img
+          - generic: Захиалга
+        - button:
+          - img
+          - generic: Чат
+        - button:
+          - img
+          - generic: Профайл
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert
+  - dialog "Асуудал мэдэгдэх" [ref=e2257]:
+    - heading "Асуудал мэдэгдэх" [level=2] [ref=e2259]
+    - generic [ref=e2260]:
+      - generic [ref=e2261]:
+        - paragraph [ref=e2262]: Шалтгаан
+        - combobox [active] [ref=e2263]:
+          - generic: Ажлын чанар муу
+          - img
+      - generic [ref=e2264]:
+        - paragraph [ref=e2265]:
+          - text: Тайлбар
+          - generic [ref=e2266]: (0/20 тэмдэгт)
+        - textbox "Болсон зүйлийг дэлгэрэнгүй тайлбарлана уу…" [ref=e2267]
+    - generic [ref=e2268]:
+      - button "Болих" [ref=e2269]
+      - button "Илгээх" [disabled]
+    - button "Close" [ref=e2270]:
+      - img
+      - generic [ref=e2271]: Close

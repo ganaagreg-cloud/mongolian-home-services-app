@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - button "User" [ref=e4]
+      - button "Worker" [ref=e5]
+      - button "Admin" [ref=e6]
+    - generic [ref=e510]:
+      - generic [ref=e511]:
+        - button [ref=e512]:
+          - img [ref=e513]
+        - heading "Хадгалсан ажилтнууд" [level=1] [ref=e515]
+      - generic [ref=e516]:
+        - img [ref=e518]
+        - paragraph [ref=e521]: Хадгалсан ажилтан байхгүй
+        - paragraph [ref=e522]: Таалагдсан ажилтнаа хадгалаарай
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert [ref=e110]

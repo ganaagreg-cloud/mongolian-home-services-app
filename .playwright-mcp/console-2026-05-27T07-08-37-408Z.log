@@ -1,0 +1,7 @@
+[     120ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0sg._next_dist_02bxmbe._.js:2477
+[     150ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0sg._next_dist_02bxmbe._.js:2477
+[     366ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/:0
+[   97834ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=byLzUjh_6iNCt-n8NK_dZ' failed: Connection closed before receiving a handshake response @ http://localhost:3000/_next/static/chunks/0sg._next_dist_client_01kkx1a._.js:13322
+[   99487ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0sg._next_dist_02bxmbe._.js:2477
+[  101413ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0sg._next_dist_02bxmbe._.js:2477
+[  101438ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0sg._next_dist_02bxmbe._.js:2477

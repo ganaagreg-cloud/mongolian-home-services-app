@@ -4,6 +4,19 @@ import { db, dbReady } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import type { Worker } from '@/lib/types'
 
+const SPECIALTIES = [
+  'цэвэрлэгээ', 'угаалга', 'ерөнхий засвар',
+  'сантехник', 'цахилгаан', 'будаг', 'цонх/хаалга',
+] as const
+
+const patchSchema = z.object({
+  specialty:    z.enum(SPECIALTIES).optional(),
+  pricePerHour: z.number().int().min(1000).max(500000).optional(),
+}).refine(
+  (d) => d.specialty !== undefined || d.pricePerHour !== undefined,
+  { message: 'Хамгийн багадаа нэг талбар шаардлагатай' },
+)
+
 type WorkerRow = {
   id: string; user_id: string; name: string; specialty: string
   price_per_hour: number; rating: number; review_count: number
@@ -24,8 +37,6 @@ export async function GET(req: NextRequest) {
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
     WHERE  w.user_id = $1
-      AND  w.deleted_at IS NULL
-      AND  u.deleted_at IS NULL
   `, [session.sub])).rows[0] as WorkerRow | undefined
 
   if (!row) {
@@ -49,16 +60,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ success: true, data: worker })
 }
 
-const patchSchema = z.object({
-  specialty:    z.enum([
-    'цэвэрлэгээ', 'угаалга', 'сантехник', 'цахилгаанчин',
-    'будагч', 'тавилгачин', 'гагнуурчин', 'нүүлгэлт',
-  ]).optional(),
-  pricePerHour: z.number().int().min(1000).optional(),
-}).refine((d) => d.specialty !== undefined || d.pricePerHour !== undefined, {
-  message: 'specialty эсвэл pricePerHour хамгийн нэгийг оруулна уу',
-})
-
 export async function PATCH(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) {
@@ -80,19 +81,23 @@ export async function PATCH(req: NextRequest) {
 
   await dbReady
 
-  const worker = (await db.query('SELECT id FROM workers WHERE user_id = $1 AND deleted_at IS NULL', [session.sub])).rows[0] as { id: number } | undefined
-  if (!worker) {
+  const workerRow = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1',
+    [session.sub],
+  )).rows[0] as { id: string } | undefined
+
+  if (!workerRow) {
     return NextResponse.json({ success: false, error: 'Ажилтан олдсонгүй' }, { status: 404 })
   }
 
-  const { specialty, pricePerHour } = parsed.data
-  if (specialty !== undefined && pricePerHour !== undefined) {
-    await db.query('UPDATE workers SET specialty = $1, price_per_hour = $2 WHERE id = $3', [specialty, pricePerHour, worker.id])
-  } else if (specialty !== undefined) {
-    await db.query('UPDATE workers SET specialty = $1 WHERE id = $2', [specialty, worker.id])
-  } else {
-    await db.query('UPDATE workers SET price_per_hour = $1 WHERE id = $2', [pricePerHour, worker.id])
-  }
+  const sets: string[] = []
+  const vals: unknown[] = []
+  let idx = 1
+  if (parsed.data.specialty    !== undefined) { sets.push(`specialty = $${idx++}`);     vals.push(parsed.data.specialty) }
+  if (parsed.data.pricePerHour !== undefined) { sets.push(`price_per_hour = $${idx++}`); vals.push(parsed.data.pricePerHour) }
+  vals.push(workerRow.id)
+
+  await db.query(`UPDATE workers SET ${sets.join(', ')} WHERE id = $${idx}`, vals)
 
   return NextResponse.json({ success: true, data: undefined })
 }

@@ -1,0 +1,64 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - button "User" [ref=e4]
+      - button "Worker" [ref=e5]
+      - button "Admin" [ref=e6]
+    - generic [ref=e729]:
+      - generic [ref=e730]:
+        - button [ref=e731]:
+          - img [ref=e732]
+        - generic [ref=e734]:
+          - heading "Захиалга үүсгэх" [level=1] [ref=e735]
+          - paragraph [ref=e736]: "1-р алхам: Үйлчилгээ"
+      - generic [ref=e743]:
+        - heading "Үйлчилгээний төрөл" [level=2] [ref=e744]
+        - generic [ref=e745]:
+          - button "Цэвэрлэгээ" [ref=e746]:
+            - img [ref=e747]
+            - generic [ref=e750]: Цэвэрлэгээ
+          - button "Сантехник" [disabled] [ref=e751]:
+            - img [ref=e752]
+            - generic [ref=e755]: Сантехник
+          - button "Цахилгаан" [disabled] [ref=e756]:
+            - img [ref=e757]
+            - generic [ref=e759]: Цахилгаан
+          - button "Жижиг засвар" [disabled] [ref=e760]:
+            - img [ref=e761]
+            - generic [ref=e763]: Жижиг засвар
+          - button "Будаг" [disabled] [ref=e764]:
+            - img [ref=e765]
+            - generic [ref=e769]: Будаг
+          - button "Агааржуулалт" [disabled] [ref=e770]:
+            - img [ref=e771]
+            - generic [ref=e775]: Агааржуулалт
+      - generic [ref=e776]:
+        - heading "Хаяг" [level=2] [ref=e777]
+        - button "Газрын зурагт байршил сонгох" [ref=e778]:
+          - img [ref=e779]
+          - text: Газрын зурагт байршил сонгох
+        - textbox "Эсвэл хаяг гараар оруулах..." [ref=e783]
+      - generic [ref=e784]:
+        - heading "Үл хөдлөхийн төрөл" [level=2] [ref=e785]
+        - generic [ref=e786]:
+          - button "Байшин Хувийн байшин, гэр" [ref=e787]:
+            - img [ref=e789]
+            - generic [ref=e792]:
+              - paragraph [ref=e793]: Байшин
+              - paragraph [ref=e794]: Хувийн байшин, гэр
+          - button "Орон сууц Блок, нийтийн байр" [ref=e796]:
+            - img [ref=e798]
+            - generic [ref=e802]:
+              - paragraph [ref=e803]: Орон сууц
+              - paragraph [ref=e804]: Блок, нийтийн байр
+          - button "Оффис Ажлын байр, студи" [ref=e806]:
+            - img [ref=e808]
+            - generic [ref=e811]:
+              - paragraph [ref=e812]: Оффис
+              - paragraph [ref=e813]: Ажлын байр, студи
+      - button "Үргэлжлэх" [ref=e816]:
+        - text: Үргэлжлэх
+        - img
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert [ref=e110]
