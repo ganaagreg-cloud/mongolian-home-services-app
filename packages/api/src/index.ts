@@ -1,31 +1,21 @@
-import express from 'express'
-import cors from 'cors'
+import { serve } from '@hono/node-server'
+import { Hono } from 'hono'
 import { dbReady } from './db'
+import { auth } from './auth'
+import authRouter from './routes/auth'
 
-const app = express()
+const app = new Hono()
 
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000', credentials: true }))
-app.use(express.json())
+// Health check
+app.get('/health', (c) => c.json({ ok: true }))
 
-import serviceTypesRouter from './routes/service-types'
-import authMeRouter from './routes/auth-me'
-import meRouter from './routes/me'
-import workersRouter from './routes/workers'
-import ordersRouter from './routes/orders'
-import paymentsRouter from './routes/payments'
-import sosRouter from './routes/sos'
-import disputesRouter from './routes/disputes'
-import adminRouter from './routes/admin'
+// Better Auth — handles all OAuth flows, session management, signout
+app.all('/api/auth/*', (c) => auth.handler(c.req.raw))
 
-app.use('/api', serviceTypesRouter)
-app.use('/api', authMeRouter)
-app.use('/api', meRouter)
-app.use('/api', workersRouter)
-app.use('/api', ordersRouter)
-app.use('/api', paymentsRouter)
-app.use('/api', sosRouter)
-app.use('/api', disputesRouter)
-app.use('/api', adminRouter)
+// Custom auth domain routes (auth/me, auth/dan)
+app.route('/', authRouter)
 
 const PORT = Number(process.env.PORT ?? 4000)
-dbReady.then(() => app.listen(PORT, () => console.log(`[api] listening on :${PORT}`))).catch(() => process.exit(1))
+dbReady
+  .then(() => serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`)))
+  .catch(() => process.exit(1))
