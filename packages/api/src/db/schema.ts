@@ -250,7 +250,7 @@ export const TABLES: string[] = [
   // Master data tables
   `CREATE TABLE IF NOT EXISTS service_types (
     id         SERIAL PRIMARY KEY,
-    name_mn    TEXT NOT NULL,
+    name_mn    TEXT NOT NULL UNIQUE,
     icon       TEXT NOT NULL DEFAULT 'sparkles',
     is_active  BOOLEAN NOT NULL DEFAULT true,
     sort_order INTEGER NOT NULL DEFAULT 0,

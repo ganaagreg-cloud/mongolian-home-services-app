@@ -32,11 +32,11 @@ app.use('*', cors({
 // Health check
 app.get('/health', (c) => c.json({ ok: true }))
 
+// Custom auth routes first (before Better Auth wildcard)
+app.route('/', authRouter)
+
 // Better Auth — handles all OAuth flows, session management, signout
 app.all('/api/auth/*', (c) => auth.handler(c.req.raw))
-
-// Domain routers
-app.route('/', authRouter)
 app.route('/', meRouter)
 app.route('/', ordersRouter)
 app.route('/', workersRouter)
