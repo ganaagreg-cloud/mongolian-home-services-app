@@ -124,10 +124,10 @@ router.get('/api/admin/workers/pending', async (c) => {
   if (!session) return c.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, 403)
 
   await dbReady
-  type Row = { id: string; name: string; phone: string; imei: string | null; police_file: string | null; created_at: string }
+  type Row = { id: string; name: string; phone: string; specialty: string; dan_verified: boolean; imei: string | null; police_file: string | null; created_at: string }
 
   const rows = (await db.query(`
-    SELECT w.id, u.name, u.phone, w.imei, w.police_file, w.created_at
+    SELECT w.id, u.name, u.phone, w.specialty, u.dan_verified, w.imei, w.police_file, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
     WHERE  w.is_active = false AND w.rejected_at IS NULL
@@ -135,12 +135,14 @@ router.get('/api/admin/workers/pending', async (c) => {
   `)).rows as Row[]
 
   const data: AdminPendingWorker[] = rows.map((r) => ({
-    id:         String(r.id),
-    name:       r.name,
-    phone:      r.phone,
-    imei:       r.imei,
-    policeFile: r.police_file,
-    createdAt:  r.created_at,
+    id:          String(r.id),
+    name:        r.name,
+    phone:       r.phone,
+    specialty:   r.specialty,
+    danVerified: r.dan_verified,
+    imei:        r.imei,
+    policeFile:  r.police_file,
+    createdAt:   r.created_at,
   }))
 
   return c.json({ success: true, data })

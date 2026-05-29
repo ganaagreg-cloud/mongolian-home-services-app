@@ -296,6 +296,8 @@ export interface AdminPendingWorker {
   id: string
   name: string
   phone: string
+  specialty: string
+  danVerified: boolean
   imei: string | null
   policeFile: string | null
   createdAt: string
