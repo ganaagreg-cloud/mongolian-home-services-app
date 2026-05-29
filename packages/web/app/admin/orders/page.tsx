@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type OrderRow = {
   id: number; service: string; status: string; address: string
@@ -69,7 +70,7 @@ export default function OrdersPage() {
       q, status: status === 'all' ? '' : status,
       service: service === 'all' ? '' : service, page: String(page),
     })
-    fetch(`/api/admin/orders?${sp}`)
+    apiFetch(`/api/admin/orders?${sp}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) { setRows(j.data); setTotal(j.total); setPages(j.pages) } })
       .finally(() => setLoading(false))
@@ -81,7 +82,7 @@ export default function OrdersPage() {
   function openDetail(id: number) {
     setDetailLoading(true)
     setDetail(null)
-    fetch(`/api/admin/orders/${id}`)
+    apiFetch(`/api/admin/orders/${id}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) setDetail(j.data) })
       .finally(() => setDetailLoading(false))
@@ -90,7 +91,7 @@ export default function OrdersPage() {
   async function cancelOrder() {
     if (!cancelId) return
     setCancelling(true)
-    await fetch(`/api/admin/orders/${cancelId}`, {
+    await apiFetch(`/api/admin/orders/${cancelId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'cancelled_by_admin' }),
     })

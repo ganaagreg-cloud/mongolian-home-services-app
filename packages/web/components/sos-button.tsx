@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { apiFetch } from '@/lib/api-fetch'
 import { AlertTriangle, MapPin, Shield, X } from 'lucide-react'
 
 interface SosButtonProps {
@@ -31,7 +32,7 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
     } catch { /* proceed without location */ }
 
     try {
-      const res = await fetch('/api/sos', {
+      const res = await apiFetch('/api/sos', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ orderId, latitude: lat, longitude: lng }),

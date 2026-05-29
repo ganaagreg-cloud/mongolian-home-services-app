@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fires on PostToolUse Edit/Write for files under app/api/
+# Fires on PostToolUse Edit/Write for files under packages/api/src/routes/
 # Uses Claude API to check: requireAuth order, parameterized queries, generic errors, no PII logging
 
 set -euo pipefail
@@ -18,8 +18,8 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# Only files under app/api/
-if [[ "$FILE_PATH" != */app/api/* ]]; then
+# Only files under packages/api/src/routes/
+if [[ "$FILE_PATH" != */packages/api/src/routes/* ]]; then
   exit 0
 fi
 
@@ -42,18 +42,19 @@ if [ -z "$FILE_CONTENT" ]; then
   exit 0
 fi
 
-PROMPT="You are a security reviewer for a Next.js API codebase. Check this route handler against exactly these four rules:
+PROMPT="You are a security reviewer for a Hono API codebase (packages/api/src/routes/). Check this route handler against exactly these four rules:
 
 RULE 1 — requireAuth must be called before any business logic or DB query:
-- The call to requireAuth(req) must appear before any db.query() call, any external fetch, or any data processing.
-- Violation example: db.query(...) appears before requireAuth(req)
+- The call to requireAuth(c) must appear before any db.query() call, any external fetch, or any data processing.
+- Its return value must be checked for null and return 401 immediately.
+- Violation example: db.query(...) appears before requireAuth(c), or null return is not checked
 
 RULE 2 — All db.query() calls must use \$1/\$2/... placeholders, never string concatenation:
 - Violation examples: db.query(\`WHERE id = \${id}\`), db.query('WHERE id = ' + id)
 - Correct: db.query('WHERE id = \$1', [id])
 
 RULE 3 — Catch blocks must return generic errors only:
-- The catch block must return exactly: Response.json({ error: 'Request failed' }, { status: 500 })
+- The catch block must return exactly: c.json({ error: 'Request failed' }, 500)
 - Violation: returning e.message, e.stack, SQL text, or any internal detail in the error response
 
 RULE 4 — Never log sensitive fields:

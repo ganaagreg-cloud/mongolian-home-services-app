@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Star, Home, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/api-fetch'
 import { Textarea } from '@/components/ui/textarea'
 
 interface ReviewScreenProps {
@@ -26,7 +27,7 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
     setSubmitError(null)
     try {
       if (orderId) {
-        const res = await fetch(`/api/orders/${orderId}/review`, {
+        const res = await apiFetch(`/api/orders/${orderId}/review`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rating, comment: comment || undefined }),

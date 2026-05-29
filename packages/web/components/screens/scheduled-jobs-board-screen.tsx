@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, RefreshCw, Star, Clock, MapPin, Users } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/api-fetch'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Order, OrderAcceptance } from '@/lib/types'
 
@@ -25,7 +26,7 @@ export function ScheduledJobsBoardScreen({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    fetch(`/api/orders/${orderId}`)
+    apiFetch(`/api/orders/${orderId}`)
       .then((r) => r.json())
       .then((d: { success: boolean; data?: Order }) => { if (d.success && d.data) setOrder(d.data) })
       .catch(() => {})
@@ -34,7 +35,7 @@ export function ScheduledJobsBoardScreen({
   const fetchAcceptances = async (quiet = false) => {
     if (!quiet) setLoadingAcceptances(true)
     try {
-      const r = await fetch(`/api/orders/${orderId}/acceptances`)
+      const r = await apiFetch(`/api/orders/${orderId}/acceptances`)
       const d = (await r.json()) as { success: boolean; data?: OrderAcceptance[] }
       if (d.success && d.data) setAcceptances(d.data)
     } catch {

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, Percent, ShieldCheck, Clock } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type Payout = {
   worker_id: number; name: string
@@ -29,7 +30,7 @@ export default function FinancePage() {
   const [txFilter, setTxFilter] = useState('all')
 
   useEffect(() => {
-    fetch('/api/admin/finance')
+    apiFetch('/api/admin/finance')
       .then((r) => r.json())
       .then((j) => { if (j.success) setData(j.data) })
       .finally(() => setLoading(false))

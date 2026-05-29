@@ -5,11 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm dev           # Next.js dev server (localhost:3000, Turbopack)
-pnpm build         # Production build
-pnpm start         # Production server
-pnpm lint          # ESLint
-npx tsc --noEmit   # TypeScript type check
+pnpm dev           # All packages in parallel (Turbo)
+pnpm dev:api       # Hono API server only (localhost:4000, tsx watch)
+pnpm dev:web       # Next.js web app only (localhost:3000, Turbopack)
+pnpm dev:admin     # Admin panel only (port TBD — package not yet wired)
+pnpm build         # Production build (all packages)
+pnpm lint          # ESLint (all packages)
+pnpm typecheck     # TypeScript check (all packages)
+pnpm exec tsc --noEmit   # Run inside packages/api or packages/web for single-package check
 
 # Docker
 docker compose up --build        # Start web + db (Postgres 16)
@@ -88,7 +91,7 @@ After completing any implementation:
 
 ## Architecture
 
-Full-stack Next.js 16 App Router app. The UI layer is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies).
+Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a future admin panel (TBD); `packages/shared` holds shared TypeScript types. The UI layer in packages/web is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
 
 ### Navigation: State Machine, Not Next.js Routing
 
@@ -109,45 +112,51 @@ Workers are **users** with `is_worker = true` in the DB. They switch modes via a
 ### Component Organization
 
 ```
-components/
-  screens/          # 25 full-screen views (one per Screen value)
-  ui/               # shadcn/ui + Radix UI primitives (do not edit)
-  bottom-nav.tsx    # User tab bar
-  worker-bottom-nav.tsx
-  login-screen.tsx  onboarding-screen.tsx  otp-screen.tsx
-  register-screen.tsx  dan-success-screen.tsx  sos-button.tsx
-hooks/
-  use-mobile.ts     # 768px breakpoint detector
-  use-toast.ts
-lib/
-  auth.ts           # Better Auth instance + requireAuth() + legacy JWT helpers
-  auth-client.ts    # Better Auth client (authClient.useSession, signOut, signIn.social)
-  types.ts          # shared TypeScript types (UserRole, Screen, OrderStatus, …)
-  utils.ts          # cn() = clsx + tailwind-merge
-lib/db/
-  index.ts          # pg Pool singleton + schema init + seed on first boot
-  schema.ts         # CREATE TABLE IF NOT EXISTS DDL (PostgreSQL)
-  seed.ts           # dev seed data (workers, orders, banking info)
-app/api/
-  auth/[...all]/    # Better Auth catch-all (OAuth callbacks, session, signout)
-  auth/me/          # GET — current user profile
-  auth/dan/         # POST — DAN identity verification
-  me/               # GET/PATCH — profile update
-  me/mode/          # PATCH — toggle active_mode ('user'|'worker')
-  orders/           # CRUD + match, accept, decline, upload, review, status
-  workers/          # list, register, [id], me, me/availability, me/banking
-  admin/            # stats, disputes, workers/pending, workers/[id]/verify
-  payments/         # create-invoice (QPay V2 mock), dev-sim-pay
-  sos/              # emergency alert (< 2s response requirement)
+packages/web/
+  app/page.tsx                # Single-page entry; owns all shared state
+  components/
+    screens/                  # 25 full-screen views (one per Screen value)
+    ui/                       # shadcn/ui + Radix UI primitives (do not edit)
+    bottom-nav.tsx            # User tab bar
+    worker-bottom-nav.tsx
+    login-screen.tsx  onboarding-screen.tsx  otp-screen.tsx
+    register-screen.tsx  dan-success-screen.tsx  sos-button.tsx
+  hooks/
+    use-mobile.ts             # 768px breakpoint detector
+    use-toast.ts
+  lib/
+    auth.ts                   # Better Auth client-side config (web only)
+    auth-client.ts            # Better Auth browser client (useSession, signOut, signIn.social)
+    types.ts                  # shared TypeScript types (UserRole, Screen, OrderStatus, …)
+    utils.ts                  # cn() = clsx + tailwind-merge
+
+packages/api/src/
+  index.ts                    # Hono app entry — CORS middleware, route mounts, server start
+  auth.ts                     # Better Auth instance + requireAuth(c) + requireAdmin(c)
+  db.ts                       # pg Pool singleton
+  db/schema.ts                # CREATE TABLE IF NOT EXISTS DDL (PostgreSQL)
+  db/seed.ts                  # dev seed data (workers, orders, banking info)
+  routes/
+    auth.ts                   # /api/auth/* catch-all + /api/auth/me + /api/auth/dan
+    me.ts                     # GET/PATCH /api/me — profile + mode toggle
+    orders.ts                 # /api/orders — CRUD, match, accept, decline, upload, review
+    workers.ts                # /api/workers — list, register, [id], me, availability, banking
+    admin.ts                  # /api/admin — stats, disputes, worker verification
+    payments.ts               # /api/payments — create-invoice (QPay V2 mock), dev-sim-pay
+    sos.ts                    # /api/sos — emergency alert (< 2s)
+    disputes.ts               # /api/disputes — dispute management
+    service-types.ts          # /api/service-types — master data
 ```
 
 ## Key Technical Facts
 
-- **Next.js 16.2.6** App Router + Turbopack, no `src/` directory
-- **Tailwind CSS 4** — `@import "tailwindcss"` in globals.css, NOT the v3 `@tailwind` directives
-- **Path alias:** `@/*` → repo root `./` (tsconfig.json)
+- **Monorepo:** pnpm workspaces + Turborepo; packages: api, web, admin, shared
+- **packages/api:** Hono + @hono/node-server, TypeScript via tsx, port 4000; no Next.js
+- **packages/web:** Next.js 16.2.6 App Router + Turbopack, no `src/` directory
+- **Tailwind CSS 4** (packages/web) — `@import "tailwindcss"` in globals.css, NOT the v3 `@tailwind` directives
+- **Path alias:** `@/*` → `packages/web/` root (tsconfig.json inside packages/web)
 - **Package manager:** pnpm
-- **TypeScript strict mode**
+- **TypeScript strict mode** in all packages
 
 ## Critical Business Rules
 
@@ -167,12 +176,13 @@ app/api/
 
 ## Environment Variables
 
-Docker Compose injects `DATABASE_URL` automatically for the `web` service. For local non-Docker dev, create `.env.local`:
+Docker Compose injects `DATABASE_URL` automatically for the `api` service. For local non-Docker dev:
 
+`packages/api/.env` (server-side only, never exposed to browser):
 ```
 DATABASE_URL=postgresql://postgres:mongolia_secure_pass@localhost:5432/homeservices
 BETTER_AUTH_SECRET=<64-char hex>
-BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:4000   # must be the API origin, used for OAuth callbacks
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 FACEBOOK_CLIENT_ID=<from Meta for Developers>
@@ -181,7 +191,17 @@ DAN_CLIENT_ID=
 DAN_CLIENT_SECRET=
 QPAY_API_KEY=
 JWT_SECRET=        # legacy fallback — only used by remaining jose helpers
+PORT=4000
+CORS_ORIGIN=http://localhost:3000  # comma-separated for multiple origins
 ```
+
+`packages/web/.env.local` (Next.js; NEXT_PUBLIC_* are exposed to browser):
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000   # points to packages/api
+BETTER_AUTH_URL=http://localhost:4000       # must match packages/api BETTER_AUTH_URL
+```
+
+`packages/admin` — no environment variables yet (package not wired)
 
 ## Engineering Principles
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fires on PostToolUse Edit/Write for files under app/api/ or lib/
+# Fires on PostToolUse Edit/Write for files under packages/api/src/
 # Uses Claude API to check critical business rules from CLAUDE.md
 
 set -euo pipefail
@@ -18,8 +18,8 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# Only files under app/api/ or lib/
-if [[ "$FILE_PATH" != */app/api/* && "$FILE_PATH" != */lib/* ]]; then
+# Only files under packages/api/src/
+if [[ "$FILE_PATH" != */packages/api/src/* ]]; then
   exit 0
 fi
 
@@ -97,17 +97,19 @@ if grep -rn "NextResponse.redirect" middleware.ts proxy.ts 2>/dev/null \
   exit 1
 fi
 
-# Wrong cookie name (legacy JWT)
-if grep -rn "cookies.get('token')" app/ lib/ 2>/dev/null \
+# Wrong cookie name (legacy JWT). Pattern matches only the bare 'token' cookie name,
+# NOT better-auth.session_token (correct cookie — no opening quote directly before 'token').
+if grep -rn "cookies\.get('token')\|getCookie(c, 'token')" \
+   packages/web/lib/ packages/api/src/ 2>/dev/null \
    | grep -v "//"; then
-  echo "ERROR: Legacy JWT cookie check. Use authClient.useSession() instead."
+  echo "ERROR: Legacy JWT cookie check. Use authClient.useSession() or requireAuth(c) instead."
   exit 1
 fi
 
 # Worker phone leaking to client
 if grep -rn "worker\.phone\|\.phone.*worker" \
    --include="*.ts" \
-   app/api/orders/ app/api/workers/ 2>/dev/null \
+   packages/api/src/routes/orders.ts packages/api/src/routes/workers.ts 2>/dev/null \
    | grep -v "//"; then
   echo "ERROR: Worker phone must never reach client API responses."
   exit 1

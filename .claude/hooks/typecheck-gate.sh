@@ -29,12 +29,27 @@ if [[ "$FILE_PATH" == *"/node_modules/"* || "$FILE_PATH" == *"/.next/"* ]]; then
   exit 0
 fi
 
-# Navigate to project root
+# Find the nearest directory that has both tsconfig.json and package.json
+# (i.e., the owning package root, not the monorepo root)
 PROJECT_ROOT=$(git -C "$(dirname "$FILE_PATH")" rev-parse --show-toplevel 2>/dev/null || echo "$CLAUDE_PROJECT_DIR")
-cd "$PROJECT_ROOT"
 
-# Run TypeScript check
-TSC_OUTPUT=$(npx tsc --noEmit 2>&1) || {
+PKG_DIR=$(dirname "$FILE_PATH")
+while [[ "$PKG_DIR" != "$PROJECT_ROOT" && "$PKG_DIR" != "/" ]]; do
+  if [[ -f "$PKG_DIR/tsconfig.json" && -f "$PKG_DIR/package.json" ]]; then
+    break
+  fi
+  PKG_DIR=$(dirname "$PKG_DIR")
+done
+
+# Fall back to project root if no package found
+if [[ ! -f "$PKG_DIR/tsconfig.json" ]]; then
+  PKG_DIR="$PROJECT_ROOT"
+fi
+
+cd "$PKG_DIR"
+
+# pnpm exec resolves tsc from the package's own node_modules — avoids npx stub issues
+TSC_OUTPUT=$(pnpm exec tsc --noEmit 2>&1) || {
   echo "TypeScript errors — fix before continuing:" >&2
   echo "$TSC_OUTPUT" >&2
   exit 2

@@ -13,10 +13,25 @@ export function hashPassword(password: string): string {
 
 const authPool = new Pool({ connectionString: process.env.DATABASE_URL })
 
+const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean)
+
+const isProd = process.env.NODE_ENV === 'production'
+
 export const auth = betterAuth({
   database: authPool,
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
+  trustedOrigins,
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: isProd,
+      domain: process.env.COOKIE_DOMAIN ?? '.homeservice.mn',
+    },
+    useSecureCookies: isProd,
+  },
   emailAndPassword: { enabled: true },
   socialProviders: {
     google: {

@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type UserRow = {
   id: number; name: string; phone: string; email: string; role: string
@@ -53,7 +54,7 @@ export default function UsersPage() {
   const load = useCallback(() => {
     setLoading(true)
     const sp = new URLSearchParams({ q, role: role === 'all' ? '' : role, page: String(page) })
-    fetch(`/api/admin/users?${sp}`)
+    apiFetch(`/api/admin/users?${sp}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) { setRows(j.data); setTotal(j.total); setPages(j.pages) } })
       .finally(() => setLoading(false))
@@ -64,7 +65,7 @@ export default function UsersPage() {
 
   function openEdit(id: number) {
     setEditLoading(true)
-    fetch(`/api/admin/users/${id}`)
+    apiFetch(`/api/admin/users/${id}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.success) {
@@ -84,7 +85,7 @@ export default function UsersPage() {
   async function save() {
     if (!editing) return
     setSaving(true)
-    await fetch(`/api/admin/users/${editing.id}`, {
+    await apiFetch(`/api/admin/users/${editing.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -101,7 +102,7 @@ export default function UsersPage() {
   async function resetPassword() {
     if (!editing || !newPassword) return
     setPwSaving(true)
-    await fetch(`/api/admin/users/${editing.id}/password`, {
+    await apiFetch(`/api/admin/users/${editing.id}/password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: newPassword }),
@@ -112,7 +113,7 @@ export default function UsersPage() {
   }
 
   async function toggleSuspend(id: number, suspended: boolean) {
-    await fetch(`/api/admin/users/${id}`, {
+    await apiFetch(`/api/admin/users/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ suspended }),

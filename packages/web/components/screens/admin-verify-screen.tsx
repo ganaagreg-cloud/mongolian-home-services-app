@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { AdminPendingWorker } from '@/lib/types'
 
 interface AdminVerifyScreenProps {
@@ -31,7 +32,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
     setIsActing(true)
     setActionError(null)
     try {
-      const res = await fetch(`/api/admin/workers/${selected.id}/verify`, {
+      const res = await apiFetch(`/api/admin/workers/${selected.id}/verify`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, reason: rejectionReason || undefined }),

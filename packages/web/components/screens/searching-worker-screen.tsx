@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, CalendarDays, Star, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/api-fetch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { MatchedWorker } from '@/lib/types'
 
@@ -45,7 +46,7 @@ export function SearchingWorkerScreen({
         await new Promise<void>((r) => setTimeout(r, delay))
         if (cancelled) return
 
-        const res = await fetch(`/api/orders/${orderId}/match`, { method: 'POST' })
+        const res = await apiFetch(`/api/orders/${orderId}/match`, { method: 'POST' })
         const d = (await res.json()) as {
           success: boolean
           data?: {
@@ -83,7 +84,7 @@ export function SearchingWorkerScreen({
 
     const pollId = setInterval(async () => {
       try {
-        const res = await fetch(`/api/orders/${orderId}`)
+        const res = await apiFetch(`/api/orders/${orderId}`)
         const d = (await res.json()) as { success: boolean; data?: { status: string } }
         if (cancelled) return
         const status = d.data?.status

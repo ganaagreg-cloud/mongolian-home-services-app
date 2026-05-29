@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { ArrowLeft, Lock, Star } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { MatchedWorker, Order, PaymentInvoice } from '@/lib/types'
 
 interface ConfirmWorkerScreenProps {
@@ -21,7 +22,7 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
 
   // Fetch order for price summary
   useEffect(() => {
-    fetch(`/api/orders/${orderId}`)
+    apiFetch(`/api/orders/${orderId}`)
       .then((r) => r.json())
       .then((d: { success: boolean; data?: Order }) => { if (d.success && d.data) setOrder(d.data) })
       .catch(() => {})
@@ -32,7 +33,7 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
     let cancelled = false
     async function init() {
       try {
-        const res = await fetch('/api/payments/create-invoice', {
+        const res = await apiFetch('/api/payments/create-invoice', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ orderId }),
@@ -61,7 +62,7 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
 
   const handleDevSim = async () => {
     if (!invoice) return
-    await fetch('/api/payments/dev-sim-pay', {
+    await apiFetch('/api/payments/dev-sim-pay', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ invoiceId: invoice.invoice_id }),

@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Star, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type WorkerRow = {
   id: number; name: string; phone: string; specialty: string
@@ -55,7 +56,7 @@ export default function WorkersPage() {
   const load = useCallback(() => {
     setLoading(true)
     const sp = new URLSearchParams({ status: tab, q, page: String(page) })
-    fetch(`/api/admin/workers?${sp}`)
+    apiFetch(`/api/admin/workers?${sp}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.success) { setRows(j.data); setTotal(j.total); setPages(j.pages) }
@@ -68,7 +69,7 @@ export default function WorkersPage() {
 
   function openDetail(id: number) {
     setDetailLoading(true)
-    fetch(`/api/admin/workers/${id}`)
+    apiFetch(`/api/admin/workers/${id}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) setDetail(j.data) })
       .finally(() => setDetailLoading(false))

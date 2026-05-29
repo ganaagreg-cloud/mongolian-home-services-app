@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { AdminDispute } from '@/lib/types'
 
 interface AdminDisputesScreenProps {
@@ -30,7 +31,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
     setResolveError(null)
     try {
       const amount = parseInt(compensationAmount) || 0
-      const res = await fetch(`/api/admin/disputes/${selected.id}/resolve`, {
+      const res = await apiFetch(`/api/admin/disputes/${selected.id}/resolve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ compensationAmount: amount > 0 ? amount : undefined }),

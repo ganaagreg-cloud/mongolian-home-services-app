@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import { SosButton } from '@/components/sos-button'
 import type { Order } from '@/lib/types'
 
@@ -79,7 +80,7 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
     if (!orderId) return
     setCancelling(true)
     try {
-      const res = await fetch(`/api/orders/${orderId}/cancel`, { method: 'POST' })
+      const res = await apiFetch(`/api/orders/${orderId}/cancel`, { method: 'POST' })
       const json = await res.json() as { success: boolean; error?: string; data?: { refundAmount: number; fee: number } }
       if (!json.success) {
         toast.error(json.error ?? 'Цуцлахад алдаа гарлаа')

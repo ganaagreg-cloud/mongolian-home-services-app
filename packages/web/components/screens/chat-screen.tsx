@@ -5,6 +5,7 @@ import { ArrowLeft, Send, Shield } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { Message } from '@/lib/types'
 
 interface ChatScreenProps {
@@ -26,7 +27,7 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
 
   // Resolve current user id once on mount
   useEffect(() => {
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then((r) => r.json())
       .then((d: { success: boolean; data?: { id: number } }) => {
         if (d.success && d.data) setMyId(String(d.data.id))
@@ -45,7 +46,7 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
     setDraft('')
     setSending(true)
     try {
-      await fetch(`/api/orders/${orderId}/messages`, {
+      await apiFetch(`/api/orders/${orderId}/messages`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ text }),

@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { Order, OrderStatus } from '@/lib/types'
 
 interface OrdersScreenProps {
@@ -169,7 +170,7 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
     setSubmitting(true)
     setDisputeError('')
     try {
-      const res = await fetch('/api/disputes', {
+      const res = await apiFetch('/api/disputes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: parseInt(disputeOrder.id), reason, description }),
@@ -184,7 +185,7 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
         for (const photo of photos) {
           const fd = new FormData()
           fd.append('photo', photo)
-          await fetch(`/api/disputes/${disputeId}/upload`, { method: 'POST', body: fd })
+          await apiFetch(`/api/disputes/${disputeId}/upload`, { method: 'POST', body: fd })
         }
       }
       setDisputeOrder(null)

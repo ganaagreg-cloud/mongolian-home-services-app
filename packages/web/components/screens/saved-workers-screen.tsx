@@ -5,6 +5,7 @@ import { ArrowLeft, Star, Heart, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { Worker } from '@/lib/types'
 
 interface SavedWorkersScreenProps {
@@ -18,7 +19,7 @@ export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
     // Optimistic remove
     await mutate((prev) => prev?.filter((w) => w.id !== workerId) ?? [], { revalidate: false })
     try {
-      await fetch(`/api/me/saved-workers/${workerId}`, { method: 'DELETE' })
+      await apiFetch(`/api/me/saved-workers/${workerId}`, { method: 'DELETE' })
     } finally {
       void mutate()
     }

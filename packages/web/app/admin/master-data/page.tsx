@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, Pencil, X } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type ServiceType = {
   id: number; name_mn: string; icon: string; is_active: boolean; sort_order: number
@@ -56,7 +57,7 @@ export default function MasterDataPage() {
 
   function load() {
     setLoading(true)
-    fetch('/api/admin/master-data')
+    apiFetch('/api/admin/master-data')
       .then((r) => r.json())
       .then((j) => {
         if (j.success) {
@@ -82,12 +83,12 @@ export default function MasterDataPage() {
   async function saveSt() {
     setStSaving(true)
     if (stEdit) {
-      await fetch('/api/admin/master-data/service_types', {
+      await apiFetch('/api/admin/master-data/service_types', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: stEdit.id, name_mn: stName, icon: stIcon, sort_order: Number(stOrder) || 0 }),
       })
     } else {
-      await fetch('/api/admin/master-data/service_types', {
+      await apiFetch('/api/admin/master-data/service_types', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name_mn: stName, icon: stIcon, sort_order: Number(stOrder) || 0 }),
       })
@@ -99,14 +100,14 @@ export default function MasterDataPage() {
   }
 
   async function deactivateSt(id: number) {
-    await fetch(`/api/admin/master-data/service_types?id=${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/admin/master-data/service_types?id=${id}`, { method: 'DELETE' })
     setStDeact(null)
     showToast('Идэвхгүй болголоо')
     load()
   }
 
   async function toggleSt(id: number, is_active: boolean) {
-    await fetch('/api/admin/master-data/service_types', {
+    await apiFetch('/api/admin/master-data/service_types', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, is_active }),
     })
@@ -122,12 +123,12 @@ export default function MasterDataPage() {
   async function saveD() {
     setDSaving(true)
     if (dEdit) {
-      await fetch('/api/admin/master-data/districts', {
+      await apiFetch('/api/admin/master-data/districts', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: dEdit.id, name_mn: dName }),
       })
     } else {
-      await fetch('/api/admin/master-data/districts', {
+      await apiFetch('/api/admin/master-data/districts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name_mn: dName }),
       })
@@ -139,7 +140,7 @@ export default function MasterDataPage() {
   }
 
   async function toggleD(id: number, is_active: boolean) {
-    await fetch('/api/admin/master-data/districts', {
+    await apiFetch('/api/admin/master-data/districts', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, is_active }),
     })
@@ -156,7 +157,7 @@ export default function MasterDataPage() {
   async function savePr() {
     if (!prEdit) return
     setPrSaving(true)
-    await fetch('/api/admin/master-data/pricing_rules', {
+    await apiFetch('/api/admin/master-data/pricing_rules', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: prEdit.id,
@@ -175,7 +176,7 @@ export default function MasterDataPage() {
     setSettingSaving(true)
     await Promise.all(
       Object.entries(settingVals).map(([key, value]) =>
-        fetch('/api/admin/master-data/app_settings', {
+        apiFetch('/api/admin/master-data/app_settings', {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key, value }),
         })

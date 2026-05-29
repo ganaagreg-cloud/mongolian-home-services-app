@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/api-fetch'
 import {
   LayoutDashboard, Users, Briefcase, ClipboardList,
   Scale, Wallet, Database, LogOut, Home,
@@ -23,7 +24,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
   const router   = useRouter()
 
   async function handleLogout() {
-    await fetch('/api/auth/sign-out', {
+    await apiFetch('/api/auth/sign-out', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    '{}',

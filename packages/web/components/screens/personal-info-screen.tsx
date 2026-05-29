@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface PersonalInfoScreenProps {
   userName: string
@@ -22,7 +23,7 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/me')
+    apiFetch('/api/me')
       .then((r) => r.json())
       .then((json: { success: boolean; data?: { name: string; email: string } }) => {
         if (json.success && json.data) {
@@ -41,7 +42,7 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
       if (name.trim())  body.name  = name.trim()
       if (email.trim()) body.email = email.trim()
 
-      const res = await fetch('/api/me', {
+      const res = await apiFetch('/api/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

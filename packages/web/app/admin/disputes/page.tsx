@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { apiFetch } from '@/lib/api-fetch'
 
 type Dispute = {
   id: string; order_id: string; customer_name: string; worker_name: string
@@ -27,7 +28,7 @@ export default function DisputesPage() {
 
   function load() {
     setLoading(true)
-    fetch('/api/admin/disputes')
+    apiFetch('/api/admin/disputes')
       .then((r) => r.json())
       .then((j) => { if (j.success) setRows(j.data) })
       .finally(() => setLoading(false))
@@ -38,7 +39,7 @@ export default function DisputesPage() {
   async function resolve() {
     if (!selected) return
     setResolving(true)
-    await fetch(`/api/admin/disputes/${selected.id}/resolve`, {
+    await apiFetch(`/api/admin/disputes/${selected.id}/resolve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ compensation: Number(amount) || 0 }),

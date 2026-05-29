@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { AdminBankingWorker } from '@/lib/types'
 
 interface AdminBankingScreenProps {
@@ -32,7 +33,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
     setIsActing(true)
     setActionError(null)
     try {
-      const res = await fetch(`/api/admin/banking/${selected.workerId}/verify`, {
+      const res = await apiFetch(`/api/admin/banking/${selected.workerId}/verify`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),

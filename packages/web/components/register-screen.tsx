@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ArrowLeft, User, Phone, Lock, Eye, EyeOff } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
+import { apiFetch } from '@/lib/api-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
@@ -57,7 +58,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
       } else {
         // Update phone + name breakdown after signup
         try {
-          const updateRes = await fetch('/api/me', {
+          const updateRes = await apiFetch('/api/me', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone: normalized }),

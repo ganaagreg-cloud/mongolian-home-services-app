@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { BankingInfo, Worker } from '@/lib/types'
 
 interface WorkerProfileScreenProps {
@@ -86,7 +87,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
   const saveProfileEdit = async () => {
     setProfileSaving(true)
     try {
-      await fetch('/api/workers/me', {
+      await apiFetch('/api/workers/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ specialty: editSpecialty, pricePerHour: editPriceNum }),
@@ -106,7 +107,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
   const toggleAvailability = async () => {
     const next = !isAvailable
     setIsAvailable(next)   // optimistic
-    await fetch('/api/workers/me/availability', {
+    await apiFetch('/api/workers/me/availability', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isAvailable: next }),
@@ -146,7 +147,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
   const saveEdit = async () => {
     setSaveLoading(true)
     try {
-      const res = await fetch('/api/workers/me/banking', {
+      const res = await apiFetch('/api/workers/me/banking', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

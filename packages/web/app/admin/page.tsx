@@ -9,6 +9,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShoppingCart, TrendingUp, Briefcase, Scale } from 'lucide-react'
+import { apiFetch } from '@/lib/api-fetch'
 
 type Stats = {
   todayOrders:  number
@@ -52,7 +53,7 @@ export default function AdminDashboard() {
   const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/stats')
+    apiFetch('/api/admin/stats')
       .then((r) => r.json())
       .then((j) => { if (j.success) setStats(j.data) })
       .finally(() => setLoading(false))
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!selected) { setDetail(null); return }
     setDetailLoading(true)
-    fetch(`/api/admin/orders/${selected}`)
+    apiFetch(`/api/admin/orders/${selected}`)
       .then((r) => r.json())
       .then((j) => { if (j.success) setDetail(j.data) })
       .finally(() => setDetailLoading(false))

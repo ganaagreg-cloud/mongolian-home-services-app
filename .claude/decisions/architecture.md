@@ -1,5 +1,20 @@
 # App Architecture — Non-Negotiable Rules
 
+## Monorepo structure
+
+| Package | Responsibility | Port |
+|---------|---------------|------|
+| packages/api | Hono API server — all routes, Better Auth, DB access | 4000 |
+| packages/web | Next.js 16 App Router — UI only, calls packages/api | 3000 |
+| packages/admin | Future admin panel — not yet wired | TBD |
+| packages/shared | Shared TypeScript types only — no runtime code | — |
+
+**Enforced rules:**
+- `packages/web` must NOT contain an `app/api/` directory — all API logic lives in packages/api
+- `packages/admin` must NOT contain an `app/api/` directory — same reason
+- packages/web and packages/admin fetch data from packages/api over HTTP; they never import DB or auth server code directly
+- BETTER_AUTH_URL must always equal the packages/api origin (not the web origin)
+
 ## Navigation
 - Single page: app/page.tsx
 - Navigation = setCurrentScreen(screen: Screen) only

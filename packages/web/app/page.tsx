@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { authClient } from '@/lib/auth-client'
+import { apiFetch } from '@/lib/api-fetch'
 import { LoginScreen } from '@/components/login-screen'
 import { RegisterScreen } from '@/components/register-screen'
 import { OAuthOnboardingScreen } from '@/components/oauth-onboarding-screen'
@@ -75,7 +76,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionData?.user) return
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then((r) => r.json())
       .then((data: MeResponse) => {
         if (data.success && data.data) {
@@ -103,7 +104,7 @@ export default function Home() {
   }
 
   const handleModeToggle = async (mode: 'user' | 'worker') => {
-    const res = await fetch('/api/me/mode', {
+    const res = await apiFetch('/api/me/mode', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode }),
@@ -241,7 +242,7 @@ export default function Home() {
   if (currentScreen === 'oauth-onboarding') {
     const handleOAuthComplete = () => {
       // Re-fetch user data to pick up the new phone and route normally
-      fetch('/api/auth/me')
+      apiFetch('/api/auth/me')
         .then((r) => r.json())
         .then((data: MeResponse) => {
           if (data.success && data.data) {

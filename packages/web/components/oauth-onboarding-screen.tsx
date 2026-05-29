@@ -5,6 +5,7 @@ import { Phone, Lock, Eye, EyeOff, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface OAuthOnboardingScreenProps {
   onComplete: () => void
@@ -33,7 +34,7 @@ export function OAuthOnboardingScreen({ onComplete }: OAuthOnboardingScreenProps
       const body: Record<string, string> = { phone: normalized }
       if (addPassword && password.length >= 8) body.password = password
 
-      const res = await fetch('/api/me', {
+      const res = await apiFetch('/api/me', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(body),

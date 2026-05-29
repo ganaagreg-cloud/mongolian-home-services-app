@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LocationPicker } from '@/components/location-picker'
 import type { MatchingStrategy } from '@/lib/types'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface CreateOrderScreenProps {
   onBack: () => void
@@ -112,7 +113,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ? new Date().toISOString()
         : `${dates[selectedDate]!.full}T${selectedTime}:00`
 
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

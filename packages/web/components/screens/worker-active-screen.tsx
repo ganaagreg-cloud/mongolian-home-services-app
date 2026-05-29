@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import { SosButton } from '@/components/sos-button'
 import type { Order } from '@/lib/types'
 
@@ -32,7 +33,7 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
     setUpdating(true)
     setUpdateError(null)
     try {
-      const res = await fetch(`/api/orders/${order.id}/status`, {
+      const res = await apiFetch(`/api/orders/${order.id}/status`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ status }),
@@ -59,7 +60,7 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
       const form = new FormData()
       form.append('photo', file)
       form.append('type', type)
-      const res = await fetch(`/api/orders/${order.id}/upload`, { method: 'POST', body: form })
+      const res = await apiFetch(`/api/orders/${order.id}/upload`, { method: 'POST', body: form })
       const d = (await res.json()) as { success: boolean; error?: string }
       if (!d.success) {
         setUploadError(d.error ?? 'Зураг байршуулахад алдаа гарлаа')

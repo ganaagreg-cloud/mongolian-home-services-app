@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, Building2, FileText, Smartphone, Check, Clock, Upload, CreditCard, AlertTriangle, ChevronDown, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface WorkerRegisterScreenProps {
   onBack: () => void
@@ -65,7 +66,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   const [specialties, setSpecialties] = useState<SpecialtyOption[]>([])
 
   useEffect(() => {
-    fetch('/api/service-types')
+    apiFetch('/api/service-types')
       .then((r) => r.json())
       .then((j: { success: boolean; data?: { name_mn: string }[] }) => {
         if (j.success && j.data) {
@@ -105,7 +106,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
     setIsLoading(true)
     setSubmitError(null)
     try {
-      const res = await fetch('/api/workers/register', {
+      const res = await apiFetch('/api/workers/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -233,7 +234,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                     setDanLoading(true)
                     setDanError(null)
                     try {
-                      const res = await fetch('/api/auth/dan', {
+                      const res = await apiFetch('/api/auth/dan', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({}),

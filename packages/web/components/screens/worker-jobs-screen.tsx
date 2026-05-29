@@ -6,6 +6,7 @@ import { MapPin, Clock, Check, X, Zap, CalendarDays, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { apiFetch } from '@/lib/api-fetch'
 import type { Order } from '@/lib/types'
 
 interface WorkerJobsScreenProps {
@@ -205,7 +206,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
   const handleDeclineInstant = async (jobId: string) => {
     void mutateInstant((prev = []) => prev.filter((j) => j.id !== jobId), { revalidate: false })
     try {
-      const res = await fetch(`/api/orders/${jobId}/decline-instant`, { method: 'POST' })
+      const res = await apiFetch(`/api/orders/${jobId}/decline-instant`, { method: 'POST' })
       if (!res.ok) {
         // Decline failed — revalidate so the card reappears
         void mutateInstant()
@@ -218,7 +219,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
   const handleAcceptInstant = async (jobId: string) => {
     void mutateInstant((prev = []) => prev.filter((j) => String(j.id) !== String(jobId)), { revalidate: false })
     try {
-      await fetch(`/api/orders/${jobId}/accept-instant`, { method: 'POST' })
+      await apiFetch(`/api/orders/${jobId}/accept-instant`, { method: 'POST' })
     } catch { /* ignore; card already removed from UI */ }
     onAcceptJob(jobId)
   }
@@ -226,7 +227,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
   const handleAcceptScheduled = async (orderId: string) => {
     setAcceptError(null)
     try {
-      const res = await fetch(`/api/orders/${orderId}/accept`, { method: 'POST' })
+      const res = await apiFetch(`/api/orders/${orderId}/accept`, { method: 'POST' })
       const data = (await res.json()) as { success: boolean; error?: string }
       if (data.success) {
         setAcceptedIds((prev) => new Set([...prev, orderId]))
