@@ -1,7 +1,9 @@
+import { resolve } from 'path'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {
-    root: import.meta.dirname,
+    root: resolve(import.meta.dirname, '../..'),
   },
   typescript: {
     ignoreBuildErrors: true,
