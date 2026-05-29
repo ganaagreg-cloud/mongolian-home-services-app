@@ -327,6 +327,9 @@ export interface AdminDispute {
   totalAmount: number
   compensationAmount: number | null
   createdAt: string
+  beforePhotoUrl: string | null
+  afterPhotoUrl: string | null
+  disputePhotoUrls: string[]
 }
 
 export interface UpdateAvailabilityBody {

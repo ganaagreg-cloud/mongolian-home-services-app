@@ -414,12 +414,14 @@ router.get('/api/admin/disputes', async (c) => {
     id: string; order_id: string; customer_name: string; worker_name: string | null
     service: string; issue: string; status: string; total_amount: number
     compensation_amount: number | null; created_at: string
+    photo_urls: string[]; before_photo_url: string | null; after_photo_url: string | null
   }
 
   const rows = (await db.query(`
     SELECT d.id, d.order_id, d.issue, d.status, d.compensation_amount, d.created_at,
+           d.photo_urls,
            u1.name as customer_name, u2.name as worker_name,
-           o.service, o.total_amount
+           o.service, o.total_amount, o.before_photo_url, o.after_photo_url
     FROM   disputes d
     JOIN   orders  o  ON o.id  = d.order_id
     JOIN   users   u1 ON u1.id = o.user_id
@@ -439,6 +441,9 @@ router.get('/api/admin/disputes', async (c) => {
     totalAmount:        r.total_amount,
     compensationAmount: r.compensation_amount,
     createdAt:          r.created_at,
+    beforePhotoUrl:     r.before_photo_url,
+    afterPhotoUrl:      r.after_photo_url,
+    disputePhotoUrls:   r.photo_urls ?? [],
   }))
 
   return c.json({ success: true, data })
