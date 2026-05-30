@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShieldCheck, Scale, ClipboardList, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, ShieldCheck, Scale, ClipboardList, Users, Database, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { authClient } from '@/lib/auth-client'
 
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/verifications',  label: 'Баталгаажуулалт',   icon: ShieldCheck },
   { href: '/disputes',       label: 'Маргаанууд',         icon: Scale },
   { href: '/orders',         label: 'Захиалгууд',         icon: ClipboardList },
+  { href: '/master-data',   label: 'Мастер дата',        icon: Database },
 ]
 
 export default function AdminSidebar() {

@@ -1143,4 +1143,186 @@ router.delete('/api/admin/master-data/:type', async (c) => {
   return c.json({ success: false, error: 'DELETE дэмжигдэхгүй' }, 400)
 })
 
+// ── Settings ──────────────────────────────────────────────────────────────
+
+// GET /api/admin/settings
+router.get('/api/admin/settings', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  await dbReady
+  const rows = (await db.query(`SELECT key, value, updated_at FROM app_settings ORDER BY key`)).rows
+  return c.json({ success: true, data: rows })
+})
+
+const settingValueSchema = z.object({ value: z.string().min(1) })
+
+// PATCH /api/admin/settings/:key
+router.patch('/api/admin/settings/:key', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  const key = c.req.param('key')
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = settingValueSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  await dbReady
+  await db.query(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+    [key, parsed.data.value],
+  )
+  return c.json({ success: true, data: null })
+})
+
+// ── Service Types ──────────────────────────────────────────────────────────
+
+// GET /api/admin/service-types
+router.get('/api/admin/service-types', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  await dbReady
+  const rows = (await db.query(
+    `SELECT id, name_mn, icon, is_active, sort_order, created_at FROM service_types ORDER BY sort_order, id`,
+  )).rows
+  return c.json({ success: true, data: rows })
+})
+
+const serviceTypeCreateSchema = z.object({
+  name_mn:    z.string().min(1),
+  icon:       z.string().min(1).default('sparkles'),
+  sort_order: z.number().int().optional(),
+})
+
+// POST /api/admin/service-types
+router.post('/api/admin/service-types', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = serviceTypeCreateSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  await dbReady
+  const row = (await db.query(
+    `INSERT INTO service_types (name_mn, icon, sort_order) VALUES ($1, $2, $3) RETURNING *`,
+    [parsed.data.name_mn, parsed.data.icon, parsed.data.sort_order ?? 0],
+  )).rows[0]
+  await db.query(`INSERT INTO pricing_rules (service_type_id) VALUES ($1)`, [row.id])
+  return c.json({ success: true, data: row }, 201)
+})
+
+const serviceTypePatchSchema = z.object({
+  name_mn:    z.string().min(1).optional(),
+  icon:       z.string().optional(),
+  is_active:  z.boolean().optional(),
+  sort_order: z.number().int().optional(),
+})
+
+// PATCH /api/admin/service-types/:id
+router.patch('/api/admin/service-types/:id', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  const id = c.req.param('id')
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = serviceTypePatchSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  const d = parsed.data
+  const sets: string[] = []; const vals: unknown[] = []; let i = 1
+  if (d.name_mn    !== undefined) { sets.push(`name_mn = $${i++}`)   ; vals.push(d.name_mn) }
+  if (d.icon       !== undefined) { sets.push(`icon = $${i++}`)      ; vals.push(d.icon) }
+  if (d.is_active  !== undefined) { sets.push(`is_active = $${i++}`) ; vals.push(d.is_active) }
+  if (d.sort_order !== undefined) { sets.push(`sort_order = $${i++}`); vals.push(d.sort_order) }
+  if (!sets.length) return c.json({ success: true, data: null })
+  await dbReady
+  vals.push(id)
+  await db.query(`UPDATE service_types SET ${sets.join(', ')} WHERE id = $${i}`, vals)
+  return c.json({ success: true, data: null })
+})
+
+// DELETE /api/admin/service-types/:id
+router.delete('/api/admin/service-types/:id', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  const id = c.req.param('id')
+  await dbReady
+  await db.query(`UPDATE service_types SET is_active = false WHERE id = $1`, [id])
+  return c.json({ success: true, data: null })
+})
+
+// ── Districts ──────────────────────────────────────────────────────────────
+
+// GET /api/admin/districts
+router.get('/api/admin/districts', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  await dbReady
+  const rows = (await db.query(
+    `SELECT id, name_mn, is_active, created_at FROM districts ORDER BY name_mn`,
+  )).rows
+  return c.json({ success: true, data: rows })
+})
+
+const districtCreateSchema = z.object({ name_mn: z.string().min(1) })
+
+// POST /api/admin/districts
+router.post('/api/admin/districts', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = districtCreateSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  await dbReady
+  const row = (await db.query(
+    `INSERT INTO districts (name_mn) VALUES ($1) RETURNING *`,
+    [parsed.data.name_mn],
+  )).rows[0]
+  return c.json({ success: true, data: row }, 201)
+})
+
+const districtPatchSchema = z.object({
+  name_mn:   z.string().min(1).optional(),
+  is_active: z.boolean().optional(),
+})
+
+// PATCH /api/admin/districts/:id
+router.patch('/api/admin/districts/:id', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  const id = c.req.param('id')
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = districtPatchSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  const d = parsed.data
+  const sets: string[] = []; const vals: unknown[] = []; let i = 1
+  if (d.name_mn   !== undefined) { sets.push(`name_mn = $${i++}`)  ; vals.push(d.name_mn) }
+  if (d.is_active !== undefined) { sets.push(`is_active = $${i++}`); vals.push(d.is_active) }
+  if (!sets.length) return c.json({ success: true, data: null })
+  await dbReady
+  vals.push(id)
+  await db.query(`UPDATE districts SET ${sets.join(', ')} WHERE id = $${i}`, vals)
+  return c.json({ success: true, data: null })
+})
+
+// DELETE /api/admin/districts/:id
+router.delete('/api/admin/districts/:id', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+  const id = c.req.param('id')
+  await dbReady
+  await db.query(`UPDATE districts SET is_active = false WHERE id = $1`, [id])
+  return c.json({ success: true, data: null })
+})
+
 export default router
