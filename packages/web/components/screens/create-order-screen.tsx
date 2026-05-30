@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react'
 import {
   ArrowLeft, ArrowRight, MapPin, Lock, Sparkles, Droplets,
-  Zap, Wrench, Paintbrush, Wind, Home, Building2, Briefcase, Camera,
+  Zap, Wrench, Paintbrush, Wind, Camera, Hammer, Truck, WashingMachine,
   Clock, CalendarDays, CheckCircle, LocateFixed,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LocationPicker } from '@/components/location-picker'
-import type { MatchingStrategy } from '@/lib/types'
+import { BookingFields, type BookingFieldsValue } from '@/components/booking-fields'
+import { calculatePrice, DEFAULT_PLATFORM_SETTINGS } from '@/lib/pricing'
+import type { MatchingStrategy, PricingModel } from '@/lib/types'
 import { apiFetch } from '@/lib/api-fetch'
 
 interface CreateOrderScreenProps {
@@ -17,16 +19,23 @@ interface CreateOrderScreenProps {
   onOrderCreated: (orderId: string, strategy: MatchingStrategy, totalAmount: number) => void
 }
 
+// Matches GET /api/service-types response shape
 interface ServiceType {
-  id: number
-  name_mn: string
-  icon: string
-  base_rate: number
+  id:                     number
+  name_mn:                string
+  icon:                   string
+  sort_order:             number
+  pricing_model:          PricingModel
+  base_rate:              number
+  min_charge:             number
+  unit_label:             string
+  requires_property_type: boolean
 }
 
 const ICON_MAP = {
   sparkles: Sparkles, droplets: Droplets, zap: Zap,
   wrench: Wrench, paintbrush: Paintbrush, wind: Wind,
+  hammer: Hammer, truck: Truck, 'washing-machine': WashingMachine,
 } as const
 
 const TIME_SLOTS = [
@@ -34,20 +43,33 @@ const TIME_SLOTS = [
   '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
 ]
 
-const ROOM_HOURS: Record<number, number> = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 }
-
 const STEP_LABELS = ['Үйлчилгээ', 'Цаг', 'Тэмдэглэл', 'Үнэ', 'Баталгаа']
-
-const PROPERTY_TYPES = [
-  { type: 'house',     Icon: Home,      label: 'Байшин',    sub: 'Хувийн байшин, гэр' },
-  { type: 'apartment', Icon: Building2, label: 'Орон сууц', sub: 'Блок, нийтийн байр' },
-  { type: 'office',    Icon: Briefcase, label: 'Оффис',     sub: 'Ажлын байр, студи' },
-] as const
 
 export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenProps) {
   const [step, setStep] = useState(1)
 
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [serviceTypes,    setServiceTypes]    = useState<ServiceType[]>([])
+  const [serviceTypeId,   setServiceTypeId]   = useState<number | null>(null)
+  const [address,         setAddress]         = useState('')
+  const [bookingData,     setBookingData]     = useState<BookingFieldsValue>({
+    quantity: 0, estimatedHours: 1, isValid: false,
+  })
+
+  const [matchingStrategy, setMatchingStrategy] = useState<MatchingStrategy>('instant')
+  const [selectedDate,     setSelectedDate]     = useState(0)
+  const [selectedTime,     setSelectedTime]     = useState<string | null>(null)
+  const [urgent,           setUrgent]           = useState(false)
+
+  const [notes, setNotes] = useState('')
+
+  const [isConfirming,       setIsConfirming]       = useState(false)
+  const [confirmError,       setConfirmError]       = useState<string | null>(null)
+  const [step1Submitted,     setStep1Submitted]     = useState(false)
+  const [step2Submitted,     setStep2Submitted]     = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
+
+  const [serviceLoadError, setServiceLoadError] = useState(false)
+
   useEffect(() => {
     apiFetch('/api/service-types')
       .then((r) => r.json())
@@ -55,32 +77,12 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         if (j.success && j.data?.length) {
           setServiceTypes(j.data)
           setServiceTypeId(j.data[0]!.id)
+        } else {
+          setServiceLoadError(true)
         }
       })
+      .catch(() => setServiceLoadError(true))
   }, [])
-
-  // Step 1
-  const [serviceTypeId, setServiceTypeId] = useState<number | null>(null)
-  const [address, setAddress]           = useState('')
-  const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'office' | null>(null)
-  const [rooms, setRooms]               = useState<number | null>(null)
-  const [areaSqm, setAreaSqm]           = useState('')
-
-  // Step 2
-  const [matchingStrategy, setMatchingStrategy] = useState<MatchingStrategy>('instant')
-  const [selectedDate, setSelectedDate]         = useState(0)
-  const [selectedTime, setSelectedTime]         = useState<string | null>(null)
-  const [urgent, setUrgent]                     = useState(false)
-
-  // Step 3
-  const [notes, setNotes] = useState('')
-
-  // Submission
-  const [isConfirming,       setIsConfirming]       = useState(false)
-  const [confirmError,       setConfirmError]       = useState<string | null>(null)
-  const [step1Submitted,     setStep1Submitted]     = useState(false)
-  const [step2Submitted,     setStep2Submitted]     = useState(false)
-  const [showLocationPicker, setShowLocationPicker] = useState(false)
 
   // Generate next 14 days
   const dates = Array.from({ length: 14 }, (_, i) => {
@@ -93,25 +95,31 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
     }
   })
 
-  // Pricing
-  const baseRate   = serviceTypes.find((s) => s.id === serviceTypeId)?.base_rate ?? 25000
-  const hours      = propertyType === 'apartment' && rooms ? (ROOM_HOURS[rooms] ?? 6) : 3
-  const basePrice  = baseRate * hours
-  const urgentFee  = urgent ? Math.round(basePrice * 0.2) : 0
-  const commission = Math.round((basePrice + urgentFee) * 0.15)
-  const total      = basePrice + urgentFee + commission
+  const selectedService = serviceTypes.find((s) => s.id === serviceTypeId)
+  const isInspection    = selectedService?.pricing_model === 'inspection'
 
-  const isStep1Valid = () =>
-    !!address.trim() &&
-    !!propertyType &&
-    (propertyType !== 'apartment' || (rooms !== null && areaSqm.trim() !== ''))
+  // Live price breakdown — pure calculation, no async
+  const breakdown = selectedService
+    ? calculatePrice({
+        service:  selectedService,
+        settings: DEFAULT_PLATFORM_SETTINGS,
+        quantity: bookingData.quantity,
+        isUrgent: urgent,
+      })
+    : null
 
+  const isStep1Valid = () => !!address.trim() && bookingData.isValid
   const isStep2Valid = () => matchingStrategy === 'instant' || selectedTime !== null
 
   const handleNext = () => {
     if (step === 1) {
       setStep1Submitted(true)
       if (!isStep1Valid()) return
+      if (isInspection) {
+        setMatchingStrategy('scheduled')
+        setStep(3)  // skip date/time step — InspectionForm already collects it
+        return
+      }
     }
     if (step === 2) {
       setStep2Submitted(true)
@@ -124,9 +132,16 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
     setIsConfirming(true)
     setConfirmError(null)
     try {
-      const scheduledDate = matchingStrategy === 'instant'
-        ? new Date().toISOString()
-        : `${dates[selectedDate]!.full}T${selectedTime}:00`
+      const scheduledDate = isInspection
+        ? (bookingData.scheduledDate ?? new Date().toISOString())
+        : matchingStrategy === 'instant'
+          ? new Date().toISOString()
+          : `${dates[selectedDate]!.full}T${selectedTime}:00`
+
+      // Inspection: prepend problem description to any additional notes from step 3
+      const combinedNotes = isInspection
+        ? [bookingData.problemDescription, notes].filter(Boolean).join('\n\n') || undefined
+        : notes || undefined
 
       const res = await apiFetch('/api/orders', {
         method:  'POST',
@@ -135,36 +150,34 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
           serviceTypeId,
           address,
           scheduledDate,
-          hours,
-          totalAmount:      total,
+          hours:        bookingData.estimatedHours,
+          totalAmount:  breakdown?.total ?? 0,
           urgent,
-          rooms:            propertyType === 'apartment' ? rooms : undefined,
-          areaSqm:          propertyType === 'apartment' && areaSqm ? parseInt(areaSqm) : undefined,
-          propertyType:     propertyType ?? undefined,
-          notes:            notes || undefined,
+          areaSqm:      bookingData.quantity > 0 ? bookingData.quantity : undefined,
+          propertyType: bookingData.propertyType,
+          notes:        combinedNotes,
           matchingStrategy,
         }),
       })
       const data = (await res.json()) as {
         success: boolean
-        data?: { id: string; matchingStrategy: MatchingStrategy }
+        data?: { id: string; matchingStrategy: MatchingStrategy; totalAmount: number }
         error?: string
       }
       if (data.success && data.data) {
-        onOrderCreated(data.data.id, data.data.matchingStrategy, total)
+        onOrderCreated(data.data.id, data.data.matchingStrategy, data.data.totalAmount)
       } else {
         setConfirmError(data.error ?? 'Захиалга үүсгэхэд алдаа гарлаа')
       }
+    } catch {
+      setConfirmError('Сүлжээний алдаа. Дахин оролдоно уу')
     } finally {
       setIsConfirming(false)
     }
   }
 
-  const showAddressError  = step1Submitted && !address.trim()
-  const showPropertyError = step1Submitted && !propertyType
-  const showRoomsError    = step1Submitted && propertyType === 'apartment' && rooms === null
-  const showAreaError     = step1Submitted && propertyType === 'apartment' && !areaSqm.trim()
-  const showTimeError     = step2Submitted && matchingStrategy === 'scheduled' && !selectedTime
+  const showAddressError = step1Submitted && !address.trim()
+  const showTimeError    = step2Submitted && matchingStrategy === 'scheduled' && !selectedTime
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-32">
@@ -172,7 +185,11 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={step === 1 ? onBack : () => setStep((s) => s - 1)}
+          onClick={
+            step === 1 ? onBack :
+            (step === 3 && isInspection) ? () => setStep(1) :
+            () => setStep((s) => s - 1)
+          }
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -197,19 +214,27 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ))}
       </div>
 
-      {/* ── STEP 1: SERVICE + ADDRESS + PROPERTY ─────────── */}
+      {/* ── STEP 1: SERVICE + ADDRESS + BOOKING FIELDS ─── */}
       {step === 1 && (
         <>
           {/* Service type */}
           <div className="mt-6 px-6">
             <h2 className="font-semibold text-foreground">Үйлчилгээний төрөл</h2>
+            {serviceLoadError && (
+              <p className="mt-2 text-sm text-destructive">Үйлчилгээний мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
+            )}
             <div className="mt-3 grid grid-cols-3 gap-3">
               {serviceTypes.map((s) => {
                 const Icon = ICON_MAP[s.icon as keyof typeof ICON_MAP] ?? Sparkles
                 return (
                   <button
                     key={s.id}
-                    onClick={() => setServiceTypeId(s.id)}
+                    onClick={() => {
+                      setServiceTypeId(s.id)
+                      // Reset booking data when service changes
+                      setBookingData({ quantity: 0, estimatedHours: 1, isValid: false })
+                      setStep1Submitted(false)
+                    }}
                     className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
                       serviceTypeId === s.id
                         ? 'bg-primary text-primary-foreground shadow-md'
@@ -253,94 +278,14 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             )}
           </div>
 
-          {/* Property type */}
-          <div className="mt-6 px-6">
-            <h2 className="font-semibold text-foreground">Үл хөдлөхийн төрөл</h2>
-            <div className="mt-3 space-y-3">
-              {PROPERTY_TYPES.map(({ type, Icon, label, sub }) => (
-                <button
-                  key={type}
-                  onClick={() => {
-                    setPropertyType(type)
-                    if (type !== 'apartment') setRooms(null)
-                  }}
-                  className={`flex w-full items-center gap-4 rounded-2xl border p-4 transition-all active:scale-95 ${
-                    propertyType === type
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'border-border bg-card shadow-sm'
-                  }`}
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold text-foreground">{label}</p>
-                    <p className="text-sm text-muted-foreground">{sub}</p>
-                  </div>
-                  <div
-                    className={`h-5 w-5 rounded-full border-2 transition-colors ${
-                      propertyType === type ? 'border-primary bg-primary' : 'border-border'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-            {showPropertyError && (
-              <p className="mt-2 text-sm text-destructive">Үл хөдлөхийн төрлийг сонгоно уу</p>
-            )}
-          </div>
-
-          {/* Apartment sub-fields */}
-          {propertyType === 'apartment' && (
-            <div className="mt-6 px-6 space-y-4">
-              <div>
-                <h2 className="font-semibold text-foreground">Өрөөний тоо</h2>
-                <div className="mt-3 flex gap-3">
-                  {[1, 2, 3, 4, 5].map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRooms(r)}
-                      className={`flex-1 rounded-2xl py-3 text-center font-semibold transition-colors active:scale-95 ${
-                        rooms === r
-                          ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-card text-foreground shadow-sm'
-                      }`}
-                    >
-                      {r === 5 ? '5+' : r}
-                    </button>
-                  ))}
-                </div>
-                {rooms && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Тооцоолсон хугацаа: {ROOM_HOURS[rooms] ?? 6} цаг
-                  </p>
-                )}
-                {showRoomsError && (
-                  <p className="mt-1 text-sm text-destructive">Өрөөний тоог сонгоно уу</p>
-                )}
-              </div>
-
-              <div>
-                <h2 className="font-semibold text-foreground">Талбай (м²)</h2>
-                <div className="relative mt-2">
-                  <input
-                    type="number"
-                    min={20}
-                    max={500}
-                    placeholder="60"
-                    value={areaSqm}
-                    onChange={(e) => setAreaSqm(e.target.value)}
-                    className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-12 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    м²
-                  </span>
-                </div>
-                {showAreaError && (
-                  <p className="mt-1 text-sm text-destructive">Талбайг оруулна уу</p>
-                )}
-              </div>
-            </div>
+          {/* Booking fields — routed by pricing_model */}
+          {selectedService && (
+            <BookingFields
+              key={serviceTypeId ?? 0}
+              service={selectedService}
+              onChange={setBookingData}
+              submitted={step1Submitted}
+            />
           )}
         </>
       )}
@@ -348,7 +293,6 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       {/* ── STEP 2: MATCHING STRATEGY + DATE & TIME ─────── */}
       {step === 2 && (
         <>
-          {/* Strategy selector */}
           <div className="mt-6 px-6">
             <h2 className="font-semibold text-foreground">Захиалгын төрөл</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
@@ -396,7 +340,6 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </div>
           </div>
 
-          {/* Instant: info banner instead of date/time */}
           {matchingStrategy === 'instant' && (
             <div className="mt-6 mx-6 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
@@ -412,7 +355,6 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </div>
           )}
 
-          {/* Scheduled: date & time pickers */}
           {matchingStrategy === 'scheduled' && (
             <>
               <div className="mt-6">
@@ -459,7 +401,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </>
           )}
 
-          {/* Urgent toggle (both strategies) */}
+          {/* Urgent toggle */}
           <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -468,7 +410,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Яаралтай</p>
-                  <p className="text-xs text-muted-foreground">2 цагт ирнэ · +20% нэмэгдэл</p>
+                  <p className="text-xs text-muted-foreground">2 цагт ирнэ</p>
                 </div>
               </div>
               <button
@@ -484,10 +426,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
                 />
               </button>
             </div>
-            {urgent && (
+            {urgent && breakdown && breakdown.urgentSurcharge > 0 && (
               <div className="mt-3 rounded-xl bg-accent/10 px-3 py-2">
                 <p className="text-xs font-medium text-accent">
-                  +₮{urgentFee.toLocaleString()} яаралтай нэмэгдэл нэмэгдэнэ
+                  +₮{breakdown.urgentSurcharge.toLocaleString()} яаралтай нэмэгдэл нэмэгдэнэ
                 </p>
               </div>
             )}
@@ -536,7 +478,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       )}
 
       {/* ── STEP 4: PRICE SUMMARY ───────────────────────── */}
-      {step === 4 && (
+      {step === 4 && breakdown && (
         <>
           <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
             <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
@@ -544,7 +486,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Үйлчилгээ</span>
                 <span className="font-medium text-foreground">
-                  {serviceTypes.find((s) => s.id === serviceTypeId)?.name_mn ?? '—'}
+                  {selectedService?.name_mn ?? '—'}
                 </span>
               </div>
               <div className="flex items-start justify-between gap-4 text-sm">
@@ -554,17 +496,25 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Захиалгын төрөл</span>
                 <span className="font-medium text-foreground">
-                  {matchingStrategy === 'instant' ? 'Яг одоо (Шуурхай)' : `Цаг товлох · ${dates[selectedDate]?.full ?? '—'} ${selectedTime ?? ''}`}
+                  {matchingStrategy === 'instant'
+                    ? 'Яг одоо (Шуурхай)'
+                    : isInspection && bookingData.scheduledDate
+                      ? `Цаг товлох · ${bookingData.scheduledDate.slice(0, 10)} ${bookingData.scheduledDate.slice(11, 16)}`
+                      : `Цаг товлох · ${dates[selectedDate]?.full ?? '—'} ${selectedTime ?? ''}`}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Хугацаа</span>
-                <span className="font-medium text-foreground">{hours} цаг</span>
-              </div>
+              {bookingData.quantity > 0 && selectedService && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Хэмжээ</span>
+                  <span className="font-medium text-foreground">
+                    {bookingData.quantity} {selectedService.unit_label}
+                  </span>
+                </div>
+              )}
               {urgent && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Яаралтай</span>
-                  <span className="font-medium text-accent">Тийм (+20%)</span>
+                  <span className="font-medium text-accent">Тийм</span>
                 </div>
               )}
             </div>
@@ -574,25 +524,37 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             <h2 className="font-semibold text-foreground">Үнийн тооцоо</h2>
             <div className="mt-3 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Үйлчилгээний үнэ ({hours} цаг)</span>
-                <span className="text-foreground">₮{basePrice.toLocaleString()}</span>
+                <span className="text-muted-foreground">
+                  Үйлчилгээний үнэ
+                  {bookingData.quantity > 0 && selectedService
+                    ? ` (${bookingData.quantity} ${selectedService.unit_label})`
+                    : ''}
+                </span>
+                <span className="text-foreground">₮{breakdown.subtotal.toLocaleString()}</span>
               </div>
-              {urgentFee > 0 && (
+              {breakdown.urgentSurcharge > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Яаралтай нэмэгдэл (+20%)</span>
-                  <span className="font-medium text-accent">+₮{urgentFee.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Яаралтай нэмэгдэл</span>
+                  <span className="font-medium text-accent">+₮{breakdown.urgentSurcharge.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Платформын шимтгэл (15%)</span>
-                <span className="text-foreground">₮{commission.toLocaleString()}</span>
-              </div>
             </div>
             <div className="mt-3 flex justify-between border-t border-border pt-3">
               <span className="font-semibold text-foreground">Нийт</span>
-              <span className="text-lg font-bold text-primary">₮{total.toLocaleString()}</span>
+              <span className="text-lg font-bold text-primary">₮{breakdown.total.toLocaleString()}</span>
             </div>
           </div>
+
+          {isInspection && (
+            <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+              <p className="text-sm font-semibold text-primary">
+                Дуудлагын хураамж: ₮{breakdown.subtotal.toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ажилтан үзээд засварын үнийг гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.
+              </p>
+            </div>
+          )}
 
           <div className="mt-4 mx-6 flex items-start gap-3 rounded-2xl border border-success/30 bg-success/5 p-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success/10">
@@ -609,64 +571,67 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       )}
 
       {/* ── STEP 5: CONFIRM ORDER ───────────────────────── */}
-      {step === 5 && (
+      {step === 5 && breakdown && (
         <>
-          {/* Summary hero */}
           <div className="mt-6 mx-6 rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 shadow-lg">
             <p className="text-sm font-medium text-primary-foreground/80">Нийт төлбөр</p>
-            <p className="mt-1 text-3xl font-bold text-primary-foreground">₮{total.toLocaleString()}</p>
+            <p className="mt-1 text-3xl font-bold text-primary-foreground">₮{breakdown.total.toLocaleString()}</p>
             <p className="mt-2 text-xs text-primary-foreground/70">
-              {matchingStrategy === 'instant'
-                ? 'Захиалга баталгаажсаны дараа ажилтан хайж эхэлнэ. Ажилтан олдсоны дараа л төлбөр авна.'
-                : 'Захиалга нийтлэгдсэний дараа ажилтнуудаас саналыг хүлээж авч, та тохиромжтой хүнийг сонгоод төлнө.'}
+              {isInspection
+                ? 'Ажилтан ирж асуудлыг үзэж, засварын үнийн санал гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.'
+                : matchingStrategy === 'instant'
+                  ? 'Захиалга баталгаажсаны дараа ажилтан хайж эхэлнэ. Ажилтан олдсоны дараа л төлбөр авна.'
+                  : 'Захиалга нийтлэгдсэний дараа ажилтнуудаас саналыг хүлээж авч, та тохиромжтой хүнийг сонгоод төлнө.'}
             </p>
           </div>
 
-          {/* What happens next */}
           <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
             <h2 className="font-semibold text-foreground">Цаашид юу болох вэ?</h2>
             <div className="mt-3 space-y-3">
-              {matchingStrategy === 'instant' ? (
+              {isInspection ? (
                 <>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white">
-                      <span className="text-xs font-bold">1</span>
+                  {[
+                    'Ажилтан таны дуудлагыг хүлээн авна',
+                    'Ажилтан очиж асуудлыг үзнэ',
+                    'Засварын үнийн санал гаргах бөгөөд та зөвшөөрсний дараа ажил эхэлнэ',
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                        <span className="text-xs font-bold">{i + 1}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{text}</p>
                     </div>
-                    <p className="text-sm text-foreground">Систем боломжтой ажилтныг хайна</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white">
-                      <span className="text-xs font-bold">2</span>
+                  ))}
+                </>
+              ) : matchingStrategy === 'instant' ? (
+                <>
+                  {[
+                    'Систем боломжтой ажилтныг хайна',
+                    'Та ажилтны профайлыг харж баталгаажуулна',
+                    'Escrow-ээр төлбөр хийснээр ажил эхэлнэ',
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+                        <span className="text-xs font-bold">{i + 1}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{text}</p>
                     </div>
-                    <p className="text-sm text-foreground">Та ажилтны профайлыг харж баталгаажуулна</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white">
-                      <span className="text-xs font-bold">3</span>
-                    </div>
-                    <p className="text-sm text-foreground">Escrow-ээр төлбөр хийснээр ажил эхэлнэ</p>
-                  </div>
+                  ))}
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                      <span className="text-xs font-bold">1</span>
+                  {[
+                    'Захиалга ажилтнуудад нийтлэгдэнэ',
+                    'Сонирхсон ажилтнуудаас саналыг хүлээнэ',
+                    'Тохиромжтой хүнийг сонгоод төлбөр хийнэ',
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                        <span className="text-xs font-bold">{i + 1}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{text}</p>
                     </div>
-                    <p className="text-sm text-foreground">Захиалга ажилтнуудад нийтлэгдэнэ</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                      <span className="text-xs font-bold">2</span>
-                    </div>
-                    <p className="text-sm text-foreground">Сонирхсон ажилтнуудаас саналыг хүлээнэ</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                      <span className="text-xs font-bold">3</span>
-                    </div>
-                    <p className="text-sm text-foreground">Тохиромжтой хүнийг сонгоод төлбөр хийнэ</p>
-                  </div>
+                  ))}
                 </>
               )}
             </div>
@@ -707,13 +672,13 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ) : (
           <Button
             onClick={() => { void handleConfirm() }}
-            disabled={isConfirming}
+            disabled={isConfirming || !breakdown}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
           >
             {isConfirming ? 'Илгээж байна...' : (
               <>
                 <CheckCircle className="mr-2 h-5 w-5" />
-                {matchingStrategy === 'instant' ? 'Ажилтан хайх' : 'Захиалга нийтлэх'}
+                {isInspection ? 'Дуудлага илгээх' : matchingStrategy === 'instant' ? 'Ажилтан хайх' : 'Захиалга нийтлэх'}
               </>
             )}
           </Button>

@@ -49,12 +49,17 @@ export const TABLES: string[] = [
   )`,
   // ── App tables ──────────────────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS service_types (
-    id         SERIAL PRIMARY KEY,
-    name_mn    TEXT NOT NULL UNIQUE,
-    icon       TEXT NOT NULL DEFAULT 'sparkles',
-    is_active  BOOLEAN NOT NULL DEFAULT true,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    id                     SERIAL PRIMARY KEY,
+    name_mn                TEXT    NOT NULL UNIQUE,
+    icon                   TEXT    NOT NULL DEFAULT 'sparkles',
+    is_active              BOOLEAN NOT NULL DEFAULT true,
+    sort_order             INTEGER NOT NULL DEFAULT 0,
+    pricing_model          TEXT    NOT NULL DEFAULT 'area',
+    base_rate              INTEGER NOT NULL DEFAULT 0,
+    min_charge             INTEGER NOT NULL DEFAULT 0,
+    unit_label             TEXT    NOT NULL DEFAULT 'м²',
+    requires_property_type BOOLEAN NOT NULL DEFAULT false,
+    created_at             TIMESTAMPTZ DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS users (
@@ -207,6 +212,17 @@ export const TABLES: string[] = [
     UNIQUE (order_id, worker_id)
   )`,
 
+  `CREATE TABLE IF NOT EXISTS order_quotes (
+    id          SERIAL PRIMARY KEY,
+    order_id    INTEGER NOT NULL REFERENCES orders(id),
+    worker_id   INTEGER NOT NULL REFERENCES workers(id),
+    amount      INTEGER NOT NULL,
+    description TEXT    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'submitted'
+                        CHECK (status IN ('submitted', 'approved', 'rejected')),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+
   `CREATE TABLE IF NOT EXISTS sos_alerts (
     id               SERIAL PRIMARY KEY,
     order_id         INTEGER REFERENCES orders(id),
@@ -260,6 +276,12 @@ export const TABLES: string[] = [
   `ALTER TABLE workers ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
   `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
+  // Pricing model columns on service_types
+  `ALTER TABLE service_types ADD COLUMN IF NOT EXISTS pricing_model          TEXT    NOT NULL DEFAULT 'area'`,
+  `ALTER TABLE service_types ADD COLUMN IF NOT EXISTS base_rate              INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE service_types ADD COLUMN IF NOT EXISTS min_charge             INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE service_types ADD COLUMN IF NOT EXISTS unit_label             TEXT    NOT NULL DEFAULT 'м²'`,
+  `ALTER TABLE service_types ADD COLUMN IF NOT EXISTS requires_property_type BOOLEAN NOT NULL DEFAULT false`,
   // Legacy service TEXT column — set default so INSERTs that omit it don't fail
   `DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='service') THEN

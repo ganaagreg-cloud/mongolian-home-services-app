@@ -6,13 +6,13 @@ const router = new Hono()
 // GET /api/service-types — public, no auth required
 router.get('/api/service-types', async (c) => {
   await dbReady
-  const rows = (await db.query(
-    `SELECT st.id, st.name_mn, st.icon, st.sort_order,
-            COALESCE(pr.base_rate, 25000) AS base_rate
-     FROM service_types st
-     LEFT JOIN pricing_rules pr ON pr.service_type_id = st.id
-     WHERE st.is_active = true ORDER BY st.sort_order`,
-  )).rows as { id: number; name_mn: string; icon: string; sort_order: number; base_rate: number }[]
+  const rows = (await db.query(`
+    SELECT id, name_mn, icon, sort_order,
+           pricing_model, base_rate, min_charge, unit_label, requires_property_type
+    FROM service_types
+    WHERE is_active = true
+    ORDER BY sort_order
+  `)).rows
 
   return c.json({ success: true, data: rows })
 })

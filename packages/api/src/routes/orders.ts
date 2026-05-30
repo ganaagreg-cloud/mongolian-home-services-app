@@ -147,7 +147,7 @@ const createSchema = z.object({
   address:          z.string().min(1),
   scheduledDate:    z.string().min(1),
   hours:            z.number().int().min(1).max(24),
-  totalAmount:      z.number().int().min(0),
+  totalAmount:      z.number().int().min(0).optional(), // ignored — server recomputes
   urgent:           z.boolean().optional(),
   rooms:            z.number().int().min(1).max(20).optional(),
   areaSqm:          z.number().int().min(1).optional(),
@@ -175,14 +175,37 @@ router.post('/api/orders', async (c) => {
   }
 
   const {
-    serviceTypeId, address, scheduledDate, hours, totalAmount,
+    serviceTypeId, address, scheduledDate, hours,
     urgent, rooms, areaSqm, propertyType, notes, matchingStrategy,
   } = parsed.data
 
-  const initialStatus = matchingStrategy === 'instant' ? 'searching_worker' : 'pending_acceptances'
-
   await dbReady
   try {
+    // Recompute total server-side — never trust client's totalAmount
+    const stRow = (await db.query<{ pricing_model: string; base_rate: number; min_charge: number }>(
+      'SELECT pricing_model, base_rate, min_charge FROM service_types WHERE id = $1',
+      [serviceTypeId],
+    )).rows[0]
+    if (!stRow) return c.json({ success: false, error: 'Үйлчилгээний төрөл олдсонгүй' }, 400)
+
+    const { urgent_surcharge } = await getSettings(db)
+
+    const qty = areaSqm ?? 0
+    let subtotal: number
+    if (stRow.pricing_model === 'area' || stRow.pricing_model === 'unit') {
+      subtotal = Math.max(Math.round(qty * stRow.base_rate), stRow.min_charge)
+    } else if (stRow.pricing_model === 'inspection') {
+      subtotal = stRow.base_rate
+    } else {
+      subtotal = 0 // survey — estimate phase
+    }
+    const urgentSurcharge = urgent ? Math.round(subtotal * urgent_surcharge) : 0
+    const serverTotal     = subtotal + urgentSurcharge
+
+    const initialStatus = stRow.pricing_model === 'inspection'
+      ? 'awaiting_quote'
+      : matchingStrategy === 'instant' ? 'searching_worker' : 'pending_acceptances'
+
     const result = (await db.query(`
       INSERT INTO orders
         (user_id, service_type_id, status, address, scheduled_date,
@@ -191,12 +214,12 @@ router.post('/api/orders', async (c) => {
       RETURNING id
     `, [
       session.sub, serviceTypeId, initialStatus, address, scheduledDate,
-      hours, totalAmount, urgent ?? false,
+      hours, serverTotal, urgent ?? false,
       rooms ?? null, areaSqm ?? null, propertyType ?? null, notes ?? null,
       matchingStrategy,
     ])).rows[0] as { id: string }
 
-    return c.json({ success: true, data: { id: String(result.id), matchingStrategy } }, 201)
+    return c.json({ success: true, data: { id: String(result.id), matchingStrategy, totalAmount: serverTotal } }, 201)
   } catch {
     return c.json({ success: false, error: 'Захиалга үүсгэхэд алдаа гарлаа' }, 500)
   }

@@ -42,6 +42,10 @@ const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg:
   cancelled_by_user:   { label: 'Цуцлагдсан',           icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
   cancelled_by_worker: { label: 'Ажилтан цуцалсан',     icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
   no_workers_found:    { label: 'Ажилтан олдсонгүй',    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  awaiting_quote:      { label: 'Үнийн санал хүлээж байна', icon: Clock,    bg: 'bg-primary/10',     text: 'text-primary' },
+  quote_submitted:     { label: 'Үнийн санал ирсэн',    icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
+  quote_approved:      { label: 'Үнийн санал зөвшөөрсөн', icon: CheckCircle2, bg: 'bg-success/10',  text: 'text-success' },
+  quote_rejected:      { label: 'Үнийн санал татгалзсан', icon: XCircle,    bg: 'bg-destructive/10', text: 'text-destructive' },
 }
 
 const DISPUTE_REASONS = [

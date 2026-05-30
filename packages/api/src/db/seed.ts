@@ -198,16 +198,21 @@ export async function seed(pool: Pool): Promise<void> {
     )
 
     await client.query(`
-      INSERT INTO service_types (name_mn, icon, sort_order) VALUES
-        ('Цэвэрлэгээ',   'sparkles',   1),
-        ('Угаалга',      'washing-machine', 2),
-        ('Сантехник',    'wrench',      3),
-        ('Цахилгаан',   'zap',         4),
-        ('Будаг',        'paintbrush',  5),
-        ('Агааржуулалт', 'wind',        6),
-        ('Жижиг засвар', 'hammer',      7),
-        ('Нүүлгэлт',     'truck',       8)
-      ON CONFLICT (name_mn) DO NOTHING
+      INSERT INTO service_types (name_mn, icon, sort_order, pricing_model, base_rate, min_charge, unit_label, requires_property_type) VALUES
+        ('Цэвэрлэгээ',   'sparkles',        1, 'area',        800, 25000, 'м²',     true),
+        ('Угаалга',      'washing-machine', 2, 'unit',      20000, 20000, 'ширхэг', false),
+        ('Сантехник',    'wrench',          3, 'inspection', 35000, 35000, 'цаг',   false),
+        ('Цахилгаан',   'zap',             4, 'inspection', 40000, 40000, 'цаг',   false),
+        ('Будаг',        'paintbrush',      5, 'area',       1200, 35000, 'м²',     true),
+        ('Агааржуулалт', 'wind',            6, 'unit',      45000, 45000, 'ширхэг', false),
+        ('Жижиг засвар', 'hammer',          7, 'inspection', 30000, 25000, 'цаг',  false),
+        ('Нүүлгэлт',     'truck',           8, 'survey',         0, 50000, 'цаг',  false)
+      ON CONFLICT (name_mn) DO UPDATE SET
+        pricing_model          = EXCLUDED.pricing_model,
+        base_rate              = EXCLUDED.base_rate,
+        min_charge             = EXCLUDED.min_charge,
+        unit_label             = EXCLUDED.unit_label,
+        requires_property_type = EXCLUDED.requires_property_type
     `)
 
     // Build name → id map for service_types lookups

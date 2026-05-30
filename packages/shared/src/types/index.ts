@@ -57,6 +57,31 @@ export interface Worker {
   createdAt: string
 }
 
+export type PricingModel = 'area' | 'unit' | 'inspection' | 'survey'
+
+export interface ServiceType {
+  id: number
+  nameMn: string
+  icon: string
+  isActive: boolean
+  sortOrder: number
+  pricingModel: PricingModel
+  baseRate: number    // MNT per unit/м², or call-out fee for inspection
+  minCharge: number   // MNT floor
+  unitLabel: string   // 'м²' | 'ширхэг' | 'кг' | 'цаг'
+  requiresPropertyType: boolean
+  createdAt: string
+}
+
+export interface PriceBreakdown {
+  subtotal: number        // MNT integer
+  platformFee: number     // MNT integer
+  damageFund: number      // MNT integer
+  urgentSurcharge: number // MNT integer
+  total: number           // MNT integer
+  workerReceives: number  // MNT integer
+}
+
 export type MatchingStrategy = 'instant' | 'scheduled'
 
 export type OrderStatus =
@@ -72,6 +97,10 @@ export type OrderStatus =
   | 'cancelled_by_user'
   | 'cancelled_by_worker'
   | 'no_workers_found'    // all match attempts exhausted
+  | 'awaiting_quote'      // survey order — waiting for worker to submit quote
+  | 'quote_submitted'     // worker submitted a quote, awaiting user approval
+  | 'quote_approved'      // user approved quote, proceeds to payment
+  | 'quote_rejected'      // user rejected quote
 
 export type PropertyType = 'house' | 'apartment' | 'office'
 
