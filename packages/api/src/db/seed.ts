@@ -174,6 +174,19 @@ export async function seed(pool: Pool): Promise<void> {
       console.log(`[seed] Inserted ${SEED_ORDERS.length} orders`)
     }
 
+    // Idempotent inspection test order — worker 2 (Сантехник) pre-assigned for quote flow testing
+    await client.query(`
+      INSERT INTO orders (id, user_id, worker_id, service_type_id, status, address, scheduled_date, hours, total_amount, urgent, notes)
+      SELECT 9, 9, 2, st.id, 'awaiting_quote',
+             'Чингэлтэй дүүрэг, 5-р хороо, Наран гудамж 12',
+             NOW() + INTERVAL '3 days', 1, 35000, false,
+             'Угаалтуурын шугам дусалж байна. Гал тогооны доор хүчтэй дусалж байна.'
+      FROM service_types st
+      WHERE st.name_mn = 'Сантехник'
+      ON CONFLICT (id) DO UPDATE SET scheduled_date = NOW() + INTERVAL '3 days'
+    `)
+    await client.query(`SELECT setval('orders_id_seq', (SELECT MAX(id) FROM orders))`)
+
     await client.query(
       `UPDATE workers SET is_active = false, is_available = false
        WHERE user_id = (SELECT id FROM users WHERE phone = '95342321' LIMIT 1)`,

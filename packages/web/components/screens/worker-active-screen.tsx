@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, MessageCircle, MapPin, Clock, AlertCircle } from 'lucide-react'
+import { Camera, MessageCircle, MapPin, Clock, AlertCircle, FileText, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import useSWR from 'swr'
@@ -24,6 +24,12 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
   const [updateError,  setUpdateError]  = useState<string | null>(null)
   const [uploadingType, setUploadingType] = useState<'before' | 'after' | null>(null)
   const [uploadError,  setUploadError]  = useState<string | null>(null)
+
+  const [showQuoteModal,   setShowQuoteModal]   = useState(false)
+  const [quoteAmount,      setQuoteAmount]      = useState('')
+  const [quoteDescription, setQuoteDescription] = useState('')
+  const [quoteSending,     setQuoteSending]     = useState(false)
+  const [quoteError,       setQuoteError]       = useState<string | null>(null)
 
   const beforeInputRef = useRef<HTMLInputElement>(null)
   const afterInputRef  = useRef<HTMLInputElement>(null)
@@ -74,6 +80,46 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
     }
   }
 
+  const closeQuoteModal = () => {
+    setShowQuoteModal(false)
+    setQuoteAmount('')
+    setQuoteDescription('')
+    setQuoteError(null)
+  }
+
+  const submitQuote = async () => {
+    if (!order) return
+    const amountInt = parseInt(quoteAmount, 10)
+    if (!quoteAmount || isNaN(amountInt) || amountInt <= 0) {
+      setQuoteError('Засварын үнэ оруулна уу')
+      return
+    }
+    if (!quoteDescription.trim()) {
+      setQuoteError('Засварын тайлбар оруулна уу')
+      return
+    }
+    setQuoteSending(true)
+    setQuoteError(null)
+    try {
+      const res = await apiFetch(`/api/orders/${order.id}/quote`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount: amountInt, description: quoteDescription.trim() }),
+      })
+      const d = (await res.json()) as { success: boolean; error?: string }
+      if (!d.success) {
+        setQuoteError(d.error ?? 'Алдаа гарлаа')
+      } else {
+        closeQuoteModal()
+        await mutate()
+      }
+    } catch {
+      setQuoteError('Сүлжээний алдаа. Дахин оролдоно уу.')
+    } finally {
+      setQuoteSending(false)
+    }
+  }
+
   if (!isLoading && !order) {
     return (
       <div className="flex min-h-screen flex-col bg-background pb-32">
@@ -95,9 +141,11 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
     ? `${order.scheduledDate.slice(0, 10)} · ${order.scheduledDate.slice(11, 16)}`
     : '—'
 
-  const isAssigned   = order?.status === 'worker_assigned'
-  const isOnTheWay   = order?.status === 'worker_on_the_way'
-  const isInProgress = order?.status === 'in_progress'
+  const isAssigned      = order?.status === 'worker_assigned'
+  const isOnTheWay      = order?.status === 'worker_on_the_way'
+  const isInProgress    = order?.status === 'in_progress'
+  const isAwaitingQuote = order?.status === 'awaiting_quote'
+  const isQuoteSubmitted = order?.status === 'quote_submitted'
 
   const hasBefore = !!order?.beforePhotoUrl
   const hasAfter  = !!order?.afterPhotoUrl
@@ -186,6 +234,55 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Awaiting quote — worker needs to inspect and submit a price */}
+      {!isLoading && order && isAwaitingQuote && (
+        <>
+          {order.notes && (
+            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+              <h2 className="font-semibold text-foreground">Асуудлын тайлбар</h2>
+              <p className="mt-2 text-sm text-foreground">{order.notes}</p>
+            </div>
+          )}
+          <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Үнийн санал илгээх</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Асуудлыг үзэж засварын нийт зардлыг оруулна уу
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setShowQuoteModal(true)}
+              disabled={showQuoteModal}
+              className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+            >
+              Үнийн санал илгээх
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Quote submitted — waiting for user approval */}
+      {!isLoading && order && isQuoteSubmitted && (
+        <div className="mt-4 mx-6 rounded-2xl border border-success/30 bg-success/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Үнийн санал илгээгдлаа</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Хэрэглэгчийн хариу хүлээж байна.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -336,6 +433,70 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
         orderId={order?.id ? String(order.id) : undefined}
         bottomClass={isInProgress ? 'bottom-28' : 'bottom-6'}
       />
+
+      {/* Quote modal */}
+      {showQuoteModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
+          <div className="w-full max-w-[390px] rounded-t-3xl bg-background px-6 pb-10 pt-6">
+            <h2 className="text-lg font-bold text-foreground">Үнийн санал илгээх</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Засварын нийт зардлыг оруулна уу
+            </p>
+
+            <div className="mt-6">
+              <p className="font-semibold text-foreground">Засварын үнэ</p>
+              <div className="relative mt-2">
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="75000"
+                  value={quoteAmount}
+                  onChange={(e) => setQuoteAmount(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-10 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                  ₮
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">MNT-ээр оруулна уу</p>
+            </div>
+
+            <div className="mt-4">
+              <p className="font-semibold text-foreground">Засварын тайлбар</p>
+              <textarea
+                placeholder="Хийх ажлын тайлбар, материалын зардал..."
+                value={quoteDescription}
+                onChange={(e) => setQuoteDescription(e.target.value)}
+                rows={3}
+                className="mt-2 w-full resize-none rounded-2xl border border-border bg-card p-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {quoteError && (
+              <p className="mt-2 text-sm text-destructive">{quoteError}</p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={closeQuoteModal}
+                disabled={quoteSending}
+                className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+              >
+                Болих
+              </Button>
+              <Button
+                onClick={() => { void submitQuote() }}
+                disabled={quoteSending}
+                className="h-14 flex-1 rounded-2xl bg-accent font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
+              >
+                {quoteSending ? 'Илгээж байна...' : 'Илгээх'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

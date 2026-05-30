@@ -51,7 +51,7 @@ function toOrder(row: OrderRow): Order {
   }
 }
 
-const ACTIVE_STATUSES = `('searching_worker','pending_acceptances','pending_worker_acceptance','worker_assigned','worker_on_the_way','in_progress')`
+const ACTIVE_STATUSES = `('searching_worker','pending_acceptances','pending_worker_acceptance','worker_assigned','worker_on_the_way','in_progress','awaiting_quote','quote_submitted')`
 
 const SELECT_COLS = `
   o.id, o.user_id, o.worker_id, u.name as worker_name,
@@ -105,7 +105,7 @@ router.get('/api/orders', async (c) => {
     const row = (await db.query(`
       SELECT ${SELECT_COLS} FROM orders o ${JOIN_WORKER}
       WHERE o.worker_id = $1
-        AND o.status IN ('worker_assigned', 'worker_on_the_way', 'in_progress')
+        AND o.status IN ('worker_assigned', 'worker_on_the_way', 'in_progress', 'awaiting_quote', 'quote_submitted')
       ORDER BY o.updated_at DESC LIMIT 1
     `, [workerRow.id])).rows[0] as OrderRow | undefined
     return c.json({ success: true, data: row ? toOrder(row) : null })
@@ -417,6 +417,77 @@ router.post('/api/orders/:id/match', async (c) => {
       },
     },
   })
+})
+
+// POST /api/orders/:id/quote — assigned worker submits a repair quote
+const quoteSchema = z.object({
+  amount:      z.number().int().positive(),
+  description: z.string().trim().min(1).refine(
+    (v) => !/<[^>]+>/.test(v),
+    { message: 'Тайлбарт HTML тэмдэгт хориглоно' },
+  ),
+})
+
+router.post('/api/orders/:id/quote', async (c) => {
+  // Step 1 — Validate input
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = quoteSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' }, 400)
+  }
+  const { amount, description } = parsed.data
+
+  // Step 2 — Auth
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  const orderId = c.req.param('id')
+  await dbReady
+
+  try {
+    // Step 3 — Ownership: caller must be the assigned worker on this order
+    const orderRow = (await db.query<{ worker_id: string; status: string }>(
+      `SELECT o.worker_id, o.status
+       FROM   orders  o
+       JOIN   workers w ON w.id = o.worker_id
+       WHERE  o.id = $1 AND w.user_id = $2 AND w.rejected_at IS NULL`,
+      [orderId, session.sub],
+    )).rows[0]
+
+    if (!orderRow) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
+    if (orderRow.status !== 'awaiting_quote') {
+      return c.json({ success: false, error: 'Захиалга үнийн санал хүлээхгүй байна' }, 409)
+    }
+
+    // Step 4 — Insert quote row + flip order status (atomic transaction)
+    const client = await db.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(
+        `INSERT INTO order_quotes (order_id, worker_id, amount, description)
+         VALUES ($1, $2, $3, $4)`,
+        [orderId, orderRow.worker_id, amount, description],
+      )
+      await client.query(
+        `UPDATE orders SET status = 'quote_submitted', updated_at = NOW() WHERE id = $1`,
+        [orderId],
+      )
+      await client.query('COMMIT')
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw err
+    } finally {
+      client.release()
+    }
+
+    // Notify user — SWR polling (refreshInterval 10 s) delivers the status change
+    return c.json({ success: true, data: { orderId, amount, status: 'quote_submitted' } }, 201)
+  } catch {
+    return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
+  }
 })
 
 // POST /api/orders/:id/accept — worker accepts a scheduled order
