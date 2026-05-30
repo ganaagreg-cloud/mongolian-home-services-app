@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
+import { getSettings } from '../lib/settings'
 import type {
   Order, OrderStatus, PaymentStatus, PropertyType, MatchingStrategy,
   OrderAcceptance, Message,
@@ -635,6 +636,22 @@ router.patch('/api/orders/:id/status', async (c) => {
 
   if (!result.rowCount) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
 
+  if (isWorker && status === 'completed') {
+    const orderRow = (await db.query(
+      'SELECT total_amount, service_type_id FROM orders WHERE id = $1',
+      [id],
+    )).rows[0] as { total_amount: number; service_type_id: number | null } | undefined
+
+    if (orderRow) {
+      const { commission, damage_fund } = await getSettings(db)
+      const payout = Math.round(orderRow.total_amount * (1 - commission - damage_fund))
+      await db.query(
+        'INSERT INTO transactions (worker_id, amount, type, service_type_id) VALUES ($1, $2, $3, $4)',
+        [workerRow!.id, payout, 'earning', orderRow.service_type_id ?? null],
+      )
+    }
+  }
+
   return c.json({ success: true, data: undefined })
 })
 
@@ -718,7 +735,6 @@ const FREE_STATUSES = new Set([
   'pending_acceptances', 'searching_worker', 'pending_worker_acceptance', 'pending_payment',
 ])
 const FEE_STATUSES = new Set(['worker_assigned', 'worker_on_the_way'])
-const LATE_CANCEL_FEE = 5000
 
 // POST /api/orders/:id/cancel
 router.post('/api/orders/:id/cancel', async (c) => {
@@ -748,11 +764,12 @@ router.post('/api/orders/:id/cancel', async (c) => {
     return c.json({ success: false, error: 'Энэ захиалгыг цуцлах боломжгүй' }, 403)
   }
 
+  const { late_cancel_fee } = await getSettings(db)
   let fee = 0
   if (FEE_STATUSES.has(order.status)) {
     const scheduledDate = new Date(order.scheduled_date)
     const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000)
-    fee = scheduledDate <= oneHourFromNow ? LATE_CANCEL_FEE : 0
+    fee = scheduledDate <= oneHourFromNow ? late_cancel_fee : 0
   }
 
   const refundAmount = Math.max(0, order.total_amount - fee)

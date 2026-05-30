@@ -260,6 +260,15 @@ export const TABLES: string[] = [
   `ALTER TABLE workers ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
   `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
+  // Legacy service TEXT column — set default so INSERTs that omit it don't fail
+  `DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='service') THEN
+      ALTER TABLE orders ALTER COLUMN service SET DEFAULT '';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='service') THEN
+      ALTER TABLE transactions ALTER COLUMN service SET DEFAULT '';
+    END IF;
+  END $$`,
   // Master data tables
   `CREATE TABLE IF NOT EXISTS districts (
     id         SERIAL PRIMARY KEY,
@@ -280,4 +289,11 @@ export const TABLES: string[] = [
     value      TEXT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `INSERT INTO app_settings (key, value) VALUES
+    ('platform_commission',   '15'),
+    ('damage_fund_rate',      '2'),
+    ('free_cancel_minutes',   '60'),
+    ('late_cancel_fee',       '5000'),
+    ('urgent_fee_multiplier', '0')
+   ON CONFLICT (key) DO NOTHING`,
 ]
