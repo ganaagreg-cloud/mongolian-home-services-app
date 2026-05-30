@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { db, dbReady } from '../db'
 import { requireAdmin, hashPassword } from '../auth'
+import { getSettings } from '../lib/settings'
 import type {
   AdminStats, AdminRecentOrder, AdminPendingWorker,
   AdminDispute, AdminBankingWorker,
@@ -58,12 +59,14 @@ router.get('/api/admin/stats', async (c) => {
     createdAt:    r.created_at,
   }))
 
+  const { commission, damage_fund } = await getSettings(db)
+
   const data: AdminStats = {
     todayOrders,
     todayRevenue,
     totalRevenue,
-    totalCommission:  Math.round(totalRevenue * 0.15),
-    totalDamageFund:  Math.round(totalRevenue * 0.02),
+    totalCommission:  Math.round(totalRevenue * commission),
+    totalDamageFund:  Math.round(totalRevenue * damage_fund),
     activeWorkers,
     openDisputes,
     pendingWorkers,
@@ -179,7 +182,7 @@ router.get('/api/admin/workers/:id', async (c) => {
   await dbReady
 
   const worker = (await db.query(`
-    SELECT w.id, u.id as user_id, u.name, u.phone, u.email, u.dan_verified,
+    SELECT w.id, w.service_type_id, u.id as user_id, u.name, u.phone, u.email, u.dan_verified,
            COALESCE(st.name_mn, '') AS specialty, w.price_per_hour, w.rating, w.review_count,
            w.is_active, w.is_available, w.rejected_at, w.imei, w.police_file, w.created_at,
            bi.bank_name, bi.account_number, bi.account_holder_name, bi.iban,
@@ -207,11 +210,23 @@ router.get('/api/admin/workers/:id', async (c) => {
 })
 
 const workerPatchSchema = z.object({
-  is_active:       z.boolean().optional(),
-  is_available:    z.boolean().optional(),
-  service_type_id: z.number().int().positive().optional(),
-  price_per_hour:  z.number().int().min(1000).max(500000).optional(),
-  rejected_at:     z.string().nullable().optional(),
+  // workers table
+  is_active:                 z.boolean().optional(),
+  is_available:              z.boolean().optional(),
+  service_type_id:           z.number().int().positive().nullable().optional(),
+  price_per_hour:            z.number().int().min(0).max(500000).optional(),
+  rejected_at:               z.string().nullable().optional(),
+  police_clearance_verified: z.boolean().optional(),
+  // users table
+  name:                      z.string().min(1).optional(),
+  phone:                     z.string().optional(),
+  dan_verified:              z.boolean().optional(),
+  // banking_info table
+  bank_name:                 z.string().optional(),
+  account_number:            z.string().optional(),
+  account_holder_name:       z.string().optional(),
+  iban:                      z.string().optional(),
+  account_type:              z.string().optional(),
 })
 
 // PATCH /api/admin/workers/:id
@@ -232,23 +247,80 @@ router.patch('/api/admin/workers/:id', async (c) => {
 
   await dbReady
   const d = parsed.data
-  const sets: string[] = []
-  const vals: unknown[] = []
-  let i = 1
 
-  if (d.is_active       !== undefined) { sets.push(`is_active = $${i++}`)       ; vals.push(d.is_active) }
-  if (d.is_available    !== undefined) { sets.push(`is_available = $${i++}`)    ; vals.push(d.is_available) }
-  if (d.service_type_id !== undefined) { sets.push(`service_type_id = $${i++}`); vals.push(d.service_type_id) }
-  if (d.price_per_hour  !== undefined) { sets.push(`price_per_hour = $${i++}`) ; vals.push(d.price_per_hour) }
-  if ('rejected_at' in d) {
-    sets.push(`rejected_at = $${i++}`)
-    vals.push(d.rejected_at ?? null)
+  const workerRow = (await db.query(
+    'SELECT user_id, police_file FROM workers WHERE id = $1', [id],
+  )).rows[0] as { user_id: number; police_file: string | null } | undefined
+  if (!workerRow) return c.json({ success: false, error: 'Ажилтан олдсонгүй' }, 404)
+  const { user_id, police_file } = workerRow
+
+  // Update workers table
+  const wSets: string[] = []
+  const wVals: unknown[] = []
+  let wi = 1
+
+  if (d.is_active       !== undefined) { wSets.push(`is_active = $${wi++}`)       ; wVals.push(d.is_active) }
+  if (d.is_available    !== undefined) { wSets.push(`is_available = $${wi++}`)    ; wVals.push(d.is_available) }
+  if (d.service_type_id !== undefined) { wSets.push(`service_type_id = $${wi++}`); wVals.push(d.service_type_id) }
+  if (d.price_per_hour  !== undefined) { wSets.push(`price_per_hour = $${wi++}`) ; wVals.push(d.price_per_hour) }
+  if ('rejected_at' in d)              { wSets.push(`rejected_at = $${wi++}`)     ; wVals.push(d.rejected_at ?? null) }
+  if (d.police_clearance_verified !== undefined) {
+    wSets.push(`police_file = $${wi++}`)
+    wVals.push(d.police_clearance_verified ? (police_file ?? 'admin_verified') : null)
   }
 
-  if (sets.length === 0) return c.json({ success: true, data: null })
+  if (wSets.length > 0) {
+    wVals.push(id)
+    await db.query(`UPDATE workers SET ${wSets.join(', ')} WHERE id = $${wi}`, wVals)
+  }
 
-  vals.push(id)
-  await db.query(`UPDATE workers SET ${sets.join(', ')} WHERE id = $${i}`, vals)
+  // Update users table
+  const uSets: string[] = []
+  const uVals: unknown[] = []
+  let ui = 1
+
+  if (d.name         !== undefined) { uSets.push(`name = $${ui++}`)        ; uVals.push(d.name) }
+  if (d.phone        !== undefined) { uSets.push(`phone = $${ui++}`)       ; uVals.push(d.phone) }
+  if (d.dan_verified !== undefined) { uSets.push(`dan_verified = $${ui++}`); uVals.push(d.dan_verified) }
+  if (d.is_active    !== undefined) { uSets.push(`is_worker = $${ui++}`)   ; uVals.push(d.is_active) }
+
+  if (uSets.length > 0) {
+    uVals.push(user_id)
+    await db.query(`UPDATE users SET ${uSets.join(', ')} WHERE id = $${ui}`, uVals)
+  }
+
+  // Upsert banking_info
+  const hasBankUpdate = [d.bank_name, d.account_number, d.account_holder_name, d.iban, d.account_type]
+    .some(v => v !== undefined)
+
+  if (hasBankUpdate) {
+    const existingBank = (await db.query(
+      'SELECT id FROM banking_info WHERE worker_id = $1', [id],
+    )).rows[0]
+
+    if (existingBank) {
+      const bSets: string[] = []
+      const bVals: unknown[] = []
+      let bi = 1
+      if (d.bank_name           !== undefined) { bSets.push(`bank_name = $${bi++}`)           ; bVals.push(d.bank_name) }
+      if (d.account_number      !== undefined) { bSets.push(`account_number = $${bi++}`)      ; bVals.push(d.account_number) }
+      if (d.account_holder_name !== undefined) { bSets.push(`account_holder_name = $${bi++}`) ; bVals.push(d.account_holder_name) }
+      if (d.iban                !== undefined) { bSets.push(`iban = $${bi++}`)                ; bVals.push(d.iban) }
+      if (d.account_type        !== undefined) { bSets.push(`account_type = $${bi++}`)        ; bVals.push(d.account_type) }
+      bSets.push(`updated_at = NOW()`)
+      if (bSets.length > 1) {
+        bVals.push(id)
+        await db.query(`UPDATE banking_info SET ${bSets.join(', ')} WHERE worker_id = $${bi}`, bVals)
+      }
+    } else if (d.bank_name && d.account_number && d.account_holder_name && d.iban) {
+      await db.query(
+        `INSERT INTO banking_info (worker_id, bank_name, account_number, account_holder_name, iban, account_type)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [id, d.bank_name, d.account_number, d.account_holder_name, d.iban, d.account_type ?? 'checking'],
+      )
+    }
+  }
+
   return c.json({ success: true, data: null })
 })
 
@@ -292,6 +364,87 @@ router.patch('/api/admin/workers/:id/verify', async (c) => {
   }
 
   return c.json({ success: true, data: undefined })
+})
+
+const workerCreateSchema = z.object({
+  name:                      z.string().min(1),
+  phone:                     z.string().min(8),
+  service_type_id:           z.number().int().positive().optional(),
+  price_per_hour:            z.number().int().min(0).max(500000).optional(),
+  is_available:              z.boolean().optional(),
+  is_active:                 z.boolean().optional(),
+  dan_verified:              z.boolean().optional(),
+  police_clearance_verified: z.boolean().optional(),
+  bank_name:                 z.string().optional(),
+  account_number:            z.string().optional(),
+  account_holder_name:       z.string().optional(),
+  iban:                      z.string().optional(),
+  account_type:              z.string().optional(),
+})
+
+// POST /api/admin/workers
+router.post('/api/admin/workers', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ' }, 403)
+
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+
+  const parsed = workerCreateSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400)
+  }
+
+  await dbReady
+  const d = parsed.data
+  const isActive  = d.is_active ?? false
+  const policeFile = d.police_clearance_verified ? 'admin_verified' : null
+
+  // Find or create user by phone
+  const existingUser = (await db.query(
+    'SELECT id FROM users WHERE phone = $1', [d.phone],
+  )).rows[0] as { id: number } | undefined
+
+  let userId: number
+  if (existingUser) {
+    userId = existingUser.id
+    await db.query(
+      'UPDATE users SET name = $1, dan_verified = $2, is_worker = $3 WHERE id = $4',
+      [d.name, d.dan_verified ?? false, isActive, userId],
+    )
+  } else {
+    const newUser = (await db.query(
+      `INSERT INTO users (phone, name, dan_verified, is_worker) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [d.phone, d.name, d.dan_verified ?? false, isActive],
+    )).rows[0] as { id: number }
+    userId = newUser.id
+  }
+
+  // Reject if this user already has a worker profile
+  const existingWorker = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1', [userId],
+  )).rows[0]
+  if (existingWorker) {
+    return c.json({ success: false, error: 'Энэ утасны дугаартай ажилтан аль хэдийн бүртгэгдсэн байна' }, 409)
+  }
+
+  const worker = (await db.query(
+    `INSERT INTO workers (user_id, service_type_id, price_per_hour, is_available, is_active, police_file)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [userId, d.service_type_id ?? null, d.price_per_hour ?? 0, d.is_available ?? true, isActive, policeFile],
+  )).rows[0] as { id: number }
+
+  if (d.bank_name && d.account_number && d.account_holder_name && d.iban) {
+    await db.query(
+      `INSERT INTO banking_info (worker_id, bank_name, account_number, account_holder_name, iban, account_type)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [worker.id, d.bank_name, d.account_number, d.account_holder_name, d.iban, d.account_type ?? 'checking'],
+    )
+  }
+
+  return c.json({ success: true, data: { id: String(worker.id) } }, 201)
 })
 
 // GET /api/admin/orders
@@ -804,8 +957,7 @@ router.get('/api/admin/finance', async (c) => {
     `),
   ])
 
-  const commission = 0.15
-  const damageFund = 0.02
+  const { commission, damage_fund } = await getSettings(db)
   const totalRevenue = Number(totalRev.rows[0].total)
   const monthRevenue = Number(monthRev.rows[0].total)
 
@@ -815,7 +967,7 @@ router.get('/api/admin/finance', async (c) => {
       totalRevenue,
       monthRevenue,
       totalCommission:  Math.round(totalRevenue * commission),
-      totalDamageFund:  Math.round(totalRevenue * damageFund),
+      totalDamageFund:  Math.round(totalRevenue * damage_fund),
       payouts: payouts.rows.map((r) => ({
         ...r,
         total_earned:    Number(r.total_earned),
