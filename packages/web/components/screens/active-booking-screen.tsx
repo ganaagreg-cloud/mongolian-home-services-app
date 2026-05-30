@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { MessageCircle, Check, MapPin, Star, AlertTriangle } from 'lucide-react'
+import { MessageCircle, Check, MapPin, Star, AlertTriangle, FileText, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,12 +30,15 @@ const STATUS_STEPS = [
   'Дууслаа',
 ]
 
+const QUOTE_STATUSES = new Set(['awaiting_quote', 'quote_submitted', 'quote_rejected'])
+
 function statusToStep(status: string | undefined): number {
   switch (status) {
     case 'searching_worker':
     case 'pending_acceptances':
       return 0
     case 'worker_assigned':
+    case 'quote_approved':   // quote accepted → work proceeds like worker_assigned
       return 1
     case 'worker_on_the_way':
       return 2
@@ -71,10 +74,46 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
   const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
   const { data: order, isLoading, mutate } = useSWR<Order | null>(url, fetcher, { refreshInterval: 8000 })
   const [showCancelDialog, setShowCancelDialog] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
+  const [cancelling,       setCancelling]       = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [responding,       setResponding]       = useState(false)
+  const [responseError,    setResponseError]    = useState<string | null>(null)
+
+  // Fetch quote only when awaiting user response
+  const quoteUrl = order?.status === 'quote_submitted'
+    ? `/api/orders/${order.id}/quote`
+    : null
+  const { data: quoteData } = useSWR<{
+    id: string; amount: number; description: string; status: string
+  }>(quoteUrl, fetcher, { refreshInterval: 8000 })
 
   const currentStepIndex = statusToStep(order?.status)
-  const cancelInfo = order ? getCancelInfo(order) : { canCancel: false, fee: 0, refundAmount: 0 }
+  const showTimeline     = !QUOTE_STATUSES.has(order?.status ?? '')
+  const cancelInfo       = order ? getCancelInfo(order) : { canCancel: false, fee: 0, refundAmount: 0 }
+
+  const handleRespond = async (action: 'approve' | 'reject') => {
+    if (!orderId) return
+    setResponding(true)
+    setResponseError(null)
+    try {
+      const res  = await apiFetch(`/api/orders/${orderId}/quote/respond`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action }),
+      })
+      const json = await res.json() as { success: boolean; error?: string }
+      if (!json.success) {
+        setResponseError(json.error ?? 'Алдаа гарлаа')
+      } else {
+        setShowRejectDialog(false)
+        void mutate()
+      }
+    } catch {
+      setResponseError('Сүлжээний алдаа. Дахин оролдоно уу.')
+    } finally {
+      setResponding(false)
+    }
+  }
 
   const handleCancel = async () => {
     if (!orderId) return
@@ -166,43 +205,145 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
         )}
       </div>
 
-      {/* Progress Timeline */}
-      <div className="mt-6 mx-6 rounded-2xl bg-card p-6 shadow-sm">
-        <h2 className="font-semibold text-foreground">Явц</h2>
-        <div className="mt-4 space-y-4">
-          {STATUS_STEPS.map((label, index) => {
-            const isCompleted = currentStepIndex > index
-            const isCurrent = currentStepIndex === index
-            return (
-              <div key={index} className="flex items-center gap-4">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    isCompleted
-                      ? 'bg-success text-white'
-                      : isCurrent
-                      ? 'bg-primary text-white'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {isCompleted ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <span className="text-sm font-bold">{index + 1}</span>
+      {/* Progress Timeline — hidden during inspection quote flow */}
+      {showTimeline && (
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-6 shadow-sm">
+          <h2 className="font-semibold text-foreground">Явц</h2>
+          <div className="mt-4 space-y-4">
+            {STATUS_STEPS.map((label, index) => {
+              const isCompleted = currentStepIndex > index
+              const isCurrent = currentStepIndex === index
+              return (
+                <div key={index} className="flex items-center gap-4">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                      isCompleted
+                        ? 'bg-success text-white'
+                        : isCurrent
+                        ? 'bg-primary text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <span className="text-sm font-bold">{index + 1}</span>
+                    )}
+                  </div>
+                  <span className={`font-medium ${isCompleted || isCurrent ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {label}
+                  </span>
+                  {isCurrent && (
+                    <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      Одоо
+                    </span>
                   )}
                 </div>
-                <span className={`font-medium ${isCompleted || isCurrent ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {label}
-                </span>
-                {isCurrent && (
-                  <span className="ml-auto rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    Одоо
-                  </span>
-                )}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Awaiting quote — worker is still on their way / inspecting */}
+      {!isLoading && order?.status === 'awaiting_quote' && (
+        <div className="mt-6 mx-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Үнийн санал хүлээж байна</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Ажилтан очиж асуудлыг үзэж, засварын үнийн санал гаргана.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quote panel — user reviews worker's submitted quote */}
+      {!isLoading && order?.status === 'quote_submitted' && (
+        <div className="mt-6 mx-6">
+          <div className="rounded-2xl bg-card p-4 shadow-sm">
+            <h2 className="font-semibold text-foreground">Засварын үнийн санал</h2>
+            {quoteData ? (
+              <>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Засварын үнэ</span>
+                  <span className="text-lg font-bold text-primary">
+                    ₮{quoteData.amount.toLocaleString()}
+                  </span>
+                </div>
+                <p className="mt-3 rounded-2xl bg-muted/40 px-3 py-2 text-sm text-foreground">
+                  {quoteData.description}
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <Button
+                    onClick={() => setShowRejectDialog(true)}
+                    disabled={responding}
+                    variant="outline"
+                    className="h-11 flex-1 rounded-2xl border-destructive/30 font-semibold text-destructive hover:bg-destructive/10 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <XCircle className="mr-1.5 h-4 w-4" />
+                    Татгалзах
+                  </Button>
+                  <Button
+                    onClick={() => { void handleRespond('approve') }}
+                    disabled={responding}
+                    className="h-11 flex-1 rounded-2xl bg-accent font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                    {responding ? 'Хүлээнэ үү...' : 'Зөвшөөрөх'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-3 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            )}
+          </div>
+          {responseError && (
+            <p className="mt-2 text-center text-sm text-destructive">{responseError}</p>
+          )}
+        </div>
+      )}
+
+      {/* Quote approved — work will proceed */}
+      {!isLoading && order?.status === 'quote_approved' && (
+        <div className="mt-6 mx-6 rounded-2xl border border-success/30 bg-success/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Засвар зөвшөөрөгдлөө</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Ажилтан удахгүй ирж засварыг эхлүүлнэ.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quote rejected — terminal state */}
+      {!isLoading && order?.status === 'quote_rejected' && (
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+              <XCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Үнийн санал татгалзагдлаа</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Дуудлагын хураамж ажилтанд шилжлээ. Шинэ захиалга хийж болно.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Before / After photos */}
       {(order?.beforePhotoUrl ?? order?.afterPhotoUrl) && (
@@ -271,6 +412,41 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
 
       {/* Floating SOS FAB */}
       <SosButton orderId={orderId} />
+
+      {/* Reject Quote Confirm Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent className="rounded-2xl mx-4 max-w-[340px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Үнийн санал татгалзах уу?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Санал татгалзвал захиалга дуусгавар болно.
+              Дуудлагын хураамж ажилтанд шилжинэ.
+            </p>
+          </div>
+          <DialogFooter className="flex flex-row gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-12 rounded-2xl"
+              onClick={() => setShowRejectDialog(false)}
+              disabled={responding}
+            >
+              Буцах
+            </Button>
+            <Button
+              className="flex-1 h-12 rounded-2xl bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => { void handleRespond('reject') }}
+              disabled={responding}
+            >
+              {responding ? 'Хүлээнэ үү...' : 'Тийм, татгалзах'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel Confirm Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

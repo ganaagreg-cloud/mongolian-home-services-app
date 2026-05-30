@@ -490,6 +490,168 @@ router.post('/api/orders/:id/quote', async (c) => {
   }
 })
 
+// GET /api/orders/:id/quote — latest quote (user or assigned worker)
+router.get('/api/orders/:id/quote', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  const orderId = c.req.param('id')
+  await dbReady
+  try {
+    const orderRow = (await db.query(
+      `SELECT o.id FROM orders o
+       LEFT JOIN workers w ON w.id = o.worker_id AND w.rejected_at IS NULL
+       WHERE o.id = $1 AND (o.user_id = $2 OR w.user_id = $2)`,
+      [orderId, session.sub],
+    )).rows[0]
+    if (!orderRow) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
+
+    const quoteRow = (await db.query<{
+      id: string; order_id: string; worker_id: string;
+      amount: number; description: string; status: string; created_at: string;
+    }>(
+      `SELECT id, order_id, worker_id, amount, description, status, created_at
+       FROM order_quotes WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [orderId],
+    )).rows[0]
+    if (!quoteRow) return c.json({ success: false, error: 'Үнийн санал олдсонгүй' }, 404)
+
+    return c.json({ success: true, data: {
+      id:          String(quoteRow.id),
+      orderId:     String(quoteRow.order_id),
+      workerId:    String(quoteRow.worker_id),
+      amount:      quoteRow.amount,
+      description: quoteRow.description,
+      status:      quoteRow.status,
+      createdAt:   quoteRow.created_at,
+    }})
+  } catch {
+    return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
+  }
+})
+
+// POST /api/orders/:id/quote/respond — user approves or rejects the worker's quote
+const quoteRespondSchema = z.object({
+  action: z.enum(['approve', 'reject']),
+})
+
+router.post('/api/orders/:id/quote/respond', async (c) => {
+  // Step 1 — Validate
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = quoteRespondSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: 'action шаардлагатай' }, 400)
+  const { action } = parsed.data
+
+  // Step 2 — Auth
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  const orderId = c.req.param('id')
+  await dbReady
+  try {
+    // Step 3 — Ownership: only the order's creator can respond
+    const orderRow = (await db.query<{
+      user_id: string; worker_id: string | null; status: string;
+      service_type_id: string | null; total_amount: number;
+    }>(
+      'SELECT user_id, worker_id, status, service_type_id, total_amount FROM orders WHERE id = $1',
+      [orderId],
+    )).rows[0]
+
+    if (!orderRow || String(orderRow.user_id) !== String(session.sub)) {
+      return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
+    }
+    if (orderRow.status !== 'quote_submitted') {
+      return c.json({ success: false, error: 'Захиалга зөвшөөрөл хүлээхгүй байна' }, 409)
+    }
+
+    // Fetch latest submitted quote
+    const quoteRow = (await db.query<{ id: string; worker_id: string; amount: number }>(
+      `SELECT id, worker_id, amount FROM order_quotes
+       WHERE order_id = $1 AND status = 'submitted'
+       ORDER BY created_at DESC LIMIT 1`,
+      [orderId],
+    )).rows[0]
+    if (!quoteRow) return c.json({ success: false, error: 'Үнийн санал олдсонгүй' }, 404)
+
+    const settings = await getSettings(db)
+
+    // Step 4 — Atomic transaction
+    const client = await db.connect()
+    try {
+      await client.query('BEGIN')
+
+      if (action === 'approve') {
+        // total = call-out already escrowed (orderRow.total_amount, incl. any
+        // urgent surcharge the user paid at booking) + the worker's quote amount.
+        const callout       = orderRow.total_amount
+        const subtotal      = callout + quoteRow.amount
+        const platformFee   = Math.round(subtotal * settings.commission)
+        const damageFund    = Math.round(subtotal * settings.damage_fund)
+        const workerEarning = subtotal - platformFee - damageFund
+        const invoiceId     = `INV-QUOTE-${orderId}-${Date.now()}`
+
+        await client.query(
+          `UPDATE order_quotes SET status = 'approved' WHERE id = $1`,
+          [quoteRow.id],
+        )
+        await client.query(
+          `UPDATE orders SET status = 'quote_approved', total_amount = $1,
+           payment_status = 'paid', gateway_invoice_id = $2, updated_at = NOW()
+           WHERE id = $3`,
+          [subtotal, invoiceId, orderId],
+        )
+        if (orderRow.worker_id) {
+          await client.query(
+            `INSERT INTO transactions (worker_id, amount, type, service_type_id)
+             VALUES ($1, $2, 'earning', $3)`,
+            [orderRow.worker_id, workerEarning, orderRow.service_type_id],
+          )
+        }
+      } else {
+        // reject: call-out fee stays with worker as an earning
+        const callout         = orderRow.total_amount
+        const platformFee     = Math.round(callout * settings.commission)
+        const damageFund      = Math.round(callout * settings.damage_fund)
+        const workerCallout   = callout - platformFee - damageFund
+
+        await client.query(
+          `UPDATE order_quotes SET status = 'rejected' WHERE id = $1`,
+          [quoteRow.id],
+        )
+        await client.query(
+          `UPDATE orders SET status = 'quote_rejected', updated_at = NOW() WHERE id = $1`,
+          [orderId],
+        )
+        if (orderRow.worker_id) {
+          await client.query(
+            `INSERT INTO transactions (worker_id, amount, type, service_type_id)
+             VALUES ($1, $2, 'earning', $3)`,
+            [orderRow.worker_id, workerCallout, orderRow.service_type_id],
+          )
+        }
+      }
+
+      await client.query('COMMIT')
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw err
+    } finally {
+      client.release()
+    }
+
+    return c.json({
+      success: true,
+      data: { orderId, action, status: action === 'approve' ? 'quote_approved' : 'quote_rejected' },
+    })
+  } catch {
+    return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
+  }
+})
+
 // POST /api/orders/:id/accept — worker accepts a scheduled order
 router.post('/api/orders/:id/accept', async (c) => {
   const session = await requireAuth(c)
