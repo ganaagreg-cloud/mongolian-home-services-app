@@ -54,14 +54,15 @@ const ACTIVE_STATUSES = `('searching_worker','pending_acceptances','pending_work
 
 const SELECT_COLS = `
   o.id, o.user_id, o.worker_id, u.name as worker_name,
-  o.service, o.status, o.address, o.scheduled_date,
+  COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
   o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
   o.property_type, o.notes, o.matching_strategy, o.payment_status,
   o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at`
 
 const JOIN_WORKER = `
   LEFT JOIN workers w ON w.id = o.worker_id AND w.rejected_at IS NULL
-  LEFT JOIN users   u ON u.id = w.user_id`
+  LEFT JOIN users   u ON u.id = w.user_id
+  LEFT JOIN service_types st ON st.id = o.service_type_id`
 
 // GET /api/orders
 router.get('/api/orders', async (c) => {
@@ -72,25 +73,25 @@ router.get('/api/orders', async (c) => {
 
   if (session.is_worker && c.req.query('scheduled') === '1') {
     const workerRow = (await db.query(
-      'SELECT id, specialty, is_available, is_active FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
+      'SELECT id, service_type_id, is_available, is_active FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
       [session.sub],
-    )).rows[0] as { id: string; specialty: string | null; is_available: boolean; is_active: boolean } | undefined
+    )).rows[0] as { id: string; service_type_id: number | null; is_available: boolean; is_active: boolean } | undefined
 
-    if (!workerRow || !workerRow.is_available || !workerRow.is_active || !workerRow.specialty) {
+    if (!workerRow || !workerRow.is_available || !workerRow.is_active || !workerRow.service_type_id) {
       return c.json({ success: true, data: [] })
     }
     const rows = (await db.query(`
       SELECT ${SELECT_COLS} FROM orders o ${JOIN_WORKER}
       WHERE o.status = 'pending_acceptances'
         AND o.matching_strategy = 'scheduled'
-        AND o.service = $1
+        AND o.service_type_id = $1
         AND o.user_id != $3
         AND NOT EXISTS (
           SELECT 1 FROM order_acceptances oa
           WHERE oa.order_id = o.id AND oa.worker_id = $2
         )
       ORDER BY o.created_at DESC
-    `, [workerRow.specialty, workerRow.id, session.sub])).rows as OrderRow[]
+    `, [workerRow.service_type_id, workerRow.id, session.sub])).rows as OrderRow[]
     return c.json({ success: true, data: rows.map(toOrder) })
   }
 
@@ -141,7 +142,7 @@ router.get('/api/orders', async (c) => {
 })
 
 const createSchema = z.object({
-  service:          z.string().min(1),
+  serviceTypeId:    z.number().int().positive(),
   address:          z.string().min(1),
   scheduledDate:    z.string().min(1),
   hours:            z.number().int().min(1).max(24),
@@ -173,7 +174,7 @@ router.post('/api/orders', async (c) => {
   }
 
   const {
-    service, address, scheduledDate, hours, totalAmount,
+    serviceTypeId, address, scheduledDate, hours, totalAmount,
     urgent, rooms, areaSqm, propertyType, notes, matchingStrategy,
   } = parsed.data
 
@@ -183,12 +184,12 @@ router.post('/api/orders', async (c) => {
   try {
     const result = (await db.query(`
       INSERT INTO orders
-        (user_id, service, status, address, scheduled_date,
+        (user_id, service_type_id, status, address, scheduled_date,
          hours, total_amount, urgent, rooms, area_sqm, property_type, notes, matching_strategy)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id
     `, [
-      session.sub, service, initialStatus, address, scheduledDate,
+      session.sub, serviceTypeId, initialStatus, address, scheduledDate,
       hours, totalAmount, urgent ?? false,
       rooms ?? null, areaSqm ?? null, propertyType ?? null, notes ?? null,
       matchingStrategy,
@@ -210,13 +211,14 @@ router.get('/api/orders/:id', async (c) => {
   await dbReady
   const row = (await db.query(`
     SELECT o.id, o.user_id, o.worker_id, u.name as worker_name,
-           o.service, o.status, o.address, o.scheduled_date,
+           COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
            o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
            o.property_type, o.notes, o.payment_status,
            o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at
     FROM   orders o
-    LEFT JOIN workers w ON w.id = o.worker_id AND w.rejected_at IS NULL
-    LEFT JOIN users   u ON u.id = w.user_id
+    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
+    LEFT JOIN users   u  ON u.id  = w.user_id
+    LEFT JOIN service_types st ON st.id = o.service_type_id
     WHERE  o.id = $1 AND (o.user_id = $2 OR w.user_id = $2)
   `, [id, session.sub])).rows[0] as (OrderRow & { matching_strategy: null }) | undefined
 
@@ -732,12 +734,12 @@ router.post('/api/orders/:id/cancel', async (c) => {
   await dbReady
 
   const order = (await db.query(
-    `SELECT id, worker_id, status, scheduled_date, total_amount, service, payment_status
+    `SELECT id, worker_id, status, scheduled_date, total_amount, service_type_id, payment_status
      FROM orders WHERE id = $1 AND user_id = $2`,
     [orderId, session.sub],
   )).rows[0] as {
     id: string; worker_id: string | null; status: string; scheduled_date: string
-    total_amount: number; service: string; payment_status: string
+    total_amount: number; service_type_id: number | null; payment_status: string
   } | undefined
 
   if (!order) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
@@ -766,8 +768,8 @@ router.post('/api/orders/:id/cancel', async (c) => {
 
     if (order.payment_status === 'paid') {
       await client.query(
-        'INSERT INTO transactions (worker_id, amount, type, service) VALUES ($1, $2, $3, $4)',
-        [order.worker_id ?? null, refundAmount, 'refund', order.service],
+        'INSERT INTO transactions (worker_id, amount, type, service_type_id) VALUES ($1, $2, $3, $4)',
+        [order.worker_id ?? null, refundAmount, 'refund', order.service_type_id ?? null],
       )
     }
 

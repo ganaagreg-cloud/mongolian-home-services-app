@@ -21,15 +21,10 @@ interface WorkerProfileScreenProps {
   onLogout: () => void
 }
 
-const SPECIALTIES = [
-  { value: 'цэвэрлэгээ',    label: 'Цэвэрлэгээ' },
-  { value: 'угаалга',       label: 'Угаалга' },
-  { value: 'ерөнхий засвар', label: 'Ерөнхий засвар' },
-  { value: 'сантехник',     label: 'Сантехник' },
-  { value: 'цахилгаан',     label: 'Цахилгаан' },
-  { value: 'будаг',         label: 'Будаг' },
-  { value: 'цонх/хаалга',   label: 'Цонх / Хаалга' },
-] as const
+interface ServiceType {
+  id: number
+  name_mn: string
+}
 
 const BANKS = [
   'Хаан Банк', 'Голомт', 'ХХБ', 'Төрийн Банк',
@@ -68,18 +63,28 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
     mutate: mutateBank,
   } = useSWR<BankingInfo | null>('/api/workers/me/banking', fetcher)
 
+  // ── Service types ─────────────────────────────────────────────────────────
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  useEffect(() => {
+    apiFetch('/api/service-types')
+      .then((r) => r.json())
+      .then((j: { success: boolean; data?: ServiceType[] }) => {
+        if (j.success && j.data) setServiceTypes(j.data)
+      })
+  }, [])
+
   // ── Specialty / price edit ────────────────────────────────────────────────
   const [isEditingProfile, setIsEditingProfile] = useState(false)
-  const [editSpecialty,    setEditSpecialty]    = useState('')
-  const [editPrice,        setEditPrice]        = useState('')
-  const [profileSaving,    setProfileSaving]    = useState(false)
+  const [editServiceTypeId, setEditServiceTypeId] = useState<number>(0)
+  const [editPrice,         setEditPrice]         = useState('')
+  const [profileSaving,     setProfileSaving]     = useState(false)
 
   const editPriceNum  = parseInt(editPrice, 10)
   const editPriceValid = !isNaN(editPriceNum) && editPriceNum >= 1000 && editPriceNum <= 500000
-  const editProfileValid = !!editSpecialty && editPriceValid
+  const editProfileValid = editServiceTypeId > 0 && editPriceValid
 
   const openProfileEdit = () => {
-    setEditSpecialty(workerData?.specialty ?? '')
+    setEditServiceTypeId(workerData?.serviceTypeId ?? 0)
     setEditPrice(String(workerData?.pricePerHour ?? ''))
     setIsEditingProfile(true)
   }
@@ -90,7 +95,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
       await apiFetch('/api/workers/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ specialty: editSpecialty, pricePerHour: editPriceNum }),
+        body: JSON.stringify({ serviceTypeId: editServiceTypeId, pricePerHour: editPriceNum }),
       })
       setIsEditingProfile(false)
     } finally {
@@ -240,7 +245,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
                 <div>
                   <p className="font-medium text-foreground">
                     {workerData?.specialty
-                      ? SPECIALTIES.find((s) => s.value === workerData.specialty)?.label ?? workerData.specialty
+                      ? workerData.specialty
                       : <span className="text-muted-foreground text-sm">Тохируулаагүй</span>}
                   </p>
                   <p className="text-xs text-muted-foreground">Мэргэжил</p>
@@ -262,13 +267,13 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
                 <p className="mb-2 text-sm font-medium text-foreground">Мэргэжил</p>
                 <div className="relative">
                   <select
-                    value={editSpecialty}
-                    onChange={(e) => setEditSpecialty(e.target.value)}
+                    value={editServiceTypeId || ''}
+                    onChange={(e) => setEditServiceTypeId(parseInt(e.target.value, 10) || 0)}
                     className="h-12 w-full appearance-none rounded-2xl border border-border bg-background px-4 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
                     <option value="">Мэргэжил сонгох...</option>
-                    {SPECIALTIES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
+                    {serviceTypes.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name_mn}</option>
                     ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

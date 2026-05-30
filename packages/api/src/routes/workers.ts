@@ -6,13 +6,9 @@ import type { Worker, BankingInfo, AccountType, Transaction, TransactionType } f
 
 const router = new Hono()
 
-const SPECIALTIES = [
-  'цэвэрлэгээ', 'угаалга', 'ерөнхий засвар',
-  'сантехник', 'цахилгаан', 'будаг', 'цонх/хаалга',
-] as const
-
 type WorkerRow = {
   id: string; user_id: string; name: string; specialty: string
+  service_type_id: string | null
   price_per_hour: number; rating: number; review_count: number
   is_available: boolean; is_active: boolean; dan_verified: boolean; created_at: string
 }
@@ -25,17 +21,18 @@ type BankingRow = {
 
 function toWorker(row: WorkerRow): Worker {
   return {
-    id:           String(row.id),
-    userId:       String(row.user_id),
-    name:         row.name,
-    specialty:    row.specialty,
-    pricePerHour: row.price_per_hour,
-    rating:       row.rating,
-    reviewCount:  row.review_count,
-    isAvailable:  Boolean(row.is_available),
-    isActive:     Boolean(row.is_active),
-    danVerified:  Boolean(row.dan_verified),
-    createdAt:    row.created_at,
+    id:            String(row.id),
+    userId:        String(row.user_id),
+    name:          row.name,
+    specialty:     row.specialty ?? '',
+    serviceTypeId: row.service_type_id ? Number(row.service_type_id) : undefined,
+    pricePerHour:  row.price_per_hour,
+    rating:        row.rating,
+    reviewCount:   row.review_count,
+    isAvailable:   Boolean(row.is_available),
+    isActive:      Boolean(row.is_active),
+    danVerified:   Boolean(row.dan_verified),
+    createdAt:     row.created_at,
   }
 }
 
@@ -71,14 +68,17 @@ router.get('/api/workers', async (c) => {
     conditions.push('w.is_available = true')
   }
   if (q) {
-    conditions.push(`(u.name ILIKE $${pIdx} OR w.specialty ILIKE $${pIdx + 1})`)
+    conditions.push(`(u.name ILIKE $${pIdx} OR st.name_mn ILIKE $${pIdx + 1})`)
     qParams.push(`%${q}%`, `%${q}%`)
     pIdx += 2
   }
   if (specialty) {
-    conditions.push(`w.specialty = $${pIdx}`)
-    qParams.push(specialty)
-    pIdx += 1
+    const stId = parseInt(specialty, 10)
+    if (!isNaN(stId) && stId > 0) {
+      conditions.push(`w.service_type_id = $${pIdx}`)
+      qParams.push(stId)
+      pIdx += 1
+    }
   }
 
   const orderBy =
@@ -88,11 +88,13 @@ router.get('/api/workers', async (c) => {
 
   await dbReady
   const rows = (await db.query(`
-    SELECT w.id, w.user_id, u.name, w.specialty, w.price_per_hour,
+    SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
+           w.service_type_id, w.price_per_hour,
            w.rating, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
+    LEFT JOIN service_types st ON st.id = w.service_type_id
     WHERE  ${conditions.join(' AND ')}
     ORDER  BY ${orderBy}
     LIMIT  50
@@ -114,7 +116,7 @@ router.post('/api/workers/register', async (c) => {
   const schema = z.object({
     imei:               z.string().length(15),
     policeFile:         z.string().min(1),
-    specialty:          z.enum(SPECIALTIES),
+    serviceTypeId:      z.number().int().positive(),
     pricePerHour:       z.number().int().min(1000).max(500000),
     bankName:           z.string().min(1),
     accountNumber:      z.string().regex(/^\d{10,20}$/),
@@ -138,7 +140,7 @@ router.post('/api/workers/register', async (c) => {
     return c.json({ success: false, error: 'Та ажилтнаар аль хэдийн бүртгүүлсэн байна' }, 409)
   }
 
-  const { imei, policeFile, specialty, pricePerHour, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
+  const { imei, policeFile, serviceTypeId, pricePerHour, bankName, accountNumber, accountHolderName, iban, accountType } = parsed.data
 
   const client = await db.connect()
   let workerId: string
@@ -146,10 +148,10 @@ router.post('/api/workers/register', async (c) => {
     await client.query('BEGIN')
 
     const workerResult = (await client.query(
-      `INSERT INTO workers (user_id, specialty, price_per_hour, rating, review_count, imei, police_file, is_available, is_active)
+      `INSERT INTO workers (user_id, service_type_id, price_per_hour, rating, review_count, imei, police_file, is_available, is_active)
        VALUES ($1, $2, $3, 0, 0, $4, $5, true, false)
        RETURNING id`,
-      [session.sub, specialty, pricePerHour, imei, policeFile],
+      [session.sub, serviceTypeId, pricePerHour, imei, policeFile],
     )).rows[0] as { id: string }
     workerId = String(workerResult.id)
 
@@ -177,11 +179,13 @@ router.get('/api/workers/me', async (c) => {
 
   await dbReady
   const row = (await db.query(`
-    SELECT w.id, w.user_id, u.name, w.specialty, w.price_per_hour,
+    SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
+           w.service_type_id, w.price_per_hour,
            w.rating, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
+    LEFT JOIN service_types st ON st.id = w.service_type_id
     WHERE  w.user_id = $1
   `, [session.sub])).rows[0] as WorkerRow | undefined
 
@@ -191,10 +195,10 @@ router.get('/api/workers/me', async (c) => {
 })
 
 const workerMePatchSchema = z.object({
-  specialty:    z.enum(SPECIALTIES).optional(),
-  pricePerHour: z.number().int().min(1000).max(500000).optional(),
+  serviceTypeId: z.number().int().positive().optional(),
+  pricePerHour:  z.number().int().min(1000).max(500000).optional(),
 }).refine(
-  (d) => d.specialty !== undefined || d.pricePerHour !== undefined,
+  (d) => d.serviceTypeId !== undefined || d.pricePerHour !== undefined,
   { message: 'Хамгийн багадаа нэг талбар шаардлагатай' },
 )
 
@@ -227,8 +231,8 @@ router.patch('/api/workers/me', async (c) => {
   const sets: string[] = []
   const vals: unknown[] = []
   let idx = 1
-  if (parsed.data.specialty    !== undefined) { sets.push(`specialty = $${idx++}`);     vals.push(parsed.data.specialty) }
-  if (parsed.data.pricePerHour !== undefined) { sets.push(`price_per_hour = $${idx++}`); vals.push(parsed.data.pricePerHour) }
+  if (parsed.data.serviceTypeId !== undefined) { sets.push(`service_type_id = $${idx++}`); vals.push(parsed.data.serviceTypeId) }
+  if (parsed.data.pricePerHour  !== undefined) { sets.push(`price_per_hour = $${idx++}`);  vals.push(parsed.data.pricePerHour) }
   vals.push(workerRow.id)
 
   await db.query(`UPDATE workers SET ${sets.join(', ')} WHERE id = $${idx}`, vals)
@@ -350,7 +354,7 @@ router.get('/api/workers/me/earnings', async (c) => {
   const wid = workerRow.id
 
   type EarningsRow = { total: string }
-  type TxRow = { id: string; worker_id: string; amount: number; type: string; service: string; created_at: string }
+  type TxRow = { id: string; worker_id: string; amount: number; type: string; service: string | null; created_at: string }
 
   const [totalRow, monthRow, pendingRow, txRows] = await Promise.all([
     db.query<EarningsRow>(
@@ -370,8 +374,10 @@ router.get('/api/workers/me/earnings', async (c) => {
       [wid],
     ),
     db.query<TxRow>(
-      `SELECT id, worker_id, amount, type, service, created_at
-       FROM transactions WHERE worker_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      `SELECT t.id, t.worker_id, t.amount, t.type, COALESCE(st.name_mn, '') AS service, t.created_at
+       FROM transactions t
+       LEFT JOIN service_types st ON st.id = t.service_type_id
+       WHERE t.worker_id = $1 ORDER BY t.created_at DESC LIMIT 50`,
       [wid],
     ),
   ])
@@ -381,7 +387,7 @@ router.get('/api/workers/me/earnings', async (c) => {
     workerId:  String(r.worker_id),
     amount:    r.amount,
     type:      r.type as TransactionType,
-    service:   r.service,
+    service:   r.service ?? '',
     createdAt: r.created_at,
   }))
 
@@ -405,11 +411,13 @@ router.get('/api/workers/:id', async (c) => {
 
   await dbReady
   const row = (await db.query(`
-    SELECT w.id, w.user_id, u.name, w.specialty, w.price_per_hour,
+    SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
+           w.service_type_id, w.price_per_hour,
            w.rating, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
+    LEFT JOIN service_types st ON st.id = w.service_type_id
     WHERE  w.id = $1
   `, [id])).rows[0] as WorkerRow | undefined
 

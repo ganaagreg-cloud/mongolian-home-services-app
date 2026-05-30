@@ -45,6 +45,7 @@ export interface Worker {
   userId: string
   name: string        // joined from users
   specialty: string
+  serviceTypeId?: number
   pricePerHour: number  // MNT integer
   rating: number        // 0.0 – 5.0
   reviewCount: number
@@ -243,7 +244,7 @@ export interface LoginBody {
 }
 
 export interface CreateOrderBody {
-  service: string
+  serviceTypeId: number
   address: string
   scheduledDate: string
   hours: number
@@ -282,13 +283,18 @@ export interface AdminRecentOrder {
   service: string
   status: string
   totalAmount: number
+  createdAt: string
 }
 
 export interface AdminStats {
   todayOrders: number
+  todayRevenue: number
   totalRevenue: number
+  totalCommission: number
+  totalDamageFund: number
   activeWorkers: number
   openDisputes: number
+  pendingWorkers: number
   recentOrders: AdminRecentOrder[]
 }
 

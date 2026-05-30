@@ -68,9 +68,9 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   useEffect(() => {
     apiFetch('/api/service-types')
       .then((r) => r.json())
-      .then((j: { success: boolean; data?: { name_mn: string }[] }) => {
+      .then((j: { success: boolean; data?: { id: number; name_mn: string }[] }) => {
         if (j.success && j.data) {
-          setSpecialties(j.data.map((s) => ({ value: s.name_mn, label: s.name_mn })))
+          setSpecialties(j.data.map((s) => ({ value: String(s.id), label: s.name_mn })))
         }
       })
   }, [])
@@ -112,7 +112,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         body: JSON.stringify({
           imei,
           policeFile: policeFile ?? 'police_clearance.pdf',
-          specialty,
+          serviceTypeId: parseInt(specialty, 10),
           pricePerHour: priceNum,
           bankName,
           accountNumber,

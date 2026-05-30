@@ -12,14 +12,14 @@ const SEED_USERS = [
 ]
 
 const SEED_WORKERS = [
-  { id: 1, userId: 1, specialty: 'Цэвэрлэгээ',   price: 25000, rating: 4.9, reviews: 124, available: true,  active: true  },
-  { id: 2, userId: 2, specialty: 'Сантехник',     price: 35000, rating: 4.8, reviews:  89, available: true,  active: true  },
-  { id: 3, userId: 3, specialty: 'Цахилгаан',    price: 40000, rating: 4.9, reviews: 156, available: true,  active: true  },
-  { id: 4, userId: 4, specialty: 'Жижиг засвар', price: 30000, rating: 4.7, reviews:  67, available: false, active: true  },
-  { id: 5, userId: 5, specialty: 'Цэвэрлэгээ',   price: 22000, rating: 4.6, reviews:  43, available: true,  active: true  },
-  { id: 6, userId: 6, specialty: 'Будаг',         price: 28000, rating: 4.5, reviews:  31, available: true,  active: true  },
-  { id: 7, userId: 7, specialty: 'Агааржуулалт', price: 45000, rating: 4.3, reviews:  18, available: true,  active: false },
-  { id: 8, userId: 8, specialty: 'Сантехник',     price: 32000, rating: 4.8, reviews:  55, available: true,  active: true  },
+  { id: 1, userId: 1, serviceTypeName: 'Цэвэрлэгээ',   price: 25000, rating: 4.9, reviews: 124, available: true,  active: true  },
+  { id: 2, userId: 2, serviceTypeName: 'Сантехник',     price: 35000, rating: 4.8, reviews:  89, available: true,  active: true  },
+  { id: 3, userId: 3, serviceTypeName: 'Цахилгаан',    price: 40000, rating: 4.9, reviews: 156, available: true,  active: true  },
+  { id: 4, userId: 4, serviceTypeName: 'Жижиг засвар', price: 30000, rating: 4.7, reviews:  67, available: false, active: true  },
+  { id: 5, userId: 5, serviceTypeName: 'Цэвэрлэгээ',   price: 22000, rating: 4.6, reviews:  43, available: true,  active: true  },
+  { id: 6, userId: 6, serviceTypeName: 'Будаг',         price: 28000, rating: 4.5, reviews:  31, available: true,  active: true  },
+  { id: 7, userId: 7, serviceTypeName: 'Агааржуулалт', price: 45000, rating: 4.3, reviews:  18, available: true,  active: false },
+  { id: 8, userId: 8, serviceTypeName: 'Сантехник',     price: 32000, rating: 4.8, reviews:  55, available: true,  active: true  },
 ]
 
 const SEED_BANKING = [
@@ -41,14 +41,14 @@ const ADMIN_EMAIL    = '95342321@homeservice.local'
 const ADMIN_PW_HASH  = 'f01f236cdd7d2a3694ba5f14f71f6fb4:e1a77eed648115674e4a5fba36aa951d2d8c051b7ba6da5398c9402a497ab915ef3898b4b8bd180207a4fe5da60a4e24f07a815c0d9b93220fb757cee81d341b'
 
 const SEED_ORDERS = [
-  { id: 1, userId: 9, workerId: null, service: 'Цэвэрлэгээ', status: 'searching_worker',  address: 'Чингэлтэй дүүрэг, 5-р хороо, Наран гудамж 12',            scheduledDate: '2026-05-27 10:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 60,   propertyType: 'apartment', notes: null },
-  { id: 2, userId: 9, workerId: 1,    service: 'Цэвэрлэгээ', status: 'worker_assigned',   address: 'Баянзүрх дүүрэг, 14-р хороо, Их тойруу 8',                scheduledDate: '2026-05-25 14:00:00', hours: 2, totalAmount:  50000, urgent: false, rooms: 1,    areaSqm: 45,   propertyType: 'apartment', notes: 'Гал тогооны өрөөг онцгойлон анхаарна уу' },
-  { id: 3, userId: 9, workerId: 5,    service: 'Цэвэрлэгээ', status: 'worker_on_the_way', address: 'Сүхбаатар дүүрэг, 1-р хороо, Энх тайваны өргөн чөлөө 15', scheduledDate: '2026-05-24 09:00:00', hours: 4, totalAmount: 110000, urgent: true,  rooms: 3,    areaSqm: 90,   propertyType: 'apartment', notes: null },
-  { id: 4, userId: 9, workerId: 2,    service: 'Сантехник',  status: 'in_progress',       address: 'Хан-Уул дүүрэг, 3-р хороо, Зайсан 22',                   scheduledDate: '2026-05-24 11:00:00', hours: 2, totalAmount:  70000, urgent: false, rooms: null, areaSqm: null, propertyType: 'house',     notes: 'Угаалтуурын шугам дусалж байна' },
-  { id: 5, userId: 9, workerId: 1,    service: 'Цэвэрлэгээ', status: 'completed',         address: 'Баянгол дүүрэг, 7-р хороо, Нарны зам 5',                  scheduledDate: '2026-05-20 10:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 55,   propertyType: 'apartment', notes: null },
-  { id: 6, userId: 9, workerId: 5,    service: 'Цэвэрлэгээ', status: 'rated',             address: 'Сонгинохайрхан дүүрэг, 19-р хороо, Цагаан давхар 3',      scheduledDate: '2026-05-15 13:00:00', hours: 2, totalAmount:  44000, urgent: false, rooms: 1,    areaSqm: 38,   propertyType: 'apartment', notes: null },
-  { id: 7, userId: 9, workerId: null, service: 'Цэвэрлэгээ', status: 'cancelled_by_user', address: 'Чингэлтэй дүүрэг, 2-р хороо, Дэнж 7',                    scheduledDate: '2026-05-18 09:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 60,   propertyType: 'apartment', notes: null },
-  { id: 8, userId: 9, workerId: null, service: 'Цэвэрлэгээ', status: 'no_workers_found',  address: 'Налайх дүүрэг, 1-р хороо, Уурхайчин 11',                  scheduledDate: '2026-05-19 08:00:00', hours: 4, totalAmount: 100000, urgent: true,  rooms: 3,    areaSqm: 80,   propertyType: 'apartment', notes: null },
+  { id: 1, userId: 9, workerId: null, serviceTypeName: 'Цэвэрлэгээ', status: 'searching_worker',  address: 'Чингэлтэй дүүрэг, 5-р хороо, Наран гудамж 12',            scheduledDate: '2026-05-27 10:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 60,   propertyType: 'apartment', notes: null },
+  { id: 2, userId: 9, workerId: 1,    serviceTypeName: 'Цэвэрлэгээ', status: 'worker_assigned',   address: 'Баянзүрх дүүрэг, 14-р хороо, Их тойруу 8',                scheduledDate: '2026-05-25 14:00:00', hours: 2, totalAmount:  50000, urgent: false, rooms: 1,    areaSqm: 45,   propertyType: 'apartment', notes: 'Гал тогооны өрөөг онцгойлон анхаарна уу' },
+  { id: 3, userId: 9, workerId: 5,    serviceTypeName: 'Цэвэрлэгээ', status: 'worker_on_the_way', address: 'Сүхбаатар дүүрэг, 1-р хороо, Энх тайваны өргөн чөлөө 15', scheduledDate: '2026-05-24 09:00:00', hours: 4, totalAmount: 110000, urgent: true,  rooms: 3,    areaSqm: 90,   propertyType: 'apartment', notes: null },
+  { id: 4, userId: 9, workerId: 2,    serviceTypeName: 'Сантехник',  status: 'in_progress',       address: 'Хан-Уул дүүрэг, 3-р хороо, Зайсан 22',                   scheduledDate: '2026-05-24 11:00:00', hours: 2, totalAmount:  70000, urgent: false, rooms: null, areaSqm: null, propertyType: 'house',     notes: 'Угаалтуурын шугам дусалж байна' },
+  { id: 5, userId: 9, workerId: 1,    serviceTypeName: 'Цэвэрлэгээ', status: 'completed',         address: 'Баянгол дүүрэг, 7-р хороо, Нарны зам 5',                  scheduledDate: '2026-05-20 10:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 55,   propertyType: 'apartment', notes: null },
+  { id: 6, userId: 9, workerId: 5,    serviceTypeName: 'Цэвэрлэгээ', status: 'rated',             address: 'Сонгинохайрхан дүүрэг, 19-р хороо, Цагаан давхар 3',      scheduledDate: '2026-05-15 13:00:00', hours: 2, totalAmount:  44000, urgent: false, rooms: 1,    areaSqm: 38,   propertyType: 'apartment', notes: null },
+  { id: 7, userId: 9, workerId: null, serviceTypeName: 'Цэвэрлэгээ', status: 'cancelled_by_user', address: 'Чингэлтэй дүүрэг, 2-р хороо, Дэнж 7',                    scheduledDate: '2026-05-18 09:00:00', hours: 3, totalAmount:  75000, urgent: false, rooms: 2,    areaSqm: 60,   propertyType: 'apartment', notes: null },
+  { id: 8, userId: 9, workerId: null, serviceTypeName: 'Цэвэрлэгээ', status: 'no_workers_found',  address: 'Налайх дүүрэг, 1-р хороо, Уурхайчин 11',                  scheduledDate: '2026-05-19 08:00:00', hours: 4, totalAmount: 100000, urgent: true,  rooms: 3,    areaSqm: 80,   propertyType: 'apartment', notes: null },
 ]
 
 const SEED_REVIEWS = [
@@ -121,10 +121,10 @@ export async function seed(pool: Pool): Promise<void> {
       await withTransaction(client, async () => {
         for (const w of SEED_WORKERS) {
           await client.query(
-            `INSERT INTO workers (id, user_id, specialty, price_per_hour, rating, review_count, is_available, is_active)
+            `INSERT INTO workers (id, user_id, service_type_id, price_per_hour, rating, review_count, is_available, is_active)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              ON CONFLICT (id) DO NOTHING`,
-            [w.id, w.userId, w.specialty, w.price, w.rating, w.reviews, w.available, w.active],
+            [w.id, w.userId, stMap.get(w.serviceTypeName) ?? null, w.price, w.rating, w.reviews, w.available, w.active],
           )
         }
         await client.query(`SELECT setval('workers_id_seq', (SELECT MAX(id) FROM workers))`)
@@ -154,10 +154,10 @@ export async function seed(pool: Pool): Promise<void> {
       await withTransaction(client, async () => {
         for (const o of SEED_ORDERS) {
           await client.query(
-            `INSERT INTO orders (id, user_id, worker_id, service, status, address, scheduled_date, hours, total_amount, urgent, rooms, area_sqm, property_type, notes)
+            `INSERT INTO orders (id, user_id, worker_id, service_type_id, status, address, scheduled_date, hours, total_amount, urgent, rooms, area_sqm, property_type, notes)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              ON CONFLICT (id) DO NOTHING`,
-            [o.id, o.userId, o.workerId, o.service, o.status, o.address, o.scheduledDate, o.hours, o.totalAmount, o.urgent, o.rooms, o.areaSqm, o.propertyType, o.notes],
+            [o.id, o.userId, o.workerId, stMap.get(o.serviceTypeName) ?? null, o.status, o.address, o.scheduledDate, o.hours, o.totalAmount, o.urgent, o.rooms, o.areaSqm, o.propertyType, o.notes],
           )
         }
         for (const r of SEED_REVIEWS) {
@@ -207,7 +207,30 @@ export async function seed(pool: Pool): Promise<void> {
         ('Агааржуулалт', 'wind',        6),
         ('Жижиг засвар', 'hammer',      7),
         ('Нүүлгэлт',     'truck',       8)
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (name_mn) DO NOTHING
+    `)
+
+    // Build name → id map for service_types lookups
+    const stRows = (await client.query<{ id: number; name_mn: string }>(
+      'SELECT id, name_mn FROM service_types',
+    )).rows
+    const stMap = new Map(stRows.map((r) => [r.name_mn, r.id]))
+
+    // Backfill service_type_id for existing rows (idempotent — only sets NULL rows)
+    await client.query(`
+      UPDATE workers w SET service_type_id = st.id
+      FROM service_types st
+      WHERE w.specialty = st.name_mn AND w.service_type_id IS NULL
+    `)
+    await client.query(`
+      UPDATE orders o SET service_type_id = st.id
+      FROM service_types st
+      WHERE o.service = st.name_mn AND o.service_type_id IS NULL
+    `)
+    await client.query(`
+      UPDATE transactions t SET service_type_id = st.id
+      FROM service_types st
+      WHERE t.service = st.name_mn AND t.service_type_id IS NULL
     `)
 
     await client.query(`

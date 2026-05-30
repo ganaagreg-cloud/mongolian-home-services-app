@@ -48,6 +48,15 @@ export const TABLES: string[] = [
     "updatedAt" TIMESTAMP DEFAULT NOW()
   )`,
   // ── App tables ──────────────────────────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS service_types (
+    id         SERIAL PRIMARY KEY,
+    name_mn    TEXT NOT NULL UNIQUE,
+    icon       TEXT NOT NULL DEFAULT 'sparkles',
+    is_active  BOOLEAN NOT NULL DEFAULT true,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+
   `CREATE TABLE IF NOT EXISTS users (
     id               SERIAL PRIMARY KEY,
     phone            VARCHAR(20) UNIQUE NOT NULL,
@@ -81,17 +90,17 @@ export const TABLES: string[] = [
     ON users(registernumber) WHERE registernumber != ''`,
 
   `CREATE TABLE IF NOT EXISTS workers (
-    id             SERIAL PRIMARY KEY,
-    user_id        INTEGER NOT NULL REFERENCES users(id),
-    specialty      TEXT NOT NULL DEFAULT '',
-    price_per_hour INTEGER NOT NULL DEFAULT 0,
-    rating         DOUBLE PRECISION NOT NULL DEFAULT 0,
-    review_count   INTEGER NOT NULL DEFAULT 0,
-    imei           TEXT,
-    police_file    TEXT,
-    is_available   BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active      BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    service_type_id INTEGER REFERENCES service_types(id),
+    price_per_hour  INTEGER NOT NULL DEFAULT 0,
+    rating          DOUBLE PRECISION NOT NULL DEFAULT 0,
+    review_count    INTEGER NOT NULL DEFAULT 0,
+    imei            TEXT,
+    police_file     TEXT,
+    is_available    BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active       BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS banking_info (
@@ -110,7 +119,7 @@ export const TABLES: string[] = [
     id                  SERIAL PRIMARY KEY,
     user_id             INTEGER NOT NULL REFERENCES users(id),
     worker_id           INTEGER REFERENCES workers(id),
-    service             TEXT NOT NULL,
+    service_type_id     INTEGER REFERENCES service_types(id),
     status              VARCHAR(40) NOT NULL DEFAULT 'searching_worker',
     address             TEXT NOT NULL,
     scheduled_date      TIMESTAMPTZ NOT NULL,
@@ -149,12 +158,12 @@ export const TABLES: string[] = [
   )`,
 
   `CREATE TABLE IF NOT EXISTS transactions (
-    id         SERIAL PRIMARY KEY,
-    worker_id  INTEGER NOT NULL REFERENCES workers(id),
-    amount     INTEGER NOT NULL,
-    type       TEXT NOT NULL,
-    service    TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id              SERIAL PRIMARY KEY,
+    worker_id       INTEGER NOT NULL REFERENCES workers(id),
+    amount          INTEGER NOT NULL,
+    type            TEXT NOT NULL,
+    service_type_id INTEGER REFERENCES service_types(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
 
   `CREATE TABLE IF NOT EXISTS disputes (
@@ -247,15 +256,11 @@ export const TABLES: string[] = [
   `ALTER TABLE workers ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ`,
   // Soft delete for users (admin suspend)
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+  // FK migrations: add service_type_id to existing tables
+  `ALTER TABLE workers ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
+  `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS service_type_id INTEGER REFERENCES service_types(id)`,
   // Master data tables
-  `CREATE TABLE IF NOT EXISTS service_types (
-    id         SERIAL PRIMARY KEY,
-    name_mn    TEXT NOT NULL UNIQUE,
-    icon       TEXT NOT NULL DEFAULT 'sparkles',
-    is_active  BOOLEAN NOT NULL DEFAULT true,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`,
   `CREATE TABLE IF NOT EXISTS districts (
     id         SERIAL PRIMARY KEY,
     name_mn    TEXT NOT NULL,

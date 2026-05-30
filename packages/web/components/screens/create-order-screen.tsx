@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ArrowLeft, ArrowRight, MapPin, Lock, Sparkles, Droplets,
   Zap, Wrench, Paintbrush, Wind, Home, Building2, Briefcase, Camera,
@@ -17,14 +17,17 @@ interface CreateOrderScreenProps {
   onOrderCreated: (orderId: string, strategy: MatchingStrategy, totalAmount: number) => void
 }
 
-const SERVICES = [
-  { id: 'Цэвэрлэгээ',    label: 'Цэвэрлэгээ',   Icon: Sparkles,   rate: 25000, enabled: true  },
-  { id: 'Сантехник',     label: 'Сантехник',    Icon: Droplets,   rate: 35000, enabled: false },
-  { id: 'Цахилгаан',    label: 'Цахилгаан',   Icon: Zap,        rate: 40000, enabled: false },
-  { id: 'Жижиг засвар', label: 'Жижиг засвар', Icon: Wrench,     rate: 30000, enabled: false },
-  { id: 'Будаг',         label: 'Будаг',        Icon: Paintbrush, rate: 28000, enabled: false },
-  { id: 'Агааржуулалт',  label: 'Агааржуулалт', Icon: Wind,       rate: 45000, enabled: false },
-]
+interface ServiceType {
+  id: number
+  name_mn: string
+  icon: string
+  base_rate: number
+}
+
+const ICON_MAP = {
+  sparkles: Sparkles, droplets: Droplets, zap: Zap,
+  wrench: Wrench, paintbrush: Paintbrush, wind: Wind,
+} as const
 
 const TIME_SLOTS = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -44,8 +47,20 @@ const PROPERTY_TYPES = [
 export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenProps) {
   const [step, setStep] = useState(1)
 
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  useEffect(() => {
+    apiFetch('/api/service-types')
+      .then((r) => r.json())
+      .then((j: { success: boolean; data?: ServiceType[] }) => {
+        if (j.success && j.data?.length) {
+          setServiceTypes(j.data)
+          setServiceTypeId(j.data[0]!.id)
+        }
+      })
+  }, [])
+
   // Step 1
-  const [service, setService]           = useState('Цэвэрлэгээ')
+  const [serviceTypeId, setServiceTypeId] = useState<number | null>(null)
   const [address, setAddress]           = useState('')
   const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'office' | null>(null)
   const [rooms, setRooms]               = useState<number | null>(null)
@@ -79,7 +94,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
   })
 
   // Pricing
-  const baseRate   = SERVICES.find((s) => s.id === service)?.rate ?? 25000
+  const baseRate   = serviceTypes.find((s) => s.id === serviceTypeId)?.base_rate ?? 25000
   const hours      = propertyType === 'apartment' && rooms ? (ROOM_HOURS[rooms] ?? 6) : 3
   const basePrice  = baseRate * hours
   const urgentFee  = urgent ? Math.round(basePrice * 0.2) : 0
@@ -117,7 +132,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service,
+          serviceTypeId,
           address,
           scheduledDate,
           hours,
@@ -189,23 +204,23 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
           <div className="mt-6 px-6">
             <h2 className="font-semibold text-foreground">Үйлчилгээний төрөл</h2>
             <div className="mt-3 grid grid-cols-3 gap-3">
-              {SERVICES.map(({ id, label, Icon, enabled }) => (
-                <button
-                  key={id}
-                  onClick={() => enabled && setService(id)}
-                  disabled={!enabled}
-                  className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
-                    service === id && enabled
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : enabled
-                      ? 'bg-card text-foreground shadow-sm hover:shadow-md'
-                      : 'cursor-not-allowed bg-card opacity-40'
-                  }`}
-                >
-                  <Icon className="h-6 w-6" />
-                  <span className="text-center text-xs font-medium leading-tight">{label}</span>
-                </button>
-              ))}
+              {serviceTypes.map((s) => {
+                const Icon = ICON_MAP[s.icon as keyof typeof ICON_MAP] ?? Sparkles
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setServiceTypeId(s.id)}
+                    className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
+                      serviceTypeId === s.id
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'bg-card text-foreground shadow-sm hover:shadow-md'
+                    }`}
+                  >
+                    <Icon className="h-6 w-6" />
+                    <span className="text-center text-xs font-medium leading-tight">{s.name_mn}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -528,7 +543,9 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             <div className="mt-3 space-y-2.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Үйлчилгээ</span>
-                <span className="font-medium text-foreground">{service}</span>
+                <span className="font-medium text-foreground">
+                  {serviceTypes.find((s) => s.id === serviceTypeId)?.name_mn ?? '—'}
+                </span>
               </div>
               <div className="flex items-start justify-between gap-4 text-sm">
                 <span className="shrink-0 text-muted-foreground">Хаяг</span>

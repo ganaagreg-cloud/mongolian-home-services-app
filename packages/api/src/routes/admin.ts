@@ -16,43 +16,59 @@ router.get('/api/admin/stats', async (c) => {
 
   await dbReady
 
-  const todayOrders = Number((await db.query(
-    `SELECT COUNT(*) as count FROM orders WHERE created_at::date = CURRENT_DATE`,
-  )).rows[0].count)
+  const [
+    todayOrdersRow, todayRevenueRow, totalRevenueRow,
+    activeWorkersRow, openDisputesRow, pendingWorkersRow, recentRows,
+  ] = await Promise.all([
+    db.query(`SELECT COUNT(*) as count FROM orders WHERE created_at::date = CURRENT_DATE`),
+    db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status IN ('completed','rated') AND created_at::date = CURRENT_DATE`),
+    db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status IN ('completed','rated')`),
+    db.query(`SELECT COUNT(*) as count FROM workers WHERE is_active = true AND rejected_at IS NULL`),
+    db.query(`SELECT COUNT(*) as count FROM disputes WHERE status = 'open'`),
+    db.query(`SELECT COUNT(*) as count FROM workers WHERE is_active = false AND rejected_at IS NULL`),
+    db.query(`
+      SELECT o.id, u1.name as customer_name, u2.name as worker_name,
+             COALESCE(st.name_mn, '') AS service, o.status, o.total_amount, o.created_at
+      FROM   orders o
+      JOIN   users u1 ON u1.id = o.user_id
+      LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
+      LEFT JOIN users   u2 ON u2.id = w.user_id
+      LEFT JOIN service_types st ON st.id = o.service_type_id
+      ORDER  BY o.created_at DESC
+      LIMIT  20
+    `),
+  ])
 
-  const totalRevenue = Number((await db.query(
-    `SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status = 'completed'`,
-  )).rows[0].total)
+  const todayOrders    = Number(todayOrdersRow.rows[0].count)
+  const todayRevenue   = Number(todayRevenueRow.rows[0].total)
+  const totalRevenue   = Number(totalRevenueRow.rows[0].total)
+  const activeWorkers  = Number(activeWorkersRow.rows[0].count)
+  const openDisputes   = Number(openDisputesRow.rows[0].count)
+  const pendingWorkers = Number(pendingWorkersRow.rows[0].count)
 
-  const activeWorkers = Number((await db.query(
-    `SELECT COUNT(*) as count FROM workers WHERE is_active = true AND rejected_at IS NULL`,
-  )).rows[0].count)
+  type RecentRow = { id: string; customer_name: string; worker_name: string | null; service: string; status: string; total_amount: number; created_at: string }
 
-  const openDisputes = Number((await db.query(
-    `SELECT COUNT(*) as count FROM disputes WHERE status = 'open'`,
-  )).rows[0].count)
-
-  const recentRows = (await db.query(`
-    SELECT o.id, u1.name as customer_name, u2.name as worker_name,
-           o.service, o.status, o.total_amount
-    FROM   orders o
-    JOIN   users u1 ON u1.id = o.user_id
-    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
-    LEFT JOIN users   u2 ON u2.id = w.user_id
-    ORDER  BY o.created_at DESC
-    LIMIT  5
-  `)).rows as { id: string; customer_name: string; worker_name: string | null; service: string; status: string; total_amount: number }[]
-
-  const recentOrders: AdminRecentOrder[] = recentRows.map((r) => ({
+  const recentOrders: AdminRecentOrder[] = (recentRows.rows as RecentRow[]).map((r) => ({
     id:           String(r.id),
     customerName: r.customer_name,
     workerName:   r.worker_name ?? '—',
     service:      r.service,
     status:       r.status,
     totalAmount:  r.total_amount,
+    createdAt:    r.created_at,
   }))
 
-  const data: AdminStats = { todayOrders, totalRevenue, activeWorkers, openDisputes, recentOrders }
+  const data: AdminStats = {
+    todayOrders,
+    todayRevenue,
+    totalRevenue,
+    totalCommission:  Math.round(totalRevenue * 0.15),
+    totalDamageFund:  Math.round(totalRevenue * 0.02),
+    activeWorkers,
+    openDisputes,
+    pendingWorkers,
+    recentOrders,
+  }
   return c.json({ success: true, data })
 })
 
@@ -82,9 +98,12 @@ router.get('/api/admin/workers', async (c) => {
     idx += 2
   }
   if (specialty) {
-    conditions.push(`w.specialty ILIKE $${idx}`)
-    params.push(`%${specialty}%`)
-    idx += 1
+    const stId = parseInt(specialty, 10)
+    if (!isNaN(stId) && stId > 0) {
+      conditions.push(`w.service_type_id = $${idx}`)
+      params.push(stId)
+      idx += 1
+    }
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -92,13 +111,14 @@ router.get('/api/admin/workers', async (c) => {
   await dbReady
   const [rowsResult, countResult] = await Promise.all([
     db.query(`
-      SELECT w.id, u.name, u.phone, w.specialty, w.price_per_hour,
+      SELECT w.id, u.name, u.phone, COALESCE(st.name_mn, '') AS specialty, w.price_per_hour,
              w.rating, w.review_count, w.is_active, w.is_available,
              w.rejected_at, w.created_at,
              bi.verified as banking_verified,
              u.dan_verified, w.police_file
       FROM   workers w
       JOIN   users   u  ON u.id  = w.user_id
+      LEFT JOIN service_types st ON st.id = w.service_type_id
       LEFT JOIN banking_info bi ON bi.worker_id = w.id
       ${where}
       ORDER BY w.created_at DESC
@@ -127,9 +147,11 @@ router.get('/api/admin/workers/pending', async (c) => {
   type Row = { id: string; name: string; phone: string; specialty: string; dan_verified: boolean; imei: string | null; police_file: string | null; created_at: string }
 
   const rows = (await db.query(`
-    SELECT w.id, u.name, u.phone, w.specialty, u.dan_verified, w.imei, w.police_file, w.created_at
+    SELECT w.id, u.name, u.phone, COALESCE(st.name_mn, '') AS specialty,
+           u.dan_verified, w.imei, w.police_file, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
+    LEFT JOIN service_types st ON st.id = w.service_type_id
     WHERE  w.is_active = false AND w.rejected_at IS NULL
     ORDER  BY w.created_at ASC
   `)).rows as Row[]
@@ -158,12 +180,13 @@ router.get('/api/admin/workers/:id', async (c) => {
 
   const worker = (await db.query(`
     SELECT w.id, u.id as user_id, u.name, u.phone, u.email, u.dan_verified,
-           w.specialty, w.price_per_hour, w.rating, w.review_count,
+           COALESCE(st.name_mn, '') AS specialty, w.price_per_hour, w.rating, w.review_count,
            w.is_active, w.is_available, w.rejected_at, w.imei, w.police_file, w.created_at,
            bi.bank_name, bi.account_number, bi.account_holder_name, bi.iban,
            bi.account_type, bi.verified as banking_verified
     FROM   workers w
     JOIN   users   u  ON u.id  = w.user_id
+    LEFT JOIN service_types st ON st.id = w.service_type_id
     LEFT JOIN banking_info bi ON bi.worker_id = w.id
     WHERE  w.id = $1
   `, [id])).rows[0]
@@ -171,9 +194,11 @@ router.get('/api/admin/workers/:id', async (c) => {
   if (!worker) return c.json({ success: false, error: 'Олдсонгүй' }, 404)
 
   const orders = (await db.query(`
-    SELECT o.id, o.service, o.status, o.total_amount, o.created_at,
+    SELECT o.id, COALESCE(st.name_mn, '') AS service, o.status, o.total_amount, o.created_at,
            u.name as customer_name
-    FROM   orders o JOIN users u ON u.id = o.user_id
+    FROM   orders o
+    JOIN   users u ON u.id = o.user_id
+    LEFT JOIN service_types st ON st.id = o.service_type_id
     WHERE  o.worker_id = $1
     ORDER BY o.created_at DESC LIMIT 20
   `, [id])).rows
@@ -182,11 +207,11 @@ router.get('/api/admin/workers/:id', async (c) => {
 })
 
 const workerPatchSchema = z.object({
-  is_active:      z.boolean().optional(),
-  is_available:   z.boolean().optional(),
-  specialty:      z.string().min(1).optional(),
-  price_per_hour: z.number().int().min(1000).max(500000).optional(),
-  rejected_at:    z.string().nullable().optional(),
+  is_active:       z.boolean().optional(),
+  is_available:    z.boolean().optional(),
+  service_type_id: z.number().int().positive().optional(),
+  price_per_hour:  z.number().int().min(1000).max(500000).optional(),
+  rejected_at:     z.string().nullable().optional(),
 })
 
 // PATCH /api/admin/workers/:id
@@ -211,10 +236,10 @@ router.patch('/api/admin/workers/:id', async (c) => {
   const vals: unknown[] = []
   let i = 1
 
-  if (d.is_active      !== undefined) { sets.push(`is_active = $${i++}`)     ; vals.push(d.is_active) }
-  if (d.is_available   !== undefined) { sets.push(`is_available = $${i++}`)  ; vals.push(d.is_available) }
-  if (d.specialty      !== undefined) { sets.push(`specialty = $${i++}`)     ; vals.push(d.specialty) }
-  if (d.price_per_hour !== undefined) { sets.push(`price_per_hour = $${i++}`); vals.push(d.price_per_hour) }
+  if (d.is_active       !== undefined) { sets.push(`is_active = $${i++}`)       ; vals.push(d.is_active) }
+  if (d.is_available    !== undefined) { sets.push(`is_available = $${i++}`)    ; vals.push(d.is_available) }
+  if (d.service_type_id !== undefined) { sets.push(`service_type_id = $${i++}`); vals.push(d.service_type_id) }
+  if (d.price_per_hour  !== undefined) { sets.push(`price_per_hour = $${i++}`) ; vals.push(d.price_per_hour) }
   if ('rejected_at' in d) {
     sets.push(`rejected_at = $${i++}`)
     vals.push(d.rejected_at ?? null)
@@ -287,10 +312,16 @@ router.get('/api/admin/orders', async (c) => {
   const params: unknown[]    = []
   let   idx = 1
 
-  if (status)  { conditions.push(`o.status = $${idx++}`)             ; params.push(status) }
-  if (service) { conditions.push(`o.service ILIKE $${idx++}`)        ; params.push(`%${service}%`) }
-  if (from)    { conditions.push(`o.created_at >= $${idx++}`)        ; params.push(from) }
-  if (to)      { conditions.push(`o.created_at <= $${idx++}`)        ; params.push(to + 'T23:59:59Z') }
+  if (status) { conditions.push(`o.status = $${idx++}`)         ; params.push(status) }
+  if (service) {
+    const stId = parseInt(service, 10)
+    if (!isNaN(stId) && stId > 0) {
+      conditions.push(`o.service_type_id = $${idx++}`)
+      params.push(stId)
+    }
+  }
+  if (from) { conditions.push(`o.created_at >= $${idx++}`)      ; params.push(from) }
+  if (to)   { conditions.push(`o.created_at <= $${idx++}`)      ; params.push(to + 'T23:59:59Z') }
   if (q) {
     conditions.push(`(u1.name ILIKE $${idx} OR u2.name ILIKE $${idx + 1} OR o.address ILIKE $${idx + 2})`)
     params.push(`%${q}%`, `%${q}%`, `%${q}%`)
@@ -302,7 +333,7 @@ router.get('/api/admin/orders', async (c) => {
   await dbReady
   const [rowsResult, countResult] = await Promise.all([
     db.query(`
-      SELECT o.id, o.service, o.status, o.address, o.total_amount,
+      SELECT o.id, COALESCE(st.name_mn, '') AS service, o.status, o.address, o.total_amount,
              o.payment_status, o.scheduled_date, o.created_at,
              o.matching_strategy, o.urgent,
              u1.name as customer_name, u2.name as worker_name
@@ -310,6 +341,7 @@ router.get('/api/admin/orders', async (c) => {
       JOIN   users u1 ON u1.id = o.user_id
       LEFT JOIN workers w  ON w.id  = o.worker_id
       LEFT JOIN users   u2 ON u2.id = w.user_id
+      LEFT JOIN service_types st ON st.id = o.service_type_id
       ${where}
       ORDER BY o.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -341,14 +373,20 @@ router.get('/api/admin/orders/:id', async (c) => {
   await dbReady
 
   const order = (await db.query(`
-    SELECT o.*,
+    SELECT o.id, o.user_id, o.worker_id, o.service_type_id, o.status, o.address,
+           o.scheduled_date, o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
+           o.property_type, o.notes, o.matching_strategy, o.payment_status,
+           o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at,
+           COALESCE(st.name_mn, '') AS service,
            u1.name as customer_name, u1.phone as customer_phone,
            u2.name as worker_name,
-           w.specialty as worker_specialty, w.price_per_hour
+           COALESCE(wst.name_mn, '') as worker_specialty, w.price_per_hour
     FROM   orders o
     JOIN   users u1 ON u1.id = o.user_id
-    LEFT JOIN workers w  ON w.id  = o.worker_id
-    LEFT JOIN users   u2 ON u2.id = w.user_id
+    LEFT JOIN workers w   ON w.id  = o.worker_id
+    LEFT JOIN users   u2  ON u2.id = w.user_id
+    LEFT JOIN service_types st  ON st.id  = o.service_type_id
+    LEFT JOIN service_types wst ON wst.id = w.service_type_id
     WHERE  o.id = $1
   `, [id])).rows[0]
 
