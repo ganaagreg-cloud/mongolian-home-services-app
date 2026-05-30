@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, MessageCircle, MapPin, Clock, AlertCircle, FileText, CheckCircle2 } from 'lucide-react'
+import { Camera, MessageCircle, MapPin, Clock, AlertCircle, FileText, CheckCircle2, ArrowUpDown, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import useSWR from 'swr'
@@ -237,15 +237,69 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
         </div>
       )}
 
-      {/* Awaiting quote — worker needs to inspect and submit a price */}
+      {/* Awaiting quote — worker needs to inspect/assess and submit a price */}
       {!isLoading && order && isAwaitingQuote && (
         <>
-          {order.notes && (
+          {/* Inspection: problem description */}
+          {order.pricingModel === 'inspection' && order.notes && (
             <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
               <h2 className="font-semibold text-foreground">Асуудлын тайлбар</h2>
               <p className="mt-2 text-sm text-foreground">{order.notes}</p>
             </div>
           )}
+
+          {/* Survey: moving details */}
+          {order.pricingModel === 'survey' && order.surveyDetails && (
+            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+              <h2 className="font-semibold text-foreground">Нүүлгэлтийн мэдээлэл</h2>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <MapPin className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">Эхлэх хаяг</p>
+                    <p className="text-sm font-medium text-foreground">{order.surveyDetails.fromAddress}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted">
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">Хүрэх хаяг</p>
+                    <p className="text-sm font-medium text-foreground">{order.surveyDetails.toAddress}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 border-t border-border pt-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Эхлэх давхар</p>
+                    <p className="text-sm font-semibold text-foreground">{order.surveyDetails.fromFloor}-р давхар</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Хүрэх давхар</p>
+                    <p className="text-sm font-semibold text-foreground">{order.surveyDetails.toFloor}-р давхар</p>
+                  </div>
+                  <div className="flex items-start gap-1">
+                    <ArrowUpDown className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Лифт</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {order.surveyDetails.hasLift ? 'Байна' : 'Байхгүй'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {order.surveyDetails.volumeNote && (
+                  <div className="border-t border-border pt-3">
+                    <p className="text-xs text-muted-foreground">Ачааны тайлбар</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">{order.surveyDetails.volumeNote}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -254,7 +308,9 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
               <div>
                 <p className="font-semibold text-foreground">Үнийн санал илгээх</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  Асуудлыг үзэж засварын нийт зардлыг оруулна уу
+                  {order.pricingModel === 'survey'
+                    ? 'Ачааг үзэж нүүлгэлтийн нийт зардлыг оруулна уу'
+                    : 'Асуудлыг үзэж засварын нийт зардлыг оруулна уу'}
                 </p>
               </div>
             </div>
@@ -435,16 +491,76 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
       />
 
       {/* Quote modal */}
-      {showQuoteModal && (
+      {showQuoteModal && order && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
-          <div className="w-full max-w-[390px] rounded-t-3xl bg-background px-6 pb-10 pt-6">
+          <div className="w-full max-w-[390px] overflow-y-auto rounded-t-3xl bg-background px-6 pb-10 pt-6" style={{ maxHeight: '90vh' }}>
             <h2 className="text-lg font-bold text-foreground">Үнийн санал илгээх</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Засварын нийт зардлыг оруулна уу
+              {order.pricingModel === 'survey'
+                ? 'Нүүлгэлтийн нийт зардлыг оруулна уу'
+                : 'Засварын нийт зардлыг оруулна уу'}
             </p>
 
-            <div className="mt-6">
-              <p className="font-semibold text-foreground">Засварын үнэ</p>
+            {/* Read-only context — inspection: problem description */}
+            {order.pricingModel === 'inspection' && order.notes && (
+              <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+                <p className="text-xs font-medium text-muted-foreground">Асуудлын тайлбар</p>
+                <p className="mt-1 text-sm text-foreground">{order.notes}</p>
+              </div>
+            )}
+
+            {/* Read-only context — survey: moving details */}
+            {order.pricingModel === 'survey' && order.surveyDetails && (
+              <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+                <p className="text-xs font-medium text-muted-foreground">Нүүлгэлтийн мэдээлэл</p>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Эхлэх хаяг</p>
+                      <p className="text-sm font-medium text-foreground leading-snug">{order.surveyDetails.fromAddress}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Хүрэх хаяг</p>
+                      <p className="text-sm font-medium text-foreground leading-snug">{order.surveyDetails.toAddress}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 border-t border-border pt-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Эхлэх давхар</p>
+                      <p className="text-sm font-semibold text-foreground">{order.surveyDetails.fromFloor}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Хүрэх давхар</p>
+                      <p className="text-sm font-semibold text-foreground">{order.surveyDetails.toFloor}</p>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <ArrowUpDown className="mt-0.5 h-3 w-3 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Лифт</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {order.surveyDetails.hasLift ? 'Байна' : 'Байхгүй'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {order.surveyDetails.volumeNote && (
+                    <div className="border-t border-border pt-2">
+                      <p className="text-xs text-muted-foreground">Ачааны тайлбар</p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">{order.surveyDetails.volumeNote}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <p className="font-semibold text-foreground">
+                {order.pricingModel === 'survey' ? 'Нүүлгэлтийн үнэ' : 'Засварын үнэ'}
+              </p>
               <div className="relative mt-2">
                 <input
                   type="number"
@@ -463,9 +579,15 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
             </div>
 
             <div className="mt-4">
-              <p className="font-semibold text-foreground">Засварын тайлбар</p>
+              <p className="font-semibold text-foreground">
+                {order.pricingModel === 'survey' ? 'Нүүлгэлтийн тайлбар' : 'Засварын тайлбар'}
+              </p>
               <textarea
-                placeholder="Хийх ажлын тайлбар, материалын зардал..."
+                placeholder={
+                  order.pricingModel === 'survey'
+                    ? 'Нүүлгэлтийн ажлын тайлбар, зай, цаг...'
+                    : 'Хийх ажлын тайлбар, материалын зардал...'
+                }
                 value={quoteDescription}
                 onChange={(e) => setQuoteDescription(e.target.value)}
                 rows={3}

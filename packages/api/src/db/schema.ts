@@ -318,4 +318,13 @@ export const TABLES: string[] = [
     ('late_cancel_fee',       '5000'),
     ('urgent_fee_multiplier', '0')
    ON CONFLICT (key) DO NOTHING`,
+  // Survey details — nullable JSONB: { fromAddress, toAddress, fromFloor, toFloor, hasLift, volumeNote }
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS survey_details JSONB`,
+
+  `CREATE TABLE IF NOT EXISTS worker_services (
+    worker_id       INTEGER NOT NULL REFERENCES workers(id),
+    service_type_id INTEGER NOT NULL REFERENCES service_types(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (worker_id, service_type_id)
+  )`,
 ]

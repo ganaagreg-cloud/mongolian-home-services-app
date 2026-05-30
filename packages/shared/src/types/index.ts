@@ -14,7 +14,6 @@ export type UserRole = 'user' | 'admin'
 export interface SessionPayload {
   sub: string   // userId (integer as string)
   role: UserRole
-  phone: string
   is_worker?: boolean
   active_mode?: 'user' | 'worker'
 }
@@ -58,6 +57,15 @@ export interface Worker {
 }
 
 export type PricingModel = 'area' | 'unit' | 'inspection' | 'survey'
+
+export interface SurveyDetails {
+  fromAddress: string
+  toAddress:   string
+  fromFloor:   number
+  toFloor:     number
+  hasLift:     boolean
+  volumeNote:  string
+}
 
 export interface ServiceType {
   id: number
@@ -149,6 +157,8 @@ export interface Order {
   paymentStatus?: PaymentStatus
   beforePhotoUrl?: string
   afterPhotoUrl?: string
+  pricingModel?: PricingModel
+  surveyDetails?: SurveyDetails
   createdAt: string
   updatedAt: string
 }

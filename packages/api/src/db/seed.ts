@@ -251,6 +251,18 @@ export async function seed(pool: Pool): Promise<void> {
       WHERE t.service = st.name_mn AND t.service_type_id IS NULL
     `)
 
+    // Backfill worker_services from workers.service_type_id — idempotent
+    await client.query(`
+      INSERT INTO worker_services (worker_id, service_type_id)
+      SELECT w.id, w.service_type_id
+      FROM   workers w
+      WHERE  w.service_type_id IS NOT NULL
+        AND  NOT EXISTS (
+          SELECT 1 FROM worker_services ws WHERE ws.worker_id = w.id
+        )
+      ON CONFLICT DO NOTHING
+    `)
+
     await client.query(`
       INSERT INTO districts (name_mn) VALUES
         ('Баянзүрх'), ('Хан-Уул'), ('Сүхбаатар'),

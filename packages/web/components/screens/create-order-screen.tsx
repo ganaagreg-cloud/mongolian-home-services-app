@@ -97,6 +97,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
 
   const selectedService = serviceTypes.find((s) => s.id === serviceTypeId)
   const isInspection    = selectedService?.pricing_model === 'inspection'
+  const isSurvey        = selectedService?.pricing_model === 'survey'
 
   // Live price breakdown — pure calculation, no async
   const breakdown = selectedService
@@ -108,7 +109,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       })
     : null
 
-  const isStep1Valid = () => !!address.trim() && bookingData.isValid
+  const isStep1Valid = () => isSurvey ? bookingData.isValid : (!!address.trim() && bookingData.isValid)
   const isStep2Valid = () => matchingStrategy === 'instant' || selectedTime !== null
 
   const handleNext = () => {
@@ -118,6 +119,11 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       if (isInspection) {
         setMatchingStrategy('scheduled')
         setStep(3)  // skip date/time step — InspectionForm already collects it
+        return
+      }
+      if (isSurvey) {
+        setMatchingStrategy('scheduled')
+        setStep(4)  // skip date/time and notes steps — SurveyForm collects both
         return
       }
     }
@@ -132,7 +138,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
     setIsConfirming(true)
     setConfirmError(null)
     try {
-      const scheduledDate = isInspection
+      const scheduledDate = (isInspection || isSurvey)
         ? (bookingData.scheduledDate ?? new Date().toISOString())
         : matchingStrategy === 'instant'
           ? new Date().toISOString()
@@ -143,20 +149,31 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ? [bookingData.problemDescription, notes].filter(Boolean).join('\n\n') || undefined
         : notes || undefined
 
+      // Survey: fromAddress from SurveyForm is the order address
+      const orderAddress = isSurvey ? (bookingData.fromAddress ?? address) : address
+
+      const surveyPayload = isSurvey && bookingData.surveyDetails
+        ? {
+            fromAddress: bookingData.fromAddress ?? '',
+            ...bookingData.surveyDetails,
+          }
+        : undefined
+
       const res = await apiFetch('/api/orders', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceTypeId,
-          address,
+          address:       orderAddress,
           scheduledDate,
-          hours:        bookingData.estimatedHours,
-          totalAmount:  breakdown?.total ?? 0,
+          hours:         bookingData.estimatedHours,
+          totalAmount:   breakdown?.total ?? 0,
           urgent,
-          areaSqm:      bookingData.quantity > 0 ? bookingData.quantity : undefined,
-          propertyType: bookingData.propertyType,
-          notes:        combinedNotes,
+          areaSqm:       bookingData.quantity > 0 ? bookingData.quantity : undefined,
+          propertyType:  bookingData.propertyType,
+          notes:         combinedNotes,
           matchingStrategy,
+          surveyDetails: surveyPayload,
         }),
       })
       const data = (await res.json()) as {
@@ -188,6 +205,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
           onClick={
             step === 1 ? onBack :
             (step === 3 && isInspection) ? () => setStep(1) :
+            (step === 4 && isSurvey) ? () => setStep(1) :
             () => setStep((s) => s - 1)
           }
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
@@ -249,34 +267,36 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </div>
           </div>
 
-          {/* Address */}
-          <div className="mt-6 px-6">
-            <h2 className="font-semibold text-foreground">Хаяг</h2>
-            <button
-              onClick={() => setShowLocationPicker(true)}
-              className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
-            >
-              <LocateFixed className="h-4 w-4 shrink-0" />
-              {address ? 'Байршил өөрчлөх' : 'Газрын зурагт байршил сонгох'}
-            </button>
-            {address && (
-              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-card px-4 py-3 shadow-sm">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <p className="text-sm text-foreground">{address}</p>
+          {/* Address — hidden for survey; SurveyForm collects fromAddress + toAddress */}
+          {!isSurvey && (
+            <div className="mt-6 px-6">
+              <h2 className="font-semibold text-foreground">Хаяг</h2>
+              <button
+                onClick={() => setShowLocationPicker(true)}
+                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+              >
+                <LocateFixed className="h-4 w-4 shrink-0" />
+                {address ? 'Байршил өөрчлөх' : 'Газрын зурагт байршил сонгох'}
+              </button>
+              {address && (
+                <div className="mt-2 flex items-start gap-2 rounded-2xl bg-card px-4 py-3 shadow-sm">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-sm text-foreground">{address}</p>
+                </div>
+              )}
+              <div className="relative mt-2">
+                <Input
+                  placeholder="Эсвэл хаяг гараар оруулах..."
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="h-12 rounded-2xl border-border bg-card pl-4 shadow-sm"
+                />
               </div>
-            )}
-            <div className="relative mt-2">
-              <Input
-                placeholder="Эсвэл хаяг гараар оруулах..."
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="h-12 rounded-2xl border-border bg-card pl-4 shadow-sm"
-              />
+              {showAddressError && (
+                <p className="mt-2 text-sm text-destructive">Хаягаа оруулна уу</p>
+              )}
             </div>
-            {showAddressError && (
-              <p className="mt-2 text-sm text-destructive">Хаягаа оруулна уу</p>
-            )}
-          </div>
+          )}
 
           {/* Booking fields — routed by pricing_model */}
           {selectedService && (
@@ -478,117 +498,196 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       )}
 
       {/* ── STEP 4: PRICE SUMMARY ───────────────────────── */}
-      {step === 4 && breakdown && (
+      {step === 4 && (
         <>
-          <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
-            <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
-            <div className="mt-3 space-y-2.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Үйлчилгээ</span>
-                <span className="font-medium text-foreground">
-                  {selectedService?.name_mn ?? '—'}
-                </span>
-              </div>
-              <div className="flex items-start justify-between gap-4 text-sm">
-                <span className="shrink-0 text-muted-foreground">Хаяг</span>
-                <span className="text-right text-xs font-medium leading-snug text-foreground">{address}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Захиалгын төрөл</span>
-                <span className="font-medium text-foreground">
-                  {matchingStrategy === 'instant'
-                    ? 'Яг одоо (Шуурхай)'
-                    : isInspection && bookingData.scheduledDate
-                      ? `Цаг товлох · ${bookingData.scheduledDate.slice(0, 10)} ${bookingData.scheduledDate.slice(11, 16)}`
-                      : `Цаг товлох · ${dates[selectedDate]?.full ?? '—'} ${selectedTime ?? ''}`}
-                </span>
-              </div>
-              {bookingData.quantity > 0 && selectedService && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Хэмжээ</span>
-                  <span className="font-medium text-foreground">
-                    {bookingData.quantity} {selectedService.unit_label}
-                  </span>
+          {isSurvey ? (
+            /* Survey: no price shown — mover quotes after visiting */
+            <>
+              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+                <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
+                <div className="mt-3 space-y-2.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Үйлчилгээ</span>
+                    <span className="font-medium text-foreground">{selectedService?.name_mn ?? '—'}</span>
+                  </div>
+                  {bookingData.fromAddress && (
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="shrink-0 text-muted-foreground">Эхлэх</span>
+                      <span className="text-right text-xs font-medium leading-snug text-foreground">{bookingData.fromAddress}</span>
+                    </div>
+                  )}
+                  {bookingData.surveyDetails?.toAddress && (
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="shrink-0 text-muted-foreground">Хүрэх</span>
+                      <span className="text-right text-xs font-medium leading-snug text-foreground">{bookingData.surveyDetails.toAddress}</span>
+                    </div>
+                  )}
+                  {bookingData.scheduledDate && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Цаг</span>
+                      <span className="font-medium text-foreground">
+                        {bookingData.scheduledDate.slice(0, 10)} {bookingData.scheduledDate.slice(11, 16)}
+                      </span>
+                    </div>
+                  )}
+                  {bookingData.surveyDetails?.volumeNote && (
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="shrink-0 text-muted-foreground">Ачаа</span>
+                      <span className="text-right text-xs font-medium leading-snug text-foreground">{bookingData.surveyDetails.volumeNote}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {urgent && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Яаралтай</span>
-                  <span className="font-medium text-accent">Тийм</span>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
-            <h2 className="font-semibold text-foreground">Үнийн тооцоо</h2>
-            <div className="mt-3 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Үйлчилгээний үнэ
-                  {bookingData.quantity > 0 && selectedService
-                    ? ` (${bookingData.quantity} ${selectedService.unit_label})`
-                    : ''}
-                </span>
-                <span className="text-foreground">₮{breakdown.subtotal.toLocaleString()}</span>
+              <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4">
+                <p className="text-sm font-semibold text-primary">Ачаагаа үзээд тээвэрлэгч үнэ гаргана.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Урьдчилгаа төлбөр байхгүй — тээвэрлэгч ирж ачааг үзсэний дараа үнэ санал болгоно.
+                  Та зөвшөөрсний дараа эхэлнэ.
+                </p>
               </div>
-              {breakdown.urgentSurcharge > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Яаралтай нэмэгдэл</span>
-                  <span className="font-medium text-accent">+₮{breakdown.urgentSurcharge.toLocaleString()}</span>
+            </>
+          ) : breakdown && (
+            /* Standard: show price breakdown */
+            <>
+              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+                <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
+                <div className="mt-3 space-y-2.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Үйлчилгээ</span>
+                    <span className="font-medium text-foreground">
+                      {selectedService?.name_mn ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 text-sm">
+                    <span className="shrink-0 text-muted-foreground">Хаяг</span>
+                    <span className="text-right text-xs font-medium leading-snug text-foreground">{address}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Захиалгын төрөл</span>
+                    <span className="font-medium text-foreground">
+                      {matchingStrategy === 'instant'
+                        ? 'Яг одоо (Шуурхай)'
+                        : isInspection && bookingData.scheduledDate
+                          ? `Цаг товлох · ${bookingData.scheduledDate.slice(0, 10)} ${bookingData.scheduledDate.slice(11, 16)}`
+                          : `Цаг товлох · ${dates[selectedDate]?.full ?? '—'} ${selectedTime ?? ''}`}
+                    </span>
+                  </div>
+                  {bookingData.quantity > 0 && selectedService && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Хэмжээ</span>
+                      <span className="font-medium text-foreground">
+                        {bookingData.quantity} {selectedService.unit_label}
+                      </span>
+                    </div>
+                  )}
+                  {urgent && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Яаралтай</span>
+                      <span className="font-medium text-accent">Тийм</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+                <h2 className="font-semibold text-foreground">Үнийн тооцоо</h2>
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Үйлчилгээний үнэ
+                      {bookingData.quantity > 0 && selectedService
+                        ? ` (${bookingData.quantity} ${selectedService.unit_label})`
+                        : ''}
+                    </span>
+                    <span className="text-foreground">₮{breakdown.subtotal.toLocaleString()}</span>
+                  </div>
+                  {breakdown.urgentSurcharge > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Яаралтай нэмэгдэл</span>
+                      <span className="font-medium text-accent">+₮{breakdown.urgentSurcharge.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex justify-between border-t border-border pt-3">
+                  <span className="font-semibold text-foreground">Нийт</span>
+                  <span className="text-lg font-bold text-primary">₮{breakdown.total.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {isInspection && (
+                <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+                  <p className="text-sm font-semibold text-primary">
+                    Дуудлагын хураамж: ₮{breakdown.subtotal.toLocaleString()}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Ажилтан үзээд засварын үнийг гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.
+                  </p>
                 </div>
               )}
-            </div>
-            <div className="mt-3 flex justify-between border-t border-border pt-3">
-              <span className="font-semibold text-foreground">Нийт</span>
-              <span className="text-lg font-bold text-primary">₮{breakdown.total.toLocaleString()}</span>
-            </div>
-          </div>
 
-          {isInspection && (
-            <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
-              <p className="text-sm font-semibold text-primary">
-                Дуудлагын хураамж: ₮{breakdown.subtotal.toLocaleString()}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Ажилтан үзээд засварын үнийг гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.
-              </p>
-            </div>
+              <div className="mt-4 mx-6 flex items-start gap-3 rounded-2xl border border-success/30 bg-success/5 p-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success/10">
+                  <Lock className="h-4 w-4 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-success">Escrow-оор хамгаалагдсан</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Ажил дуусаагүй бол мөнгө суллагдахгүй
+                  </p>
+                </div>
+              </div>
+            </>
           )}
-
-          <div className="mt-4 mx-6 flex items-start gap-3 rounded-2xl border border-success/30 bg-success/5 p-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success/10">
-              <Lock className="h-4 w-4 text-success" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-success">Escrow-оор хамгаалагдсан</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Ажил дуусаагүй бол мөнгө суллагдахгүй
-              </p>
-            </div>
-          </div>
         </>
       )}
 
       {/* ── STEP 5: CONFIRM ORDER ───────────────────────── */}
-      {step === 5 && breakdown && (
+      {step === 5 && (
         <>
           <div className="mt-6 mx-6 rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 shadow-lg">
-            <p className="text-sm font-medium text-primary-foreground/80">Нийт төлбөр</p>
-            <p className="mt-1 text-3xl font-bold text-primary-foreground">₮{breakdown.total.toLocaleString()}</p>
-            <p className="mt-2 text-xs text-primary-foreground/70">
-              {isInspection
-                ? 'Ажилтан ирж асуудлыг үзэж, засварын үнийн санал гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.'
-                : matchingStrategy === 'instant'
-                  ? 'Захиалга баталгаажсаны дараа ажилтан хайж эхэлнэ. Ажилтан олдсоны дараа л төлбөр авна.'
-                  : 'Захиалга нийтлэгдсэний дараа ажилтнуудаас саналыг хүлээж авч, та тохиромжтой хүнийг сонгоод төлнө.'}
-            </p>
+            {isSurvey ? (
+              <>
+                <p className="text-sm font-medium text-primary-foreground/80">Нүүлгэлтийн захиалга</p>
+                <p className="mt-1 text-2xl font-bold text-primary-foreground">Үнэ тодорхойгүй</p>
+                <p className="mt-2 text-xs text-primary-foreground/70">
+                  Тээвэрлэгч ачааг үзсэний дараа үнэ санал болгоно. Та зөвшөөрсний дараа нүүлгэлт эхэлнэ.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-primary-foreground/80">Нийт төлбөр</p>
+                <p className="mt-1 text-3xl font-bold text-primary-foreground">₮{breakdown?.total.toLocaleString() ?? '0'}</p>
+                <p className="mt-2 text-xs text-primary-foreground/70">
+                  {isInspection
+                    ? 'Ажилтан ирж асуудлыг үзэж, засварын үнийн санал гаргана. Та зөвшөөрсний дараа ажил эхэлнэ.'
+                    : matchingStrategy === 'instant'
+                      ? 'Захиалга баталгаажсаны дараа ажилтан хайж эхэлнэ. Ажилтан олдсоны дараа л төлбөр авна.'
+                      : 'Захиалга нийтлэгдсэний дараа ажилтнуудаас саналыг хүлээж авч, та тохиромжтой хүнийг сонгоод төлнө.'}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
             <h2 className="font-semibold text-foreground">Цаашид юу болох вэ?</h2>
             <div className="mt-3 space-y-3">
-              {isInspection ? (
+              {isSurvey ? (
+                <>
+                  {[
+                    'Тээвэрлэгч таны ачааг үзэхээр ирнэ',
+                    'Ачаан дээр үндэслэн үнийн санал гаргана',
+                    'Та зөвшөөрсний дараа нүүлгэлт эхэлнэ',
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                        <span className="text-xs font-bold">{i + 1}</span>
+                      </div>
+                      <p className="text-sm text-foreground">{text}</p>
+                    </div>
+                  ))}
+                </>
+              ) : isInspection ? (
                 <>
                   {[
                     'Ажилтан таны дуудлагыг хүлээн авна',
@@ -672,13 +771,19 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ) : (
           <Button
             onClick={() => { void handleConfirm() }}
-            disabled={isConfirming || !breakdown}
+            disabled={isConfirming || (!isSurvey && !breakdown)}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
           >
             {isConfirming ? 'Илгээж байна...' : (
               <>
                 <CheckCircle className="mr-2 h-5 w-5" />
-                {isInspection ? 'Дуудлага илгээх' : matchingStrategy === 'instant' ? 'Ажилтан хайх' : 'Захиалга нийтлэх'}
+                {isSurvey
+                  ? 'Нүүлгэлт захиалах'
+                  : isInspection
+                    ? 'Дуудлага илгээх'
+                    : matchingStrategy === 'instant'
+                      ? 'Ажилтан хайх'
+                      : 'Захиалга нийтлэх'}
               </>
             )}
           </Button>

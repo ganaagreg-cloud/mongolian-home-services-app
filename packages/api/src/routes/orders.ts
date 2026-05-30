@@ -6,8 +6,8 @@ import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
 import { getSettings } from '../lib/settings'
 import type {
-  Order, OrderStatus, PaymentStatus, PropertyType, MatchingStrategy,
-  OrderAcceptance, Message,
+  Order, OrderStatus, PaymentStatus, PropertyType, MatchingStrategy, PricingModel,
+  SurveyDetails, OrderAcceptance, Message,
 } from '@homeservices/shared'
 
 const router = new Hono()
@@ -22,6 +22,7 @@ type OrderRow = {
   property_type: string | null; notes: string | null
   matching_strategy: string | null; payment_status: string
   before_photo_url: string | null; after_photo_url: string | null
+  pricing_model: string | null; survey_details: SurveyDetails | null
   created_at: string; updated_at: string
 }
 
@@ -46,6 +47,8 @@ function toOrder(row: OrderRow): Order {
     paymentStatus:    row.payment_status as PaymentStatus,
     beforePhotoUrl:   row.before_photo_url ?? undefined,
     afterPhotoUrl:    row.after_photo_url ?? undefined,
+    pricingModel:     (row.pricing_model as PricingModel | null) ?? undefined,
+    surveyDetails:    row.survey_details ?? undefined,
     createdAt:        row.created_at,
     updatedAt:        row.updated_at,
   }
@@ -58,7 +61,9 @@ const SELECT_COLS = `
   COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
   o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
   o.property_type, o.notes, o.matching_strategy, o.payment_status,
-  o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at`
+  o.before_photo_url, o.after_photo_url,
+  st.pricing_model, o.survey_details,
+  o.created_at, o.updated_at`
 
 const JOIN_WORKER = `
   LEFT JOIN workers w ON w.id = o.worker_id AND w.rejected_at IS NULL
@@ -74,25 +79,28 @@ router.get('/api/orders', async (c) => {
 
   if (session.is_worker && c.req.query('scheduled') === '1') {
     const workerRow = (await db.query(
-      'SELECT id, service_type_id, is_available, is_active FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
+      'SELECT id, is_available, is_active FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
       [session.sub],
-    )).rows[0] as { id: string; service_type_id: number | null; is_available: boolean; is_active: boolean } | undefined
+    )).rows[0] as { id: string; is_available: boolean; is_active: boolean } | undefined
 
-    if (!workerRow || !workerRow.is_available || !workerRow.is_active || !workerRow.service_type_id) {
+    if (!workerRow || !workerRow.is_available || !workerRow.is_active) {
       return c.json({ success: true, data: [] })
     }
     const rows = (await db.query(`
       SELECT ${SELECT_COLS} FROM orders o ${JOIN_WORKER}
       WHERE o.status = 'pending_acceptances'
         AND o.matching_strategy = 'scheduled'
-        AND o.service_type_id = $1
-        AND o.user_id != $3
+        AND EXISTS (
+          SELECT 1 FROM worker_services ws
+          WHERE ws.worker_id = $1 AND ws.service_type_id = o.service_type_id
+        )
+        AND o.user_id != $2
         AND NOT EXISTS (
           SELECT 1 FROM order_acceptances oa
-          WHERE oa.order_id = o.id AND oa.worker_id = $2
+          WHERE oa.order_id = o.id AND oa.worker_id = $1
         )
       ORDER BY o.created_at DESC
-    `, [workerRow.service_type_id, workerRow.id, session.sub])).rows as OrderRow[]
+    `, [workerRow.id, session.sub])).rows as OrderRow[]
     return c.json({ success: true, data: rows.map(toOrder) })
   }
 
@@ -142,6 +150,15 @@ router.get('/api/orders', async (c) => {
   return c.json({ success: true, data: rows.map(toOrder) })
 })
 
+const surveyDetailsSchema = z.object({
+  fromAddress: z.string().min(1),
+  toAddress:   z.string().min(1),
+  fromFloor:   z.number().int().min(0),
+  toFloor:     z.number().int().min(0),
+  hasLift:     z.boolean(),
+  volumeNote:  z.string(),
+})
+
 const createSchema = z.object({
   serviceTypeId:    z.number().int().positive(),
   address:          z.string().min(1),
@@ -154,6 +171,7 @@ const createSchema = z.object({
   propertyType:     z.enum(['house', 'apartment', 'office']).optional(),
   notes:            z.string().optional(),
   matchingStrategy: z.enum(['instant', 'scheduled']).optional().default('scheduled'),
+  surveyDetails:    surveyDetailsSchema.optional(),
 })
 
 // POST /api/orders
@@ -176,7 +194,7 @@ router.post('/api/orders', async (c) => {
 
   const {
     serviceTypeId, address, scheduledDate, hours,
-    urgent, rooms, areaSqm, propertyType, notes, matchingStrategy,
+    urgent, rooms, areaSqm, propertyType, notes, matchingStrategy, surveyDetails,
   } = parsed.data
 
   await dbReady
@@ -202,21 +220,24 @@ router.post('/api/orders', async (c) => {
     const urgentSurcharge = urgent ? Math.round(subtotal * urgent_surcharge) : 0
     const serverTotal     = subtotal + urgentSurcharge
 
-    const initialStatus = stRow.pricing_model === 'inspection'
+    const isSurveyModel = stRow.pricing_model === 'survey'
+    const initialStatus = (stRow.pricing_model === 'inspection' || isSurveyModel)
       ? 'awaiting_quote'
       : matchingStrategy === 'instant' ? 'searching_worker' : 'pending_acceptances'
 
     const result = (await db.query(`
       INSERT INTO orders
         (user_id, service_type_id, status, address, scheduled_date,
-         hours, total_amount, urgent, rooms, area_sqm, property_type, notes, matching_strategy)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         hours, total_amount, urgent, rooms, area_sqm, property_type, notes, matching_strategy,
+         survey_details)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING id
     `, [
       session.sub, serviceTypeId, initialStatus, address, scheduledDate,
       hours, serverTotal, urgent ?? false,
       rooms ?? null, areaSqm ?? null, propertyType ?? null, notes ?? null,
       matchingStrategy,
+      surveyDetails ? JSON.stringify(surveyDetails) : null,
     ])).rows[0] as { id: string }
 
     return c.json({ success: true, data: { id: String(result.id), matchingStrategy, totalAmount: serverTotal } }, 201)
@@ -238,7 +259,9 @@ router.get('/api/orders/:id', async (c) => {
            COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
            o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
            o.property_type, o.notes, o.payment_status,
-           o.before_photo_url, o.after_photo_url, o.created_at, o.updated_at
+           o.before_photo_url, o.after_photo_url,
+           st.pricing_model, o.survey_details,
+           o.created_at, o.updated_at
     FROM   orders o
     LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
     LEFT JOIN users   u  ON u.id  = w.user_id
@@ -316,13 +339,16 @@ router.post('/api/orders/:id/match', async (c) => {
   await dbReady
 
   const order = (await db.query(
-    'SELECT id, status, matching_strategy FROM orders WHERE id = $1 AND user_id = $2',
+    'SELECT id, status, matching_strategy, service_type_id FROM orders WHERE id = $1 AND user_id = $2',
     [id, session.sub],
-  )).rows[0] as { id: string; status: string; matching_strategy: string } | undefined
+  )).rows[0] as { id: string; status: string; matching_strategy: string; service_type_id: number | null } | undefined
 
   if (!order) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
   if (order.status !== 'searching_worker' && order.status !== 'pending_worker_acceptance') {
     return c.json({ success: false, error: 'Энэ захиалга аль хэдийн боловсруулагдсан' }, 409)
+  }
+  if (!order.service_type_id) {
+    return c.json({ success: false, error: 'Захиалга үйлчилгээний төрөлгүй байна' }, 409)
   }
 
   if (order.status === 'pending_worker_acceptance') {
@@ -381,7 +407,11 @@ router.post('/api/orders/:id/match', async (c) => {
       AND  w.rating       >= 4.0
       AND  bi.verified    = true
       AND  w.user_id      != $1
-  `, [session.sub])).rows as WorkerMatchRow[]
+      AND  EXISTS (
+        SELECT 1 FROM worker_services ws
+        WHERE ws.worker_id = w.id AND ws.service_type_id = $2
+      )
+  `, [session.sub, order.service_type_id])).rows as WorkerMatchRow[]
   const eligible = allEligible.filter((w) => !attempted.has(w.id))
 
   if (eligible.length === 0) {
@@ -585,14 +615,14 @@ router.post('/api/orders/:id/quote/respond', async (c) => {
       await client.query('BEGIN')
 
       if (action === 'approve') {
-        // total = call-out already escrowed (orderRow.total_amount, incl. any
-        // urgent surcharge the user paid at booking) + the worker's quote amount.
-        const callout       = orderRow.total_amount
-        const subtotal      = callout + quoteRow.amount
-        const platformFee   = Math.round(subtotal * settings.commission)
-        const damageFund    = Math.round(subtotal * settings.damage_fund)
-        const workerEarning = subtotal - platformFee - damageFund
-        const invoiceId     = `INV-QUOTE-${orderId}-${Date.now()}`
+        // finalTotal = amount already escrowed at booking + worker's quote.
+        // inspection: escrowed = call-out fee, survey: escrowed = 0 (full quote charged now).
+        const amountAlreadyEscrowed = orderRow.total_amount
+        const finalTotal            = amountAlreadyEscrowed + quoteRow.amount
+        const platformFee           = Math.round(finalTotal * settings.commission)
+        const damageFund            = Math.round(finalTotal * settings.damage_fund)
+        const workerEarning         = finalTotal - platformFee - damageFund
+        const invoiceId             = `INV-QUOTE-${orderId}-${Date.now()}`
 
         await client.query(
           `UPDATE order_quotes SET status = 'approved' WHERE id = $1`,
@@ -602,7 +632,7 @@ router.post('/api/orders/:id/quote/respond', async (c) => {
           `UPDATE orders SET status = 'quote_approved', total_amount = $1,
            payment_status = 'paid', gateway_invoice_id = $2, updated_at = NOW()
            WHERE id = $3`,
-          [subtotal, invoiceId, orderId],
+          [finalTotal, invoiceId, orderId],
         )
         if (orderRow.worker_id) {
           await client.query(
@@ -612,11 +642,11 @@ router.post('/api/orders/:id/quote/respond', async (c) => {
           )
         }
       } else {
-        // reject: call-out fee stays with worker as an earning
-        const callout         = orderRow.total_amount
-        const platformFee     = Math.round(callout * settings.commission)
-        const damageFund      = Math.round(callout * settings.damage_fund)
-        const workerCallout   = callout - platformFee - damageFund
+        // reject: amount already escrowed stays with worker as an earning (0 for survey)
+        const amountAlreadyEscrowed = orderRow.total_amount
+        const platformFee           = Math.round(amountAlreadyEscrowed * settings.commission)
+        const damageFund            = Math.round(amountAlreadyEscrowed * settings.damage_fund)
+        const workerCallout         = amountAlreadyEscrowed - platformFee - damageFund
 
         await client.query(
           `UPDATE order_quotes SET status = 'rejected' WHERE id = $1`,

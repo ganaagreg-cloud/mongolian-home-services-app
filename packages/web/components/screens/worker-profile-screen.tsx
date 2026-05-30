@@ -63,6 +63,10 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
     mutate: mutateBank,
   } = useSWR<BankingInfo | null>('/api/workers/me/banking', fetcher)
 
+  const { data: servicesData, mutate: mutateServices } = useSWR<{ serviceTypeIds: number[] }>(
+    '/api/workers/me/services', fetcher, { shouldRetryOnError: false },
+  )
+
   // ── Service types ─────────────────────────────────────────────────────────
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   useEffect(() => {
@@ -72,6 +76,45 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
         if (j.success && j.data) setServiceTypes(j.data)
       })
   }, [])
+
+  // ── Worker services multi-select ─────────────────────────────────────────
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([])
+  const [servicesSaving,     setServicesSaving]     = useState(false)
+  const [servicesSaved,      setServicesSaved]       = useState(false)
+  const [servicesSaveErr,    setServicesSaveErr]    = useState<string | null>(null)
+  useEffect(() => {
+    if (servicesData) setSelectedServiceIds(servicesData.serviceTypeIds)
+  }, [servicesData])
+
+  const toggleService = (id: number) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+    setServicesSaved(false)
+  }
+
+  const saveServices = async () => {
+    setServicesSaving(true)
+    setServicesSaved(false)
+    setServicesSaveErr(null)
+    try {
+      const res = await apiFetch('/api/workers/me/services', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceTypeIds: selectedServiceIds }),
+      })
+      if (res.ok) {
+        await mutateServices()
+        setServicesSaved(true)
+        setTimeout(() => setServicesSaved(false), 3000)
+      } else {
+        const data = (await res.json()) as { error?: string }
+        setServicesSaveErr(data.error ?? 'Хадгалахад алдаа гарлаа')
+      }
+    } finally {
+      setServicesSaving(false)
+    }
+  }
 
   // ── Specialty / price edit ────────────────────────────────────────────────
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -103,20 +146,31 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
     }
   }
 
-  // ── Availability (optimistic) ──────────────────────────────────────────────
+  // ── Availability (optimistic, revert on API error) ────────────────────────
   const [isAvailable, setIsAvailable] = useState(true)
+  const [availError,  setAvailError]  = useState<string | null>(null)
   useEffect(() => {
     if (workerData) setIsAvailable(workerData.isAvailable)
   }, [workerData])
 
   const toggleAvailability = async () => {
     const next = !isAvailable
-    setIsAvailable(next)   // optimistic
-    await apiFetch('/api/workers/me/availability', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isAvailable: next }),
-    })
+    setIsAvailable(next)
+    setAvailError(null)
+    try {
+      const res = await apiFetch('/api/workers/me/availability', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAvailable: next }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        setAvailError(data.error ?? 'Алдаа гарлаа')
+        setIsAvailable(!next)
+      }
+    } catch {
+      setIsAvailable(!next)
+    }
   }
 
   // ── Banking edit form ──────────────────────────────────────────────────────
@@ -318,6 +372,57 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
         )}
       </div>
 
+      {/* My Services */}
+      <div className="mx-6 mt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-semibold text-foreground">Миний үйлчилгээ</h2>
+          {servicesSaved && (
+            <span className="flex items-center gap-1 text-xs font-medium text-success">
+              <Check className="h-3.5 w-3.5" /> Хадгалагдлаа
+            </span>
+          )}
+        </div>
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
+          {serviceTypes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ачааллаж байна...</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {serviceTypes.map((st) => {
+                  const selected = selectedServiceIds.includes(st.id)
+                  return (
+                    <button
+                      key={st.id}
+                      onClick={() => toggleService(st.id)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors active:scale-95 ${
+                        selected
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background text-foreground shadow-sm'
+                      }`}
+                    >
+                      {st.name_mn}
+                    </button>
+                  )
+                })}
+              </div>
+              <Button
+                onClick={saveServices}
+                disabled={servicesSaving}
+                className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50"
+              >
+                {servicesSaving ? 'Хадгалж байна...' : 'Хадгалах'}
+              </Button>
+              {servicesSaveErr && (
+                <div className="mt-2 flex items-center gap-2 rounded-2xl bg-destructive/10 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                  <p className="text-xs text-destructive">{servicesSaveErr}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Availability Toggle */}
       <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm">
         <div className="flex items-center gap-3">
@@ -337,6 +442,12 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
             : <ToggleLeft  className="h-8 w-8 text-muted-foreground" />}
         </button>
       </div>
+      {availError && (
+        <div className="mx-6 mt-2 flex items-center gap-2 rounded-2xl bg-destructive/10 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-xs text-destructive">{availError}</p>
+        </div>
+      )}
 
       {/* Banking Section */}
       <div className="mx-6 mt-6">

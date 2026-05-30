@@ -41,7 +41,7 @@ export function calculatePrice(input: {
       subtotal = service.base_rate + (quoteAmount ?? 0)
       break
     case 'survey':
-      subtotal = 0
+      subtotal = quoteAmount ?? 0
       break
     default: {
       const _: never = service.pricing_model

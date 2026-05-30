@@ -83,12 +83,12 @@ export async function requireAuth(c: Context): Promise<SessionPayload | null> {
 
   await dbReady
   const { rows } = await db.query(
-    `SELECT id, role, phone, is_worker, active_mode
+    `SELECT id, role, is_worker, active_mode
      FROM users WHERE better_auth_id = $1`,
     [session.user.id],
   )
   const user = rows[0] as {
-    id: number; role: string; phone: string
+    id: number; role: string
     is_worker: boolean; active_mode: string
   } | undefined
 
@@ -97,7 +97,6 @@ export async function requireAuth(c: Context): Promise<SessionPayload | null> {
   return {
     sub:         String(user.id),
     role:        user.role as UserRole,
-    phone:       user.phone ?? '',
     is_worker:   user.is_worker,
     active_mode: user.active_mode as 'user' | 'worker',
   }

@@ -254,12 +254,29 @@ router.patch('/api/workers/me/availability', async (c) => {
   if (!parsed.success) return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
 
   await dbReady
-  const result = await db.query(
-    'UPDATE workers SET is_available = $1 WHERE user_id = $2',
-    [parsed.data.isAvailable, session.sub],
-  )
 
-  if (!result.rowCount) return c.json({ success: false, error: 'Ажилтан олдсонгүй' }, 404)
+  const workerRow2 = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1',
+    [session.sub],
+  )).rows[0] as { id: string } | undefined
+
+  if (!workerRow2) return c.json({ success: false, error: 'Ажилтан олдсонгүй' }, 404)
+
+  if (parsed.data.isAvailable) {
+    const { cnt } = (await db.query(
+      'SELECT COUNT(*) AS cnt FROM worker_services WHERE worker_id = $1',
+      [workerRow2.id],
+    )).rows[0] as { cnt: string }
+
+    if (Number(cnt) === 0) {
+      return c.json({ success: false, error: 'Та эхлээд үйлчилгээгээ сонгоно уу.' }, 400)
+    }
+  }
+
+  await db.query(
+    'UPDATE workers SET is_available = $1 WHERE id = $2',
+    [parsed.data.isAvailable, workerRow2.id],
+  )
 
   return c.json({ success: true, data: undefined })
 })
@@ -400,6 +417,95 @@ router.get('/api/workers/me/earnings', async (c) => {
       transactions,
     },
   })
+})
+
+// GET /api/workers/me/services
+router.get('/api/workers/me/services', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  await dbReady
+  const workerRow = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1',
+    [session.sub],
+  )).rows[0] as { id: string } | undefined
+
+  if (!workerRow) return c.json({ success: false, error: 'Ажилтан олдсонгүй' }, 404)
+
+  const rows = (await db.query(
+    'SELECT service_type_id FROM worker_services WHERE worker_id = $1 ORDER BY service_type_id',
+    [workerRow.id],
+  )).rows as { service_type_id: number }[]
+
+  return c.json({ success: true, data: { serviceTypeIds: rows.map((r) => r.service_type_id) } })
+})
+
+const workerServicesSchema = z.object({
+  serviceTypeIds: z.array(z.number().int().positive()),
+})
+
+// PUT /api/workers/me/services — replace-set: delete missing, insert new, in one transaction
+router.put('/api/workers/me/services', async (c) => {
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+
+  const parsed = workerServicesSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json(
+      { success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' },
+      400,
+    )
+  }
+
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  await dbReady
+  const workerRow = (await db.query(
+    'SELECT id FROM workers WHERE user_id = $1',
+    [session.sub],
+  )).rows[0] as { id: string } | undefined
+
+  if (!workerRow) return c.json({ success: false, error: 'Ажилтан олдсонгүй' }, 404)
+
+  const uniqueIds = [...new Set(parsed.data.serviceTypeIds)]
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    if (uniqueIds.length > 0) {
+      const validRows = (await client.query(
+        'SELECT id FROM service_types WHERE id = ANY($1::int[])',
+        [uniqueIds],
+      )).rows as { id: number }[]
+
+      if (validRows.length !== uniqueIds.length) {
+        await client.query('ROLLBACK')
+        return c.json({ success: false, error: 'Буруу үйлчилгээний төрөл' }, 400)
+      }
+    }
+
+    await client.query('DELETE FROM worker_services WHERE worker_id = $1', [workerRow.id])
+
+    if (uniqueIds.length > 0) {
+      const placeholders = uniqueIds.map((_, i) => `($1, $${i + 2})`).join(', ')
+      await client.query(
+        `INSERT INTO worker_services (worker_id, service_type_id) VALUES ${placeholders}`,
+        [workerRow.id, ...uniqueIds],
+      )
+    }
+
+    await client.query('COMMIT')
+  } catch {
+    await client.query('ROLLBACK')
+    return c.json({ error: 'Request failed' }, 500)
+  } finally {
+    client.release()
+  }
+
+  return c.json({ success: true, data: { serviceTypeIds: uniqueIds } })
 })
 
 // GET /api/workers/:id

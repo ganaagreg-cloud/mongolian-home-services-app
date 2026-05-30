@@ -158,14 +158,13 @@ export async function requireAuth(req: NextRequest): Promise<SessionPayload | nu
 
   await dbReady
   const { rows } = await db.query(
-    `SELECT id, role, phone, is_worker, active_mode
+    `SELECT id, role, is_worker, active_mode
      FROM users WHERE better_auth_id = $1`,
     [session.user.id],
   )
   const user = rows[0] as {
     id: number
     role: string
-    phone: string
     is_worker: boolean
     active_mode: string
   } | undefined
@@ -175,7 +174,6 @@ export async function requireAuth(req: NextRequest): Promise<SessionPayload | nu
   return {
     sub:         String(user.id),
     role:        user.role as UserRole,
-    phone:       user.phone ?? '',
     is_worker:   user.is_worker,
     active_mode: user.active_mode as 'user' | 'worker',
   }
@@ -194,12 +192,12 @@ export async function getServerSession(): Promise<(SessionPayload & { name: stri
 
   await dbReady
   const { rows } = await db.query(
-    `SELECT id, role, phone, name, is_worker, active_mode
+    `SELECT id, role, name, is_worker, active_mode
      FROM users WHERE better_auth_id = $1`,
     [session.user.id],
   )
   const user = rows[0] as {
-    id: number; role: string; phone: string; name: string
+    id: number; role: string; name: string
     is_worker: boolean; active_mode: string
   } | undefined
 
@@ -208,7 +206,6 @@ export async function getServerSession(): Promise<(SessionPayload & { name: stri
   return {
     sub:         String(user.id),
     role:        user.role as UserRole,
-    phone:       user.phone ?? '',
     name:        user.name,
     is_worker:   user.is_worker,
     active_mode: user.active_mode as 'user' | 'worker',

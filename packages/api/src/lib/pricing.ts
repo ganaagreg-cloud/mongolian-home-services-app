@@ -27,8 +27,13 @@ export function calculatePrice(input: {
     case 'inspection':
       subtotal = serviceType.baseRate + (quoteAmount ?? 0)
       break
-    default: // 'survey' — estimate phase, no charge committed yet
-      subtotal = 0
+    case 'survey':
+      subtotal = quoteAmount ?? 0
+      break
+    default: {
+      const _: never = serviceType.pricingModel
+      throw new Error(`Unknown pricing model: ${_}`)
+    }
   }
 
   const platformFee     = Math.round(subtotal * settings.commission)
