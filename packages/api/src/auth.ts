@@ -26,6 +26,12 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
   trustedOrigins,
   advanced: {
+    cookiePrefix: 'better-auth',
+    cookies: {
+      session_token: {
+        name: 'better-auth.session_token',
+      },
+    },
     crossSubDomainCookies: {
       enabled: isProd,
       domain: process.env.COOKIE_DOMAIN ?? '.homeservice.mn',

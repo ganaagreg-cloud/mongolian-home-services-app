@@ -160,6 +160,7 @@ const surveyDetailsSchema = z.object({
 })
 
 const createSchema = z.object({
+  invoiceId:        z.string().min(1),
   serviceTypeId:    z.number().int().positive(),
   address:          z.string().min(1),
   scheduledDate:    z.string().min(1),
@@ -186,19 +187,28 @@ router.post('/api/orders', async (c) => {
 
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
-    return c.json(
-      { success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' },
-      400,
-    )
+    const issue = parsed.error.issues[0]
+    const field = issue?.path.join('.') ?? '?'
+    const msg   = issue?.message ?? 'Буруу өгөгдөл'
+    return c.json({ success: false, error: `[${field}] ${msg}` }, 400)
   }
 
   const {
-    serviceTypeId, address, scheduledDate, hours,
+    invoiceId, serviceTypeId, address, scheduledDate, hours,
     urgent, rooms, areaSqm, propertyType, notes, matchingStrategy, surveyDetails,
   } = parsed.data
 
   await dbReady
   try {
+    // Verify the payment intent exists and has been confirmed before touching orders
+    const intent = (await db.query(
+      `SELECT id FROM payment_intents WHERE id = $1 AND user_id = $2 AND paid_at IS NOT NULL`,
+      [invoiceId, session.sub],
+    )).rows[0]
+    if (!intent) {
+      return c.json({ success: false, error: 'Төлбөр баталгаажаагүй байна' }, 402)
+    }
+
     // Recompute total server-side — never trust client's totalAmount
     const stRow = (await db.query<{ pricing_model: string; base_rate: number; min_charge: number }>(
       'SELECT pricing_model, base_rate, min_charge FROM service_types WHERE id = $1',
@@ -229,8 +239,8 @@ router.post('/api/orders', async (c) => {
       INSERT INTO orders
         (user_id, service_type_id, status, address, scheduled_date,
          hours, total_amount, urgent, rooms, area_sqm, property_type, notes, matching_strategy,
-         survey_details)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         survey_details, gateway_invoice_id, payment_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'paid')
       RETURNING id
     `, [
       session.sub, serviceTypeId, initialStatus, address, scheduledDate,
@@ -238,7 +248,11 @@ router.post('/api/orders', async (c) => {
       rooms ?? null, areaSqm ?? null, propertyType ?? null, notes ?? null,
       matchingStrategy,
       surveyDetails ? JSON.stringify(surveyDetails) : null,
+      invoiceId,
     ])).rows[0] as { id: string }
+
+    // Consume the intent — one invoice pays for exactly one order
+    await db.query('DELETE FROM payment_intents WHERE id = $1', [invoiceId])
 
     return c.json({ success: true, data: { id: String(result.id), matchingStrategy, totalAmount: serverTotal } }, 201)
   } catch {
@@ -615,12 +629,21 @@ router.post('/api/orders/:id/quote/respond', async (c) => {
       await client.query('BEGIN')
 
       if (action === 'approve') {
+        const openDispute = (await client.query(
+          `SELECT id FROM disputes WHERE order_id = $1 AND status != 'resolved'`,
+          [orderId],
+        )).rows[0]
+        if (openDispute) {
+          await client.query('ROLLBACK')
+          return c.json({ success: false, error: 'Маргаан шийдвэрлэгдэх хүртэл төлбөр гарахгүй' }, 409)
+        }
+
         // finalTotal = amount already escrowed at booking + worker's quote.
         // inspection: escrowed = call-out fee, survey: escrowed = 0 (full quote charged now).
         const amountAlreadyEscrowed = orderRow.total_amount
         const finalTotal            = amountAlreadyEscrowed + quoteRow.amount
-        const platformFee           = Math.round(finalTotal * settings.commission)
-        const damageFund            = Math.round(finalTotal * settings.damage_fund)
+        const platformFee           = Math.floor(finalTotal * settings.commission)
+        const damageFund            = Math.floor(finalTotal * settings.damage_fund)
         const workerEarning         = finalTotal - platformFee - damageFund
         const invoiceId             = `INV-QUOTE-${orderId}-${Date.now()}`
 
@@ -644,8 +667,8 @@ router.post('/api/orders/:id/quote/respond', async (c) => {
       } else {
         // reject: amount already escrowed stays with worker as an earning (0 for survey)
         const amountAlreadyEscrowed = orderRow.total_amount
-        const platformFee           = Math.round(amountAlreadyEscrowed * settings.commission)
-        const damageFund            = Math.round(amountAlreadyEscrowed * settings.damage_fund)
+        const platformFee           = Math.floor(amountAlreadyEscrowed * settings.commission)
+        const damageFund            = Math.floor(amountAlreadyEscrowed * settings.damage_fund)
         const workerCallout         = amountAlreadyEscrowed - platformFee - damageFund
 
         await client.query(
@@ -910,32 +933,60 @@ router.patch('/api/orders/:id/status', async (c) => {
     }
   }
 
-  const result = isWorker
-    ? await db.query(
-        'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND worker_id = $3',
-        [status, id, workerRow!.id],
-      )
-    : await db.query(
-        'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
-        [status, id, session.sub],
-      )
-
-  if (!result.rowCount) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
-
+  // Dispute guard runs before any write — status must never flip to completed with an open dispute
   if (isWorker && status === 'completed') {
-    const orderRow = (await db.query(
-      'SELECT total_amount, service_type_id FROM orders WHERE id = $1',
+    const openDispute = (await db.query(
+      `SELECT id FROM disputes WHERE order_id = $1 AND status != 'resolved'`,
       [id],
-    )).rows[0] as { total_amount: number; service_type_id: number | null } | undefined
-
-    if (orderRow) {
-      const { commission, damage_fund } = await getSettings(db)
-      const payout = Math.round(orderRow.total_amount * (1 - commission - damage_fund))
-      await db.query(
-        'INSERT INTO transactions (worker_id, amount, type, service_type_id) VALUES ($1, $2, $3, $4)',
-        [workerRow!.id, payout, 'earning', orderRow.service_type_id ?? null],
-      )
+    )).rows[0]
+    if (openDispute) {
+      return c.json({ success: false, error: 'Маргаан шийдвэрлэгдэх хүртэл төлбөр гарахгүй' }, 409)
     }
+  }
+
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    const result = isWorker
+      ? await client.query(
+          'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND worker_id = $3',
+          [status, id, workerRow!.id],
+        )
+      : await client.query(
+          'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
+          [status, id, session.sub],
+        )
+
+    if (!result.rowCount) {
+      await client.query('ROLLBACK')
+      return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
+    }
+
+    if (isWorker && status === 'completed') {
+      const orderRow = (await client.query(
+        'SELECT total_amount, service_type_id FROM orders WHERE id = $1',
+        [id],
+      )).rows[0] as { total_amount: number; service_type_id: number | null } | undefined
+
+      if (orderRow) {
+        const { commission, damage_fund } = await getSettings(db)
+        const platformFee = Math.floor(orderRow.total_amount * commission)
+        const dmgFund     = Math.floor(orderRow.total_amount * damage_fund)
+        const payout      = orderRow.total_amount - platformFee - dmgFund
+        await client.query(
+          'INSERT INTO transactions (worker_id, amount, type, service_type_id) VALUES ($1, $2, $3, $4)',
+          [workerRow!.id, payout, 'earning', orderRow.service_type_id ?? null],
+        )
+      }
+    }
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
 
   return c.json({ success: true, data: undefined })

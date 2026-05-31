@@ -159,22 +159,53 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
           }
         : undefined
 
+      // Step 1: create payment intent and get invoice_id
+      const invoiceRes = await apiFetch('/api/payments/create-invoice', { method: 'POST' })
+      const invoiceData = (await invoiceRes.json()) as {
+        success: boolean
+        data?: { invoice_id: string }
+        error?: string
+      }
+      console.log('[order] step1 create-invoice', invoiceRes.status, invoiceData)
+      if (!invoiceData.success || !invoiceData.data) {
+        setConfirmError(`[1] ${invoiceData.error ?? 'Нэхэмжлэл үүсгэхэд алдаа'}`)
+        return
+      }
+      const { invoice_id } = invoiceData.data
+
+      // Step 2: confirm payment (dev environment only)
+      const simPayRes = await apiFetch('/api/payments/dev-sim-pay', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ invoiceId: invoice_id }),
+      })
+      const simPayData = (await simPayRes.json()) as { success: boolean; error?: string }
+      console.log('[order] step2 dev-sim-pay', simPayRes.status, simPayData)
+      if (!simPayData.success) {
+        setConfirmError(`[2] ${simPayData.error ?? 'Төлбөр баталгаажуулахад алдаа'}`)
+        return
+      }
+
+      // Step 3: create order with confirmed invoice_id
+      const orderBody = {
+        serviceTypeId,
+        address:       orderAddress,
+        scheduledDate,
+        hours:         bookingData.estimatedHours,
+        totalAmount:   breakdown?.total ?? 0,
+        urgent,
+        areaSqm:       bookingData.quantity > 0 ? bookingData.quantity : undefined,
+        propertyType:  bookingData.propertyType,
+        notes:         combinedNotes,
+        matchingStrategy,
+        surveyDetails: surveyPayload,
+        invoiceId:     invoice_id,
+      }
+      console.log('[order] step3 POST /api/orders body', orderBody)
       const res = await apiFetch('/api/orders', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceTypeId,
-          address:       orderAddress,
-          scheduledDate,
-          hours:         bookingData.estimatedHours,
-          totalAmount:   breakdown?.total ?? 0,
-          urgent,
-          areaSqm:       bookingData.quantity > 0 ? bookingData.quantity : undefined,
-          propertyType:  bookingData.propertyType,
-          notes:         combinedNotes,
-          matchingStrategy,
-          surveyDetails: surveyPayload,
-        }),
+        body:    JSON.stringify(orderBody),
       })
       const data = (await res.json()) as {
         success: boolean

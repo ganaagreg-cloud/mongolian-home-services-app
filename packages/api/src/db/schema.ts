@@ -327,4 +327,12 @@ export const TABLES: string[] = [
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (worker_id, service_type_id)
   )`,
+
+  // Escrow: payment intent must exist + be paid before an order row is created
+  `CREATE TABLE IF NOT EXISTS payment_intents (
+    id         TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    paid_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
 ]

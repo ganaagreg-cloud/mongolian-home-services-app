@@ -35,6 +35,29 @@ services:
       db:
         condition: service_healthy
 
+  api:
+    image: mongolian-home-services-app-web
+    working_dir: /app/packages/api
+    command: sh -c "node_modules/.bin/tsx watch --clear-screen=false src/index.ts"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      DATABASE_URL: postgresql://postgres:mongolia_secure_pass@db:5432/homeservices
+      BETTER_AUTH_SECRET: 6d160418ff8d92c5fcc3018cc5c1183b33f3b83759693775772630939251e22c
+      BETTER_AUTH_URL: http://localhost:4000
+      JWT_SECRET: 6d160418ff8d92c5fcc3018cc5c1183b33f3b83759693775772630939251e22c
+      PORT: "4000"
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: development
+    ports:
+      - "4000:4000"
+    volumes_from:
+      - web
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+
   adminer:
     image: adminer
     restart: always

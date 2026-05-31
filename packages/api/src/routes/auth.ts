@@ -14,32 +14,31 @@ router.get('/api/auth/me', async (c) => {
 
   await dbReady
   const user = (await db.query(
-    `SELECT id, phone, name, username, first_name, last_name, email,
-            role, is_worker, active_mode, avatar_url
+    `SELECT id, name, phone, role, is_worker, active_mode, avatar_url
      FROM users WHERE id = $1`,
     [session.sub],
   )).rows[0] as {
-    id: string; phone: string | null; name: string; username: string
-    first_name: string; last_name: string; email: string
+    id: string; name: string; phone: string | null
     role: string; is_worker: boolean; active_mode: string; avatar_url: string
   } | undefined
 
   if (!user) return c.json({ success: false, error: 'User not found' }, 404)
 
+  const screen =
+    !user.phone       ? 'oauth-onboarding' :
+    user.role === 'admin' ? 'admin' :
+    (user.is_worker && user.active_mode === 'worker') ? 'worker-jobs' :
+    'home'
+
   return c.json({
     success: true,
     data: {
       id:         user.id,
-      phone:      user.phone ?? '',
       name:       user.name,
-      username:   user.username,
-      firstName:  user.first_name,
-      lastName:   user.last_name,
-      email:      user.email,
-      role:       user.role,
+      avatarUrl:  user.avatar_url,
       isWorker:   user.is_worker,
       activeMode: user.active_mode,
-      avatarUrl:  user.avatar_url,
+      screen,
     },
   })
 })

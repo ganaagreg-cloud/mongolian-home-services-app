@@ -168,6 +168,23 @@ packages/api/src/
 - Money values: **integers in MNT** (no decimals, no floats)
 - Platform takes 15% commission + 2% damage fund from worker payouts
 
+## Payment Model (MVP decision)
+
+- MVP launches on cleaning only (pricing_model = 'area' / 'unit') — fixed price
+  known at booking, so payment is charge-immediately via Escrow.
+- payment_intents has NO authorize/hold→capture state. It goes NULL → paid_at.
+- POST /api/orders requires paid_at IS NOT NULL (a confirmed payment) before
+  creating the order.
+
+### Deferred to Phase 2 (inspection / repair / plumbing)
+- 'inspection' / 'survey' pricing needs authorize-then-capture, because the
+  final price is unknown until the worker submits a quote on-site.
+- This requires: authorized_at + authorized_amount columns, an authorize
+  endpoint, a capture trigger at completion, and a re-authorization path for
+  the quote delta (capture amount > authorized amount).
+- Blocked on confirming whether real QPay V2 supports delta re-authorization.
+- Do NOT implement until Phase 2 inspection services are scheduled.
+
 ## Code Style
 
 - No `any` — strict TypeScript throughout

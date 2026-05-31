@@ -1,4 +1,4 @@
-const CACHE = 'homeservice-v1'
+const CACHE = 'homeservice-v2'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -36,16 +36,16 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // Cache-first for immutable static chunks
+  // Network-first for Next.js static chunks — ensures dev rebuilds always land
   if (url.pathname.startsWith('/_next/static/')) {
     e.respondWith(
-      caches.match(e.request).then((cached) => {
-        if (cached) return cached
-        return fetch(e.request).then((res) => {
-          caches.open(CACHE).then((c) => c.put(e.request, res.clone()))
-          return res
-        })
-      })
+      fetch(e.request).then((res) => {
+        const toCache = res.clone()
+        caches.open(CACHE).then((c) => c.put(e.request, toCache))
+        return res
+      }).catch(() => caches.match(e.request).then((cached) =>
+        cached ?? new Response('', { status: 408 })
+      ))
     )
     return
   }
@@ -54,7 +54,10 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)
       .then((res) => {
-        if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()))
+        if (res.ok) {
+          const toCache = res.clone()
+          caches.open(CACHE).then((c) => c.put(e.request, toCache))
+        }
         return res
       })
       .catch(() =>

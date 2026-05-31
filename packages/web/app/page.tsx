@@ -32,6 +32,7 @@ import { AdminDisputesScreen } from '@/components/screens/admin-disputes-screen'
 import { AdminBankingScreen } from '@/components/screens/admin-banking-screen'
 import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
+import { DevPanel } from '@/components/dev-panel'
 import type { MatchedWorker, OrderAcceptance, MatchingStrategy } from '@/lib/types'
 
 type Screen =
@@ -47,8 +48,8 @@ type Screen =
 type MeResponse = {
   success: boolean
   data?: {
-    name: string; username: string; phone: string; role: string
-    isWorker: boolean; activeMode: string
+    id: string; name: string; avatarUrl: string
+    isWorker: boolean; activeMode: string; screen: string
   }
 }
 
@@ -80,23 +81,15 @@ export default function Home() {
       .then((r) => r.json())
       .then((data: MeResponse) => {
         if (data.success && data.data) {
-          setUserName(data.data.username || data.data.name || 'Хэрэглэгч')
-          setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
+          setUserName(data.data.name || 'Хэрэглэгч')
           setIsWorker(data.data.isWorker)
           setActiveMode(data.data.activeMode as 'user' | 'worker')
-          // needs-profile: OAuth user with no phone → collect phone before routing
-          if (!data.data.phone) {
-            setCurrentScreen('oauth-onboarding')
-          } else if (data.data.role === 'admin') {
-            setCurrentScreen('admin')
-          } else if (data.data.isWorker && data.data.activeMode === 'worker') {
-            setCurrentScreen('worker-jobs')
-          } else {
-            setCurrentScreen('home')
-          }
+          setCurrentScreen(data.data.screen as Screen)
+        } else {
+          setPreAuthScreen('login')
         }
       })
-      .catch(() => {})
+      .catch(() => { setPreAuthScreen('login') })
   }, [sessionData?.user?.id])
 
   const handleLogout = async () => {
@@ -246,10 +239,7 @@ export default function Home() {
         .then((r) => r.json())
         .then((data: MeResponse) => {
           if (data.success && data.data) {
-            setUserPhone(data.data.phone ? `+976 ${data.data.phone}` : '')
-            if (data.data.role === 'admin') setCurrentScreen('admin')
-            else if (data.data.isWorker && data.data.activeMode === 'worker') setCurrentScreen('worker-jobs')
-            else setCurrentScreen('home')
+            setCurrentScreen(data.data.screen as Screen)
           }
         })
         .catch(() => {})
@@ -454,6 +444,9 @@ export default function Home() {
       {showWorkerBottomNav && (
         <WorkerBottomNav active={getActiveWorkerTab()} onNavigate={handleWorkerBottomNav} />
       )}
+
+      {/* ── Dev overlay — no-ops in prod ───────────────── */}
+      <DevPanel />
     </main>
   )
 }
