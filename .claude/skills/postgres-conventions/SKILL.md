@@ -91,9 +91,9 @@ await db.query('UPDATE workers SET is_active = $1', [1])
 
 ## Schema Location
 
-- DDL lives in `lib/db/schema.ts` — `CREATE TABLE IF NOT EXISTS`
-- Seed data in `lib/db/seed.ts`
-- DB pool singleton in `lib/db/index.ts`
+- DDL lives in `packages/api/src/db/schema.ts` — `CREATE TABLE IF NOT EXISTS`
+- Seed data in `packages/api/src/db/seed.ts`
+- DB pool singleton in `packages/api/src/db.ts`
 
 ## Anti-Patterns
 

@@ -10,18 +10,26 @@ This app has **no Next.js routing**. The entire UI lives in a single page (`app/
 
 ## The Screen Union Type
 
-All valid screens are listed in `lib/types.ts` as the `Screen` union:
+The `Screen` union is defined **locally in `app/page.tsx`** (not in `lib/types.ts`):
 
 ```ts
 type Screen =
-  | 'home' | 'search' | 'booking' | 'active-booking' | 'review'
-  | 'profile' | 'orders' | 'chat'
+  | 'home' | 'create-order'
+  | 'searching-worker' | 'confirm-worker'
+  | 'scheduled-jobs-board' | 'confirm-scheduled-worker'
+  | 'active-booking' | 'review' | 'profile' | 'chat' | 'orders'
+  | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
-  | 'admin' | 'admin-verify' | 'admin-disputes'
-  // ... etc
+  | 'admin' | 'admin-verify' | 'admin-disputes' | 'admin-banking'
+  | 'oauth-onboarding' | 'contact-otp-verify'
 ```
 
-**When adding a new screen:** add its string literal to the `Screen` union first, then create the component.
+Pre-auth screens use a separate type also in `app/page.tsx`:
+```ts
+type PreAuthScreen = 'login' | 'register' | 'forgot-password' | 'otp-verify' | 'pin-reset'
+```
+
+**When adding a new screen:** add its string literal to the `Screen` union in `app/page.tsx` first, then create the component.
 
 ## Navigation
 
@@ -44,11 +52,36 @@ import Link from 'next/link'
 `app/page.tsx` owns all cross-screen state:
 
 ```ts
+// Navigation
 const [currentScreen, setCurrentScreen] = useState<Screen>('home')
-const [userRole, setUserRole] = useState<UserRole | null>(null)
-const [phone, setPhone] = useState('')
-const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null)
+const [preAuthScreen, setPreAuthScreen] = useState<PreAuthScreen>('login')
+
+// User identity
+const [userName, setUserName] = useState('...')
+const [userPhone, setUserPhone] = useState('')
+const [isWorker, setIsWorker] = useState(false)
+const [activeMode, setActiveMode] = useState<'user' | 'worker'>('user')
+
+// Booking flow
 const [hasActiveBooking, setHasActiveBooking] = useState(false)
+const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
+const [matchedWorker, setMatchedWorker] = useState<MatchedWorker | null>(null)
+const [selectedAcceptor, setSelectedAcceptor] = useState<OrderAcceptance | null>(null)
+
+// Worker flow
+const [activeWorkerOrderId, setActiveWorkerOrderId] = useState<string | null>(null)
+
+// Chat
+const [chatOrderId, setChatOrderId] = useState<string | null>(null)
+const [chatBack, setChatBack] = useState<Screen>('active-booking')
+
+// Auth sub-flows
+const [forgotPhone, setForgotPhone] = useState('')
+const [resetToken, setResetToken] = useState('')
+const [otpContext, setOtpContext] = useState<OtpContext | null>(null)
+
+// Back-link memory
+const [personalInfoBack, setPersonalInfoBack] = useState<Screen>('profile')
 ```
 
 Pass these down as **props** to screens. Screens never call `useState` for data that other screens need.
@@ -70,22 +103,23 @@ interface HomeScreenProps {
 
 ## Role-Based Screen Access
 
-`userRole` determines which bottom nav and which screens are reachable:
+`isWorker` + `activeMode` determine which bottom nav and which screens are reachable:
 
-| Role | Screens |
+| Mode | Screens |
 |------|---------|
-| `user` | home, search, booking, active-booking, review, profile, orders, chat |
-| `worker` | worker-register, worker-jobs, worker-active, worker-earnings, worker-profile |
-| `admin` | admin, admin-verify, admin-disputes |
+| user (`activeMode='user'`) | home, create-order, searching-worker, confirm-worker, scheduled-jobs-board, confirm-scheduled-worker, active-booking, review, orders, chat, profile, personal-info, saved-workers, help, privacy |
+| worker (`isWorker=true`, `activeMode='worker'`) | worker-jobs, worker-active, worker-earnings, worker-profile (+ chat in worker context) |
+| admin (role='admin') | admin, admin-verify, admin-disputes, admin-banking |
+| transition screen | worker-register (user → worker registration flow) |
 
 The bottom nav components:
-- `components/bottom-nav.tsx` — user role
-- `components/worker-bottom-nav.tsx` — worker role
+- `components/bottom-nav.tsx` — user mode (home, orders, chat, profile)
+- `components/worker-bottom-nav.tsx` — worker mode (jobs, active, chat, earnings, profile)
 - Admin has no bottom nav, uses a different layout
 
 ## Adding a New Screen — Checklist
 
-1. Add the string literal to `Screen` union in `lib/types.ts`
+1. Add the string literal to `Screen` union in `app/page.tsx`
 2. Create `components/screens/<new-screen>.tsx` — accept props, no global state
 3. Add the render branch in `app/page.tsx` (the big `currentScreen === '...'` switch/if chain)
 4. Wire navigation from the relevant screen(s) via `setCurrentScreen`
@@ -113,7 +147,7 @@ const [selectedWorkerId, setSelectedWorkerId] = useState(null)  // in a screen f
 
 Before returning any screen or navigation code, verify:
 
-- [ ] New screens added to the `Screen` union type in `lib/types.ts`
+- [ ] New screens added to the `Screen` union type in `app/page.tsx`
 - [ ] Navigation uses `setCurrentScreen(...)` — no `router.push()` or `<Link>`
 - [ ] Shared state (role, phone, workerId, hasActiveBooking) lives in `app/page.tsx`
 - [ ] Screen components receive data/callbacks as props — no internal global state

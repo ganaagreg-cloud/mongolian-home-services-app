@@ -11,32 +11,41 @@ description: Use when writing or editing the /api/sos route or any emergency ale
 ## Implementation Pattern
 
 ```ts
-// app/api/sos/route.ts
-export async function POST(req: Request) {
-  try {
-    const { userId } = await requireAuth(req)
-    const body = SOSSchema.parse(await req.json())
+// packages/api/src/routes/sos.ts  (Hono router)
+import { Hono } from 'hono'
+import { requireAuth } from '../auth'
+import { db, dbReady } from '../db'
 
-    // 1. Persist the alert immediately — this is the only blocking operation
-    await db.query(
-      'INSERT INTO sos_alerts (user_id, location, created_at) VALUES ($1, $2, NOW())',
-      [userId, body.location]
-    )
+const router = new Hono()
 
-    // 2. Return immediately — do NOT await notifications
-    sendNotificationsAsync(userId, body).catch(console.error)  // fire-and-forget
+router.post('/api/sos', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ error: 'Request failed' }, 401)
 
-    return Response.json({ received: true }, { status: 200 })
+  await dbReady
 
-  } catch (e) {
-    return Response.json({ error: 'Request failed' }, { status: 500 })
-  }
-}
+  let body: { orderId?: string; latitude?: number; longitude?: number } = {}
+  try { body = await c.req.json() } catch { /* location is optional */ }
+
+  // 1. Persist the alert immediately — this is the only blocking operation
+  const { rows: [alert] } = await db.query<{ id: number }>(
+    `INSERT INTO sos_alerts (triggered_by_id, order_id, latitude, longitude, role)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [Number(session.sub), body.orderId ?? null, body.latitude ?? null, body.longitude ?? null, session.role]
+  )
+
+  // 2. Return immediately — do NOT await notifications
+  sendNotificationsAsync(Number(session.sub), alert.id).catch(console.error)
+
+  return c.json({ success: true, data: { alertId: alert.id } })
+})
 
 // Runs after response is sent — never blocks the handler
-async function sendNotificationsAsync(userId: number, body: SOSPayload) {
-  // FCM push, SMS, admin notification — all async
+async function sendNotificationsAsync(userId: number, alertId: number) {
+  // FCM push, SMS, admin notification — all fire-and-forget
 }
+
+export default router
 ```
 
 ## Rules
@@ -53,7 +62,7 @@ async function sendNotificationsAsync(userId: number, body: SOSPayload) {
 // NEVER — awaiting notification before response
 await sendFCMPush(userId)    // blocks!
 await sendSMSAlert(phone)    // blocks!
-return Response.json({ received: true })
+return c.json({ success: true })
 
 // NEVER — external API call before response
 const adminList = await fetchAdminsFromExternalService()  // blocks!
