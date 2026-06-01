@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm dev           # All packages in parallel (Turbo)
 pnpm dev:api       # Hono API server only (localhost:4000, tsx watch)
 pnpm dev:web       # Next.js web app only (localhost:3000, Turbopack)
-pnpm dev:admin     # Admin panel only (port TBD — package not yet wired)
+pnpm dev:admin     # Admin panel only (localhost:3001)
 pnpm build         # Production build (all packages)
 pnpm lint          # ESLint (all packages)
 pnpm typecheck     # TypeScript check (all packages)
@@ -19,7 +19,8 @@ docker compose up --build        # Start web + db (Postgres 16)
 docker compose down              # Stop containers (volume preserved)
 docker compose down -v           # Stop + wipe Postgres volume (full reset)
 docker compose exec db psql -U postgres -d homeservices   # Postgres shell
-docker compose logs web -f       # Stream Next.js logs
+docker compose logs api -f        # Stream API logs
+docker compose logs web -f        # Stream Next.js logs
 ```
 
 ## MCP Servers
@@ -80,9 +81,11 @@ After completing any implementation:
 
 ### Login Flow
 1. Open `http://localhost:3000`
-2. Click "Google-ээр нэвтрэх" or "Facebook-ээр нэвтрэх"
-3. Complete OAuth flow — redirects back to app
-4. App calls `/api/auth/me` and routes: admin → admin screen, worker mode → worker-jobs, else → home
+2. Email+password login, or Google/Facebook OAuth button
+3. Forgot-password path: enter phone → OTP verify → PIN reset → back to login
+4. Register path: phone + name + password (no consent checkbox yet — PDPL gap)
+5. App calls `/api/auth/me` and routes: admin → admin screen, worker mode → worker-jobs, else → home
+6. OAuth users with no phone → `oauth-onboarding` screen to collect phone
 
 ### API Integration Testing
 - Session cookie set by Better Auth (`better-auth.session_token`)
@@ -91,13 +94,15 @@ After completing any implementation:
 
 ## Architecture
 
-Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a future admin panel (TBD); `packages/shared` holds shared TypeScript types. The UI layer in packages/web is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
+Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a standalone Next.js admin panel (port 3001); `packages/shared` holds shared TypeScript types. The UI layer in packages/web is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
 
 ### Navigation: State Machine, Not Next.js Routing
 
-The entire app lives in a single page (`app/page.tsx`). Navigation is driven by `currentScreen` state of type `Screen` (~20 string literals). Every transition is `setCurrentScreen(...)`. No `<Link>` or `router.push()` anywhere.
+The entire app lives in a single page (`app/page.tsx`). Navigation is driven by `currentScreen` state of type `Screen` (26 string literals, defined locally in `app/page.tsx`). Every transition is `setCurrentScreen(...)`. No `<Link>` or `router.push()` anywhere.
 
-`app/page.tsx` owns all shared state (`isWorker`, `activeMode`, `currentScreen`, `hasActiveBooking`) and passes callbacks down as props.
+Pre-auth screens (`login | register | forgot-password | otp-verify | pin-reset`) are controlled by a separate `preAuthScreen` state.
+
+`app/page.tsx` owns all shared state and passes callbacks down as props. Key state: `currentScreen`, `preAuthScreen`, `isWorker`, `activeMode`, `hasActiveBooking`, `activeOrderId`, `matchedWorker`, `selectedAcceptor`, `activeWorkerOrderId`, `chatOrderId`, `chatBack`, `otpContext`, `userName`, `userPhone`.
 
 ### Two Roles + Worker Mode
 
@@ -105,9 +110,9 @@ The entire app lives in a single page (`app/page.tsx`). Navigation is driven by 
 
 Workers are **users** with `is_worker = true` in the DB. They switch modes via a segmented toggle (stored as `active_mode = 'user' | 'worker'`).
 
-- **user mode** — home, search, booking, active-booking, review, profile, orders, chat
+- **user mode** — home, create-order, searching-worker, confirm-worker, scheduled-jobs-board, confirm-scheduled-worker, active-booking, review, orders, chat, profile, personal-info, saved-workers, help, privacy
 - **worker mode** (requires `is_worker=true`) — worker-jobs, worker-active, worker-earnings, worker-profile
-- **admin** — admin, admin-verify, admin-disputes
+- **admin** — admin, admin-verify, admin-disputes, admin-banking
 
 ### Component Organization
 
@@ -115,19 +120,20 @@ Workers are **users** with `is_worker = true` in the DB. They switch modes via a
 packages/web/
   app/page.tsx                # Single-page entry; owns all shared state
   components/
-    screens/                  # 25 full-screen views (one per Screen value)
+    screens/                  # 24 screen components (one per Screen value)
     ui/                       # shadcn/ui + Radix UI primitives (do not edit)
     bottom-nav.tsx            # User tab bar
     worker-bottom-nav.tsx
-    login-screen.tsx  onboarding-screen.tsx  otp-screen.tsx
-    register-screen.tsx  dan-success-screen.tsx  sos-button.tsx
+    login-screen.tsx  register-screen.tsx  oauth-onboarding-screen.tsx
+    otp-verify-screen.tsx  forgot-password-screen.tsx  pin-reset-screen.tsx
+    dan-success-screen.tsx  sos-button.tsx  dev-panel.tsx
   hooks/
     use-mobile.ts             # 768px breakpoint detector
     use-toast.ts
   lib/
     auth.ts                   # Better Auth client-side config (web only)
     auth-client.ts            # Better Auth browser client (useSession, signOut, signIn.social)
-    types.ts                  # shared TypeScript types (UserRole, Screen, OrderStatus, …)
+    types.ts                  # re-exports from @homeservices/shared (UserRole, OrderStatus, Order, …)
     utils.ts                  # cn() = clsx + tailwind-merge
 
 packages/api/src/
@@ -209,7 +215,7 @@ DAN_CLIENT_SECRET=
 QPAY_API_KEY=
 JWT_SECRET=        # legacy fallback — only used by remaining jose helpers
 PORT=4000
-CORS_ORIGIN=http://localhost:3000  # comma-separated for multiple origins
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001  # web + admin origins
 ```
 
 `packages/web/.env.local` (Next.js; NEXT_PUBLIC_* are exposed to browser):
@@ -218,7 +224,10 @@ NEXT_PUBLIC_API_URL=http://localhost:4000   # points to packages/api
 BETTER_AUTH_URL=http://localhost:4000       # must match packages/api BETTER_AUTH_URL
 ```
 
-`packages/admin` — no environment variables yet (package not wired)
+`packages/admin/.env.local` (separate Next.js app on port 3001):
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
 
 ## Engineering Principles
 
