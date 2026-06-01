@@ -2,40 +2,44 @@ import type { Pool } from 'pg'
 
 const ADMIN_BA_ID   = 'ba-admin-95342321'
 const ADMIN_EMAIL   = '95342321@homeservice.local'
-const ADMIN_PW_HASH = 'f01f236cdd7d2a3694ba5f14f71f6fb4:e1a77eed648115674e4a5fba36aa951d2d8c051b7ba6da5398c9402a497ab915ef3898b4b8bd180207a4fe5da60a4e24f07a815c0d9b93220fb757cee81d341b'
+const ADMIN_PW_HASH = process.env.ADMIN_PW_HASH
 
 export async function seed(pool: Pool): Promise<void> {
   const client = await pool.connect()
   try {
     // ── Admin account ────────────────────────────────────────────────────────
-    await client.query(
-      `INSERT INTO "user" (id, name, email, "emailVerified", is_worker, active_mode, "createdAt", "updatedAt")
-       VALUES ($1, 'Admin', $2, true, false, 'user', NOW(), NOW())
-       ON CONFLICT (email) DO UPDATE SET "emailVerified" = true`,
-      [ADMIN_BA_ID, ADMIN_EMAIL],
-    )
-    const { rows: [baRow] } = await client.query<{ id: string }>(
-      `SELECT id FROM "user" WHERE email = $1`,
-      [ADMIN_EMAIL],
-    )
-    const actualBaId = baRow?.id ?? ADMIN_BA_ID
-    await client.query(
-      `INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-       VALUES ('acct-admin-95342321', $1, 'credential', $2, $3, NOW(), NOW())
-       ON CONFLICT (id) DO UPDATE SET password = $3`,
-      [ADMIN_EMAIL, actualBaId, ADMIN_PW_HASH],
-    )
-    await client.query(
-      `INSERT INTO users (phone, name, role, dan_verified, better_auth_id, email)
-       VALUES ('95342321', 'Admin', 'admin', true, $1, $2)
-       ON CONFLICT DO NOTHING`,
-      [actualBaId, ADMIN_EMAIL],
-    )
-    await client.query(
-      `UPDATE users SET role = 'admin', better_auth_id = $1
-       WHERE phone = '95342321'`,
-      [actualBaId],
-    )
+    if (!ADMIN_PW_HASH) {
+      console.warn('[seed] ADMIN_PW_HASH not set — skipping admin account seed')
+    } else {
+      await client.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified", is_worker, active_mode, "createdAt", "updatedAt")
+         VALUES ($1, 'Admin', $2, true, false, 'user', NOW(), NOW())
+         ON CONFLICT (email) DO UPDATE SET "emailVerified" = true`,
+        [ADMIN_BA_ID, ADMIN_EMAIL],
+      )
+      const { rows: [baRow] } = await client.query<{ id: string }>(
+        `SELECT id FROM "user" WHERE email = $1`,
+        [ADMIN_EMAIL],
+      )
+      const actualBaId = baRow?.id ?? ADMIN_BA_ID
+      await client.query(
+        `INSERT INTO account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+         VALUES ('acct-admin-95342321', $1, 'credential', $2, $3, NOW(), NOW())
+         ON CONFLICT (id) DO UPDATE SET password = $3`,
+        [ADMIN_EMAIL, actualBaId, ADMIN_PW_HASH],
+      )
+      await client.query(
+        `INSERT INTO users (phone, name, role, dan_verified, better_auth_id, email)
+         VALUES ('95342321', 'Admin', 'admin', true, $1, $2)
+         ON CONFLICT DO NOTHING`,
+        [actualBaId, ADMIN_EMAIL],
+      )
+      await client.query(
+        `UPDATE users SET role = 'admin', better_auth_id = $1
+         WHERE phone = '95342321'`,
+        [actualBaId],
+      )
+    }
 
     // ── Master data ──────────────────────────────────────────────────────────
     await client.query(`

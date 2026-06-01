@@ -22,9 +22,9 @@ services:
     command: ["pnpm", "--filter", "@homeservices/api", "dev"]
     environment:
       DATABASE_URL: postgresql://postgres:mongolia_secure_pass@db:5432/homeservices
-      BETTER_AUTH_SECRET: 6d160418ff8d92c5fcc3018cc5c1183b33f3b83759693775772630939251e22c
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: http://localhost:4000
-      JWT_SECRET: 6d160418ff8d92c5fcc3018cc5c1183b33f3b83759693775772630939251e22c
+      JWT_SECRET: ${JWT_SECRET}
       PORT: "4000"
       CORS_ORIGIN: http://localhost:3000,http://localhost:3001
       NODE_ENV: development

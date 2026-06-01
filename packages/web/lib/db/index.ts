@@ -18,7 +18,9 @@ async function init(pool: Pool): Promise<void> {
   for (const sql of TABLES) {
     await pool.query(sql)
   }
-  await seed(pool)
+  if (process.env.NODE_ENV !== 'production') {
+    await seed(pool)
+  }
 }
 
 if (!g.__pool) {
