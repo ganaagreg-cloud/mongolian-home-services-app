@@ -24,11 +24,15 @@ export function ConfirmScheduledWorkerScreen({
   const [order, setOrder]               = useState<Order | null>(null)
   const [invoice, setInvoice]           = useState<PaymentInvoice | null>(null)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
+  const [devSimError,  setDevSimError]  = useState<string | null>(null)
 
   // Fetch order for price/job details
   useEffect(() => {
     apiFetch(`/api/orders/${orderId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((d: { success: boolean; data?: Order }) => { if (d.success && d.data) setOrder(d.data) })
       .catch(() => {})
   }, [orderId])
@@ -44,6 +48,10 @@ export function ConfirmScheduledWorkerScreen({
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ workerId: worker.workerId }),
         })
+        if (!r.ok) {
+          if (!cancelled) setInvoiceError(`HTTP ${r.status} — Ажилтан оноход алдаа гарлаа`)
+          return
+        }
         const d = (await r.json()) as { success: boolean; error?: string }
         if (!d.success) {
           if (!cancelled) setInvoiceError(d.error ?? 'Ажилтан оноход алдаа гарлаа')
@@ -60,6 +68,10 @@ export function ConfirmScheduledWorkerScreen({
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ orderId }),
         })
+        if (!r.ok) {
+          if (!cancelled) setInvoiceError(`HTTP ${r.status} — Invoice үүсгэхэд алдаа гарлаа`)
+          return
+        }
         const d = (await r.json()) as { success: boolean; data?: PaymentInvoice; error?: string }
         if (cancelled) return
         if (d.success && d.data) setInvoice(d.data)
@@ -86,12 +98,23 @@ export function ConfirmScheduledWorkerScreen({
 
   const handleDevSim = async () => {
     if (!invoice) return
-    // real payment confirmation arrives via QPay webhook (Phase 2, parked) — dev-sim-pay is dev-only
-    await apiFetch('/api/payments/dev-sim-pay', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ invoiceId: invoice.invoice_id }),
-    })
+    setDevSimError(null)
+    try {
+      // real payment confirmation arrives via QPay webhook (Phase 2, parked) — dev-sim-pay is dev-only
+      const res = await apiFetch('/api/payments/dev-sim-pay', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ invoiceId: invoice.invoice_id }),
+      })
+      if (!res.ok) {
+        setDevSimError(`HTTP ${res.status} — Симуляц амжилтгүй`)
+        return
+      }
+      const d = (await res.json()) as { success: boolean; error?: string }
+      if (!d.success) setDevSimError(d.error ?? 'Симуляц амжилтгүй')
+    } catch {
+      setDevSimError('Сүлжээний алдаа гарлаа')
+    }
   }
 
   const scheduledLabel = order
@@ -253,13 +276,18 @@ export function ConfirmScheduledWorkerScreen({
       {/* Fixed bottom */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-6 lg:pt-6">
         {isDevPanel ? (
-          <button
-            onClick={() => { void handleDevSim() }}
-            disabled={!invoice}
-            className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
-          >
-            [Dev] Simulate Instant Success Tap
-          </button>
+          <>
+            <button
+              onClick={() => { void handleDevSim() }}
+              disabled={!invoice}
+              className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
+            >
+              [Dev] Simulate Instant Success Tap
+            </button>
+            {devSimError && (
+              <p className="mt-2 text-center text-sm text-destructive">{devSimError}</p>
+            )}
+          </>
         ) : (
           <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
             Төлбөр хүлээгдэж байна...

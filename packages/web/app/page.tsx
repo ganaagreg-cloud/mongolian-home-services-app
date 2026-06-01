@@ -36,6 +36,7 @@ import { AdminBankingScreen } from '@/components/screens/admin-banking-screen'
 import { BottomNav } from '@/components/bottom-nav'
 import { WorkerBottomNav } from '@/components/worker-bottom-nav'
 import { DevPanel } from '@/components/dev-panel'
+import { AppErrorBoundary } from '@/components/app-error-boundary'
 import type { MatchedWorker, OrderAcceptance, MatchingStrategy } from '@/lib/types'
 
 type Screen =
@@ -289,6 +290,7 @@ export default function Home() {
 
   // State 3: authenticated with phone — full app
   return (
+    <AppErrorBoundary>
     <main className="mx-auto max-w-[390px] min-h-screen bg-background">
       {/* ── User Screens ───────────────────────────────── */}
       {currentScreen === 'home' && (
@@ -494,5 +496,6 @@ export default function Home() {
       {/* ── Dev overlay — no-ops in prod ───────────────── */}
       <DevPanel />
     </main>
+    </AppErrorBoundary>
   )
 }

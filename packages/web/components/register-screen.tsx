@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client'
 import { apiFetch } from '@/lib/api-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
 
 interface RegisterScreenProps {
@@ -22,6 +23,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
   const [showConfirm,     setShowConfirm]     = useState(false)
   const [loading,         setLoading]         = useState(false)
   const [error,           setError]           = useState('')
+  const [consentChecked,  setConsentChecked]  = useState(false)
 
   const canSubmit =
     !loading &&
@@ -29,7 +31,8 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
     lastName.trim().length > 0 &&
     phone.length === 8 &&
     password.length >= 8 &&
-    confirmPassword.length >= 8
+    confirmPassword.length >= 8 &&
+    consentChecked
 
   const handleSubmit = async () => {
     setError('')
@@ -188,6 +191,23 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {/* PDPL Art. 14 — explicit consent required before account creation */}
+        <div className="flex items-start gap-3 pt-2">
+          <Checkbox
+            id="register-consent"
+            checked={consentChecked}
+            onCheckedChange={(v) => setConsentChecked(v === true)}
+            className="mt-0.5 shrink-0"
+          />
+          <label
+            htmlFor="register-consent"
+            className="text-sm leading-snug text-muted-foreground cursor-pointer"
+          >
+            Нууцлалын бодлого болон Үйлчилгээний нөхцөлтэй танилцаж,
+            хувийн мэдээллийг цуглуулах, боловсруулахыг зөвшөөрч байна.
+          </label>
+        </div>
       </div>
 
       {/* Нэвтрэх link */}

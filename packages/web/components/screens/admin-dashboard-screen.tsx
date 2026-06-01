@@ -29,7 +29,7 @@ function formatRevenue(amount: number): string {
 }
 
 export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onViewBanking }: AdminDashboardScreenProps) {
-  const { data: stats, isLoading } = useSWR<AdminStats>('/api/admin/stats', fetcher, { refreshInterval: 30000 })
+  const { data: stats, isLoading, error: statsError, mutate: mutateStats } = useSWR<AdminStats>('/api/admin/stats', fetcher, { refreshInterval: 30000 })
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-8">
@@ -50,6 +50,16 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
                 <Skeleton className="mt-1 h-3 w-24" />
               </div>
             ))
+          ) : statsError ? (
+            <div className="col-span-2 flex flex-col items-center gap-3 py-8">
+              <p className="text-sm text-destructive">Статистик ачаалахад алдаа гарлаа</p>
+              <button
+                onClick={() => { void mutateStats() }}
+                className="text-sm font-semibold text-primary active:scale-95 transition-all"
+              >
+                Дахин оролдох
+              </button>
+            </div>
           ) : (
             <>
               <div className="rounded-2xl bg-card p-4 shadow-sm">

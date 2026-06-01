@@ -1,5 +1,4 @@
 import { betterAuth } from 'better-auth'
-import { Pool } from 'pg'
 import { scryptSync, randomBytes, createHmac } from 'crypto'
 import { getCookie } from 'hono/cookie'
 import { db, dbReady } from './db'
@@ -12,8 +11,6 @@ export function hashPassword(password: string): string {
   return `${salt}:${hash}`
 }
 
-const authPool = new Pool({ connectionString: process.env.DATABASE_URL })
-
 const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
   .split(',')
   .map(o => o.trim())
@@ -22,7 +19,7 @@ const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
 const isProd = process.env.NODE_ENV === 'production'
 
 export const auth = betterAuth({
-  database: authPool,
+  database: db,
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
   trustedOrigins,

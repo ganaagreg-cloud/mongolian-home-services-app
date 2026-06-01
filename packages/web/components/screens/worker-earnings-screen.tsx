@@ -19,7 +19,7 @@ interface WorkerEarningsScreenProps {
 }
 
 export function WorkerEarningsScreen({ onManageBank }: WorkerEarningsScreenProps) {
-  const { data, isLoading } = useSWR<EarningsData>(
+  const { data, isLoading, error, mutate } = useSWR<EarningsData>(
     '/api/workers/me/earnings',
     fetcher,
     { shouldRetryOnError: false },
@@ -97,6 +97,18 @@ export function WorkerEarningsScreen({ onManageBank }: WorkerEarningsScreenProps
                 <Skeleton className="h-4 w-16" />
               </div>
             ))}
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <p className="text-sm text-destructive">Орлогын мэдээлэл ачаалахад алдаа гарлаа</p>
+            <button
+              onClick={() => { void mutate() }}
+              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+            >
+              Дахин оролдох
+            </button>
           </div>
         )}
 

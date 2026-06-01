@@ -2,12 +2,37 @@
 
 import { useState } from 'react'
 import { ArrowLeft, Bell, Eye, Share2, Trash2 } from 'lucide-react'
+import { LEGAL_CONTENT, type PolicyKey } from '@/lib/legal-content'
 
 interface PrivacyScreenProps {
   onBack: () => void
 }
 
+const POLICY_BUTTONS: { key: PolicyKey; label: string }[] = [
+  { key: 'privacy', label: 'Нууцлалын бодлого' },
+  { key: 'tos',     label: 'Үйлчилгээний нөхцөл' },
+  { key: 'cookies', label: 'Күүкийн бодлого' },
+]
+
+function renderPolicyBody(body: string) {
+  return body.split('\n\n').map((block, i) => {
+    if (block.startsWith('## ')) {
+      return (
+        <h2 key={i} className="mt-6 text-base font-bold text-foreground first:mt-0">
+          {block.slice(3)}
+        </h2>
+      )
+    }
+    return (
+      <p key={i} className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        {block}
+      </p>
+    )
+  })
+}
+
 export function PrivacyScreen({ onBack }: PrivacyScreenProps) {
+  const [activePolicy, setActivePolicy] = useState<PolicyKey | null>(null)
   const [settings, setSettings] = useState({
     locationTracking: true,
     marketingNotifications: false,
@@ -101,11 +126,12 @@ export function PrivacyScreen({ onBack }: PrivacyScreenProps) {
       <div className="mt-6 px-6">
         <h2 className="text-lg font-bold text-foreground">Баримт бичиг</h2>
         <div className="mt-3 rounded-2xl bg-card shadow-sm overflow-hidden">
-          {['Нууцлалын бодлого', 'Үйлчилгээний нөхцөл', 'Күүкийн бодлого'].map((label, index, arr) => (
+          {POLICY_BUTTONS.map(({ key, label }, index) => (
             <button
-              key={label}
+              key={key}
+              onClick={() => setActivePolicy(key)}
               className={`flex w-full items-center justify-between px-4 py-4 transition-colors hover:bg-muted/50 active:scale-95 ${
-                index !== arr.length - 1 ? 'border-b border-border' : ''
+                index !== POLICY_BUTTONS.length - 1 ? 'border-b border-border' : ''
               }`}
             >
               <span className="font-medium text-foreground">{label}</span>
@@ -114,6 +140,31 @@ export function PrivacyScreen({ onBack }: PrivacyScreenProps) {
           ))}
         </div>
       </div>
+
+      {/* Policy overlay */}
+      {activePolicy !== null && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          {/* Overlay header */}
+          <div className="flex items-center gap-4 border-b border-border px-6 pb-4 pt-12 shrink-0">
+            <button
+              onClick={() => setActivePolicy(null)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+            >
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-foreground">{LEGAL_CONTENT[activePolicy].title}</h1>
+              <p className="text-xs text-muted-foreground">
+                Шинэчлэгдсэн: {LEGAL_CONTENT[activePolicy].updatedAt}
+              </p>
+            </div>
+          </div>
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-6 pb-12 pt-6">
+            {renderPolicyBody(LEGAL_CONTENT[activePolicy].body)}
+          </div>
+        </div>
+      )}
 
       {/* Danger Zone */}
       <div className="mt-6 px-6">

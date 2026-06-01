@@ -75,7 +75,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
 
   useEffect(() => {
     apiFetch('/api/service-types')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((j: { success: boolean; data?: ServiceType[] }) => {
         if (j.success && j.data?.length) {
           setServiceTypes(j.data)
@@ -164,6 +167,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
 
       // Step 1: create payment intent and get invoice_id
       const invoiceRes = await apiFetch('/api/payments/create-invoice', { method: 'POST' })
+      if (!invoiceRes.ok) {
+        setConfirmError(`[1] HTTP ${invoiceRes.status} — Нэхэмжлэл үүсгэхэд алдаа`)
+        return
+      }
       const invoiceData = (await invoiceRes.json()) as {
         success: boolean
         data?: { invoice_id: string }
@@ -188,6 +195,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ invoiceId: invoice_id }),
       })
+      if (!simPayRes.ok) {
+        setConfirmError(`[2] HTTP ${simPayRes.status} — Төлбөр баталгаажуулахад алдаа`)
+        return
+      }
       const simPayData = (await simPayRes.json()) as { success: boolean; error?: string }
       console.log('[order] step2 dev-sim-pay', simPayRes.status, simPayData)
       if (!simPayData.success) {
@@ -216,6 +227,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(orderBody),
       })
+      if (!res.ok) {
+        setConfirmError(`[3] HTTP ${res.status} — Захиалга үүсгэхэд алдаа гарлаа`)
+        return
+      }
       const data = (await res.json()) as {
         success: boolean
         data?: { id: string; matchingStrategy: MatchingStrategy; totalAmount: number }

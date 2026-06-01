@@ -19,7 +19,7 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
   const [myId,     setMyId]     = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { data: messages = [], mutate } = useSWR<Message[]>(
+  const { data: messages = [], mutate, error: messagesError } = useSWR<Message[]>(
     `/api/orders/${orderId}/messages`,
     fetcher,
     { refreshInterval: 3000 },
@@ -28,7 +28,10 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
   // Resolve current user id once on mount
   useEffect(() => {
     apiFetch('/api/auth/me')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((d: { success: boolean; data?: { id: number } }) => {
         if (d.success && d.data) setMyId(String(d.data.id))
       })
@@ -97,7 +100,17 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 pb-28">
-        {messages.length === 0 && (
+        {messagesError ? (
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <p className="text-sm text-destructive">Мессеж ачаалахад алдаа гарлаа</p>
+            <button
+              onClick={() => { void mutate() }}
+              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+            >
+              Дахин оролдох
+            </button>
+          </div>
+        ) : messages.length === 0 && (
           <p className="mt-8 text-center text-sm text-muted-foreground">
             Мессеж байхгүй байна. Эхний мессежийг илгээнэ үү.
           </p>

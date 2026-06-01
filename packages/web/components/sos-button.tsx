@@ -10,7 +10,7 @@ interface SosButtonProps {
   bottomClass?: string
 }
 
-type Phase = 'idle' | 'confirming' | 'sending' | 'active'
+type Phase = 'idle' | 'confirming' | 'sending' | 'active' | 'failed'
 
 export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps) {
   const [phase, setPhase]     = useState<Phase>('idle')
@@ -38,10 +38,15 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
         body:    JSON.stringify({ orderId, latitude: lat, longitude: lng }),
       })
       const d = (await res.json()) as { success: boolean; data?: { alertId: number } }
-      if (d.success && d.data) setAlertId(d.data.alertId)
-    } catch { /* show overlay regardless */ }
-
-    setPhase('active')
+      if (d.success && d.data) {
+        setAlertId(d.data.alertId)
+        setPhase('active')
+      } else {
+        setPhase('failed')
+      }
+    } catch {
+      setPhase('failed')
+    }
   }
 
   const handleDismiss = () => {
@@ -135,6 +140,33 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
           >
             <X className="h-5 w-5 text-white" />
           </button>
+        </div>
+      )}
+
+      {/* SOS send failed — show direct call fallback */}
+      {phase === 'failed' && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-10 w-10 text-destructive" />
+            </div>
+            <h1 className="mt-6 text-2xl font-bold text-foreground">Холболт амжилтгүй</h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              SOS дуудлага илгээхэд алдаа гарлаа.{'\n'}Доорх товчоор шууд залгана уу.
+            </p>
+            <a
+              href="tel:102"
+              className="mt-6 flex h-14 w-full items-center justify-center rounded-2xl bg-destructive text-base font-bold text-white shadow-md active:scale-95 transition-all"
+            >
+              102 руу шууд залгах
+            </a>
+            <button
+              onClick={handleDismiss}
+              className="mt-3 h-14 w-full rounded-2xl bg-card text-base font-semibold text-foreground shadow-sm active:scale-95 transition-all"
+            >
+              Хаах
+            </button>
+          </div>
         </div>
       )}
     </>

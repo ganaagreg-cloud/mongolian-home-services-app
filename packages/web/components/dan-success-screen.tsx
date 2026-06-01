@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface DANSuccessScreenProps {
   onContinue: () => void
 }
 
 export function DANSuccessScreen({ onContinue }: DANSuccessScreenProps) {
-  const [showAnimation, setShowAnimation] = useState(false)
+  const [showAnimation,  setShowAnimation]  = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setShowAnimation(true), 100)
@@ -64,6 +66,29 @@ export function DANSuccessScreen({ onContinue }: DANSuccessScreenProps) {
         </p>
       </div>
 
+      {/* PDPL Art. 14 — explicit DAN data processing consent */}
+      <div
+        className={`mt-8 w-full transition-all duration-500 delay-500 ${
+          showAnimation ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+        }`}
+      >
+        <div className="flex items-start gap-3 rounded-2xl bg-card px-4 py-4 shadow-sm">
+          <Checkbox
+            id="dan-consent"
+            checked={consentChecked}
+            onCheckedChange={(v) => setConsentChecked(v === true)}
+            className="mt-0.5 shrink-0"
+          />
+          <label
+            htmlFor="dan-consent"
+            className="text-sm leading-snug text-muted-foreground cursor-pointer"
+          >
+            ДАН системээр баталгаажуулсан хувийн мэдээллийг үйлчилгээний
+            зорилгоор боловсруулах, хадгалахыг зөвшөөрч байна.
+          </label>
+        </div>
+      </div>
+
       {/* Continue button */}
       <div
         className={`mt-auto w-full pb-4 transition-all duration-500 delay-600 ${
@@ -72,7 +97,8 @@ export function DANSuccessScreen({ onContinue }: DANSuccessScreenProps) {
       >
         <Button
           onClick={onContinue}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90"
+          disabled={!consentChecked}
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 disabled:opacity-50"
         >
           Үргэлжлүүлэх
         </Button>
