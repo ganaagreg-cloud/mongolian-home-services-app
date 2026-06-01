@@ -6,6 +6,9 @@ import { apiFetch } from '@/lib/api-fetch'
 import { LoginScreen } from '@/components/login-screen'
 import { RegisterScreen } from '@/components/register-screen'
 import { OAuthOnboardingScreen } from '@/components/oauth-onboarding-screen'
+import { ForgotPasswordScreen } from '@/components/forgot-password-screen'
+import { OtpVerifyScreen, type OtpContext } from '@/components/otp-verify-screen'
+import { PinResetScreen } from '@/components/pin-reset-screen'
 import { HomeScreen } from '@/components/screens/home-screen'
 import { CreateOrderScreen } from '@/components/screens/create-order-screen'
 import { SearchingWorkerScreen } from '@/components/screens/searching-worker-screen'
@@ -43,7 +46,7 @@ type Screen =
   | 'personal-info' | 'saved-workers' | 'help' | 'privacy'
   | 'worker-register' | 'worker-jobs' | 'worker-active' | 'worker-earnings' | 'worker-profile'
   | 'admin' | 'admin-verify' | 'admin-disputes' | 'admin-banking'
-  | 'oauth-onboarding'
+  | 'oauth-onboarding' | 'contact-otp-verify'
 
 type MeResponse = {
   success: boolean
@@ -53,12 +56,14 @@ type MeResponse = {
   }
 }
 
-type PreAuthScreen = 'login' | 'register'
+type PreAuthScreen = 'login' | 'register' | 'forgot-password' | 'otp-verify' | 'pin-reset'
 
 export default function Home() {
   const { data: sessionData, isPending } = authClient.useSession()
 
   const [preAuthScreen,  setPreAuthScreen]  = useState<PreAuthScreen>('login')
+  const [forgotPhone,    setForgotPhone]    = useState('')
+  const [resetToken,     setResetToken]     = useState('')
   const [currentScreen,  setCurrentScreen]  = useState<Screen>('home')
   const [userName,       setUserName]       = useState('...')
   const [userPhone,      setUserPhone]      = useState('')
@@ -74,6 +79,7 @@ export default function Home() {
   const [personalInfoBack,   setPersonalInfoBack]   = useState<Screen>('profile')
   const [chatOrderId,        setChatOrderId]        = useState<string | null>(null)
   const [chatBack,           setChatBack]           = useState<Screen>('active-booking')
+  const [otpContext,         setOtpContext]         = useState<OtpContext | null>(null)
 
   useEffect(() => {
     if (!sessionData?.user) return
@@ -182,6 +188,16 @@ export default function Home() {
     else if (menu === 'privacy') setCurrentScreen('privacy')
   }
 
+  const handleVerifyPhone = (phoneVal: string) => {
+    setOtpContext({ purpose: 'verify-phone', contactValue: phoneVal })
+    setCurrentScreen('contact-otp-verify')
+  }
+
+  const handleVerifyEmail = (emailVal: string) => {
+    setOtpContext({ purpose: 'verify-email', contactValue: emailVal })
+    setCurrentScreen('contact-otp-verify')
+  }
+
   const showUserBottomNav = [
     'home', 'orders', 'chat', 'profile', 'active-booking',
   ].includes(currentScreen)
@@ -224,8 +240,28 @@ export default function Home() {
       <main className="mx-auto max-w-[390px]">
         {preAuthScreen === 'register' ? (
           <RegisterScreen onGoLogin={() => setPreAuthScreen('login')} />
+        ) : preAuthScreen === 'forgot-password' ? (
+          <ForgotPasswordScreen
+            onBack={() => setPreAuthScreen('login')}
+            onOtpSent={(phone) => { setForgotPhone(phone); setPreAuthScreen('otp-verify') }}
+          />
+        ) : preAuthScreen === 'otp-verify' ? (
+          <OtpVerifyScreen
+            phone={forgotPhone}
+            onBack={() => setPreAuthScreen('forgot-password')}
+            onVerified={(token) => { setResetToken(token); setPreAuthScreen('pin-reset') }}
+          />
+        ) : preAuthScreen === 'pin-reset' ? (
+          <PinResetScreen
+            resetToken={resetToken}
+            onBack={() => setPreAuthScreen('login')}
+            onSuccess={() => setPreAuthScreen('login')}
+          />
         ) : (
-          <LoginScreen onGoRegister={() => setPreAuthScreen('register')} />
+          <LoginScreen
+            onGoRegister={() => setPreAuthScreen('register')}
+            onForgotPassword={() => setPreAuthScreen('forgot-password')}
+          />
         )}
       </main>
     )
@@ -346,6 +382,16 @@ export default function Home() {
           userName={userName}
           phone={userPhone}
           onBack={() => setCurrentScreen(personalInfoBack)}
+          onVerifyPhone={handleVerifyPhone}
+          onVerifyEmail={handleVerifyEmail}
+        />
+      )}
+      {currentScreen === 'contact-otp-verify' && otpContext && (
+        <OtpVerifyScreen
+          phone={otpContext.contactValue}
+          onBack={() => setCurrentScreen('personal-info')}
+          onVerified={(_token) => { setOtpContext(null); setCurrentScreen('personal-info') }}
+          otpContext={otpContext}
         />
       )}
       {currentScreen === 'saved-workers' && (

@@ -1,11 +1,16 @@
 node_modules
+**/node_modules
 .next
+**/.next
+.turbo
+**/.turbo
 app.db
 dev.db
 .git
 public/uploads
 screenshots
 tests
+test-screenshots
 .vscode
 .claude
 *.md

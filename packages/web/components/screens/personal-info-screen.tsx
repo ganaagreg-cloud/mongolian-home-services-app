@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, User, Phone, Mail, Calendar, MapPin } from 'lucide-react'
+import { ArrowLeft, User, Phone, Mail, Calendar, MapPin, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
@@ -9,30 +9,48 @@ import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api-fetch'
 
 interface PersonalInfoScreenProps {
-  userName: string
-  phone: string
-  onBack: () => void
+  userName:       string
+  phone:          string
+  onBack:         () => void
+  onVerifyPhone:  (phone: string) => void
+  onVerifyEmail:  (email: string) => void
 }
 
-export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScreenProps) {
-  const [name, setName] = useState(userName)
-  const [email, setEmail] = useState('')
-  const [birthDate, setBirthDate] = useState('1990-01-15')
-  const [address, setAddress] = useState('Улаанбаатар, Сүхбаатар дүүрэг')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+type MeData = {
+  name: string; email: string; phone: string
+  phoneVerified: boolean; emailVerified: boolean; isGoogleOAuth: boolean
+}
+
+export function PersonalInfoScreen({
+  userName, phone, onBack, onVerifyPhone, onVerifyEmail,
+}: PersonalInfoScreenProps) {
+  const [name,          setName]          = useState(userName)
+  const [email,         setEmail]         = useState('')
+  const [localPhone,    setLocalPhone]    = useState(phone)
+  const [birthDate,     setBirthDate]     = useState('1990-01-15')
+  const [address,       setAddress]       = useState('Улаанбаатар, Сүхбаатар дүүрэг')
+  const [saving,        setSaving]        = useState(false)
+  const [error,         setError]         = useState('')
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [isGoogleOAuth, setIsGoogleOAuth] = useState(false)
+  const [sendingOtp,    setSendingOtp]    = useState<'phone' | 'email' | null>(null)
 
   useEffect(() => {
     apiFetch('/api/me')
       .then((r) => r.json())
-      .then((json: { success: boolean; data?: { name: string; email: string } }) => {
+      .then((json: { success: boolean; data?: MeData }) => {
         if (json.success && json.data) {
           setName(json.data.name || userName)
           setEmail(json.data.email)
+          setLocalPhone(json.data.phone || phone)
+          setPhoneVerified(json.data.phoneVerified)
+          setEmailVerified(json.data.emailVerified)
+          setIsGoogleOAuth(json.data.isGoogleOAuth)
         }
       })
       .catch(() => {})
-  }, [userName])
+  }, [userName, phone])
 
   const handleSave = async () => {
     setError('')
@@ -57,6 +75,48 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
       setError('Алдаа гарлаа')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleVerifyPhone = async () => {
+    setSendingOtp('phone')
+    try {
+      const res = await apiFetch('/api/me/send-verify-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'phone' }),
+      })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (!data.success) {
+        toast.error(data.error ?? 'Алдаа гарлаа')
+        return
+      }
+      onVerifyPhone(localPhone)
+    } catch {
+      toast.error('Алдаа гарлаа')
+    } finally {
+      setSendingOtp(null)
+    }
+  }
+
+  const handleVerifyEmail = async () => {
+    setSendingOtp('email')
+    try {
+      const res = await apiFetch('/api/me/send-verify-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'email' }),
+      })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (!data.success) {
+        toast.error(data.error ?? 'Алдаа гарлаа')
+        return
+      }
+      onVerifyEmail(email)
+    } catch {
+      toast.error('Алдаа гарлаа')
+    } finally {
+      setSendingOtp(null)
     }
   }
 
@@ -106,12 +166,29 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
           <div className="relative">
             <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              value={phone}
+              value={localPhone}
               disabled
               className="h-12 rounded-2xl border-border bg-muted pl-11 shadow-sm text-muted-foreground"
             />
           </div>
-          <p className="text-xs text-muted-foreground">Утасны дугаар өөрчлөх боломжгүй</p>
+          {phoneVerified ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-success">
+                <Check className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success">Баталгаажсан</span>
+            </div>
+          ) : localPhone ? (
+            <button
+              onClick={() => { void handleVerifyPhone() }}
+              disabled={sendingOtp === 'phone'}
+              className="text-xs font-semibold text-primary active:scale-95 transition-all disabled:opacity-50"
+            >
+              {sendingOtp === 'phone' ? 'Илгээж байна...' : 'Баталгаажуулах →'}
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Утасны дугаар өөрчлөх боломжгүй</p>
+          )}
         </div>
 
         {/* Email */}
@@ -126,6 +203,29 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
               className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
             />
           </div>
+          {isGoogleOAuth ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-success">
+                <Check className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success">Google-ээр баталгаажсан</span>
+            </div>
+          ) : emailVerified ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-success">
+                <Check className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-success">Баталгаажсан</span>
+            </div>
+          ) : email ? (
+            <button
+              onClick={() => { void handleVerifyEmail() }}
+              disabled={sendingOtp === 'email'}
+              className="text-xs font-semibold text-primary active:scale-95 transition-all disabled:opacity-50"
+            >
+              {sendingOtp === 'email' ? 'Илгээж байна...' : 'Баталгаажуулах →'}
+            </button>
+          ) : null}
         </div>
 
         {/* Birth Date */}
@@ -163,7 +263,6 @@ export function PersonalInfoScreen({ userName, phone, onBack }: PersonalInfoScre
           </p>
         </div>
 
-        {/* Inline error */}
         {error && (
           <p className="text-sm text-destructive">{error}</p>
         )}

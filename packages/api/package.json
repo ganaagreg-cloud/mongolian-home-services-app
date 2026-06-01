@@ -11,12 +11,14 @@
   "dependencies": {
     "@homeservices/shared": "workspace:*",
     "@hono/node-server": "latest",
+    "bcryptjs": "^3.0.2",
     "better-auth": "latest",
     "hono": "latest",
     "pg": "^8.11.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22",
     "@types/pg": "^8.20.0",
     "tsx": "^4.19.0",

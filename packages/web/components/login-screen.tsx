@@ -24,10 +24,11 @@ const FacebookIcon = () => (
 )
 
 interface LoginScreenProps {
-  onGoRegister: () => void
+  onGoRegister:    () => void
+  onForgotPassword?: () => void
 }
 
-export function LoginScreen({ onGoRegister }: LoginScreenProps) {
+export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps) {
   const [phone,       setPhone]       = useState('')
   const [password,    setPassword]    = useState('')
   const [showPw,      setShowPw]      = useState(false)
@@ -132,6 +133,17 @@ export function LoginScreen({ onGoRegister }: LoginScreenProps) {
         >
           {loading === 'phone' ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
         </Button>
+
+        {onForgotPassword && (
+          <div className="text-center">
+            <button
+              onClick={onForgotPassword}
+              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+            >
+              Нэвтрэх нэр мартсан уу?
+            </button>
+          </div>
+        )}
       </div>
 
       {/* OR divider */}

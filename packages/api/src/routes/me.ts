@@ -54,20 +54,26 @@ router.get('/api/me', async (c) => {
   await dbReady
 
   const user = (await db.query(
-    'SELECT id, phone, name, email, avatar_url FROM users WHERE id = $1',
+    'SELECT id, phone, name, email, avatar_url, phone_verified, email_verified, google_id FROM users WHERE id = $1',
     [session.sub],
-  )).rows[0] as { id: string; phone: string | null; name: string; email: string; avatar_url: string } | undefined
+  )).rows[0] as {
+    id: string; phone: string | null; name: string; email: string; avatar_url: string
+    phone_verified: boolean; email_verified: boolean; google_id: string | null
+  } | undefined
 
   if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
 
   return c.json({
     success: true,
     data: {
-      id:        String(user.id),
-      phone:     user.phone ?? '',
-      name:      user.name,
-      email:     user.email,
-      avatarUrl: user.avatar_url,
+      id:            String(user.id),
+      phone:         user.phone ?? '',
+      name:          user.name,
+      email:         user.email,
+      avatarUrl:     user.avatar_url,
+      phoneVerified: user.phone_verified,
+      emailVerified: user.email_verified,
+      isGoogleOAuth: user.google_id !== null,
     },
   })
 })
@@ -234,6 +240,128 @@ router.post('/api/me/saved-workers', async (c) => {
   )
 
   return c.json({ success: true, data: undefined }, 201)
+})
+
+// ── Contact verification ─────────────────────────────────────────────────────
+
+const sendVerifyOtpSchema = z.object({
+  type: z.enum(['phone', 'email']),
+})
+
+// POST /api/me/send-verify-otp — send OTP to verified phone or email
+router.post('/api/me/send-verify-otp', async (c) => {
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = sendVerifyOtpSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' }, 400)
+  }
+
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  await dbReady
+
+  try {
+    const user = (await db.query(
+      'SELECT phone, email FROM users WHERE id = $1',
+      [session.sub],
+    )).rows[0] as { phone: string | null; email: string } | undefined
+
+    if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
+
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
+    if (parsed.data.type === 'phone') {
+      if (!user.phone) return c.json({ success: false, error: 'Утасны дугаар бүртгэлгүй байна' }, 400)
+      await db.query(
+        `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3)
+         ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+        [user.phone, code, expiresAt],
+      )
+      console.log(`[MOCK SMS] Contact verify OTP: ${code}`)
+    } else {
+      if (!user.email) return c.json({ success: false, error: 'Имэйл хаяг бүртгэлгүй байна' }, 400)
+      await db.query(
+        `INSERT INTO email_otp_codes (email, code, expires_at) VALUES ($1, $2, $3)
+         ON CONFLICT (email) DO UPDATE SET code = $2, expires_at = $3`,
+        [user.email, code, expiresAt],
+      )
+      console.log(`[MOCK EMAIL] Contact verify OTP: ${code}`)
+    }
+
+    return c.json({ success: true })
+  } catch {
+    return c.json({ error: 'Request failed' }, 500)
+  }
+})
+
+const verifyContactSchema = z.object({
+  type: z.enum(['phone', 'email']),
+  code: z.string().regex(/^\d{6}$/),
+})
+
+// PATCH /api/me/verify-contact — validate OTP and set phone_verified / email_verified
+router.patch('/api/me/verify-contact', async (c) => {
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = verifyContactSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' }, 400)
+  }
+
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  await dbReady
+
+  try {
+    const user = (await db.query(
+      'SELECT phone, email FROM users WHERE id = $1',
+      [session.sub],
+    )).rows[0] as { phone: string | null; email: string } | undefined
+
+    if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
+
+    if (parsed.data.type === 'phone') {
+      if (!user.phone) return c.json({ success: false, error: 'Утасны дугаар бүртгэлгүй байна' }, 400)
+
+      const row = (await db.query(
+        'SELECT code, expires_at FROM otp_codes WHERE phone = $1',
+        [user.phone],
+      )).rows[0] as { code: string; expires_at: Date } | undefined
+
+      if (!row || new Date() > new Date(row.expires_at) || row.code !== parsed.data.code) {
+        return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
+      }
+
+      await db.query('DELETE FROM otp_codes WHERE phone = $1', [user.phone])
+      await db.query('UPDATE users SET phone_verified = true WHERE id = $1', [session.sub])
+    } else {
+      if (!user.email) return c.json({ success: false, error: 'Имэйл хаяг бүртгэлгүй байна' }, 400)
+
+      const row = (await db.query(
+        'SELECT code, expires_at FROM email_otp_codes WHERE email = $1',
+        [user.email],
+      )).rows[0] as { code: string; expires_at: Date } | undefined
+
+      if (!row || new Date() > new Date(row.expires_at) || row.code !== parsed.data.code) {
+        return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
+      }
+
+      await db.query('DELETE FROM email_otp_codes WHERE email = $1', [user.email])
+      await db.query('UPDATE users SET email_verified = true WHERE id = $1', [session.sub])
+    }
+
+    return c.json({ success: true })
+  } catch {
+    return c.json({ error: 'Request failed' }, 500)
+  }
 })
 
 // DELETE /api/me/saved-workers/:worker_id

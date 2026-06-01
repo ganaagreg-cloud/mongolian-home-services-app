@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { Pool } from 'pg'
-import { scryptSync, randomBytes } from 'crypto'
+import { scryptSync, randomBytes, createHmac } from 'crypto'
+import { getCookie } from 'hono/cookie'
 import { db, dbReady } from './db'
 import type { SessionPayload, UserRole } from '@homeservices/shared'
 import type { Context } from 'hono'
@@ -108,7 +109,45 @@ export async function requireAuth(c: Context): Promise<SessionPayload | null> {
   }
 }
 
+const ADMIN_COOKIE = 'hs-admin-session'
+
+export function createAdminToken(): string {
+  const payload = `hs-admin.${Date.now()}`
+  const sig = createHmac('sha256', process.env.JWT_SECRET ?? 'dev-secret').update(payload).digest('hex')
+  return Buffer.from(`${payload}|${sig}`).toString('base64url')
+}
+
+function verifyAdminToken(token: string): boolean {
+  try {
+    const decoded = Buffer.from(token, 'base64url').toString()
+    const sep = decoded.lastIndexOf('|')
+    if (sep < 0) return false
+    const payload = decoded.slice(0, sep)
+    const sig = decoded.slice(sep + 1)
+    const expected = createHmac('sha256', process.env.JWT_SECRET ?? 'dev-secret').update(payload).digest('hex')
+    return sig === expected
+  } catch { return false }
+}
+
+export function clearAdminCookie(): string {
+  return `${ADMIN_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+}
+
+export function setAdminCookie(token: string): string {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `${ADMIN_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax${secure}`
+}
+
 export async function requireAdmin(c: Context): Promise<SessionPayload | null> {
+  // Better Auth session (OAuth admins)
   const s = await requireAuth(c)
-  return s?.role === 'admin' ? s : null
+  if (s?.role === 'admin') return s
+
+  // Credential session cookie (admin panel username/password login)
+  const token = getCookie(c, ADMIN_COOKIE)
+  if (token && verifyAdminToken(token)) {
+    return { sub: 'admin', role: 'admin', is_worker: false, active_mode: 'user' }
+  }
+
+  return null
 }

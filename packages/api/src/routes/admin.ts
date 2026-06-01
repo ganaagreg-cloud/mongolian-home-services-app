@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db, dbReady } from '../db'
-import { requireAdmin, hashPassword } from '../auth'
+import { requireAdmin, hashPassword, createAdminToken, setAdminCookie, clearAdminCookie } from '../auth'
 import { getSettings } from '../lib/settings'
 import type {
   AdminStats, AdminRecentOrder, AdminPendingWorker,
@@ -9,6 +9,37 @@ import type {
 } from '@homeservices/shared'
 
 const router = new Hono()
+
+const adminLoginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+})
+
+// POST /api/admin/login — credential login for the admin panel (no OAuth required)
+router.post('/api/admin/login', async (c) => {
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+  const parsed = adminLoginSchema.safeParse(body)
+  if (!parsed.success) return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+
+  const expectedUser = process.env.ADMIN_USERNAME ?? 'admin'
+  const expectedPass = process.env.ADMIN_PASSWORD ?? 'admin123'
+
+  if (parsed.data.username !== expectedUser || parsed.data.password !== expectedPass) {
+    return c.json({ success: false, error: 'Буруу нэвтрэх мэдээлэл' }, 401)
+  }
+
+  c.header('Set-Cookie', setAdminCookie(createAdminToken()))
+  return c.json({ success: true })
+})
+
+// POST /api/admin/logout
+router.post('/api/admin/logout', (c) => {
+  c.header('Set-Cookie', clearAdminCookie())
+  return c.json({ success: true })
+})
 
 // GET /api/admin/stats
 router.get('/api/admin/stats', async (c) => {

@@ -335,4 +335,15 @@ export const TABLES: string[] = [
     paid_at    TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
+
+  // Contact verification flags
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+
+  // OTP codes for email contact verification
+  `CREATE TABLE IF NOT EXISTS email_otp_codes (
+    email      TEXT        NOT NULL PRIMARY KEY,
+    code       TEXT        NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  )`,
 ]

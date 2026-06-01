@@ -19,8 +19,14 @@ export default function AdminSidebar() {
   const pathname = usePathname()
 
   async function handleSignOut() {
-    await authClient.signOut()
-    window.location.href = '/'
+    await Promise.allSettled([
+      fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/api/admin/logout`,
+        { method: 'POST', credentials: 'include' },
+      ),
+      authClient.signOut(),
+    ])
+    window.location.href = '/login'
   }
 
   return (

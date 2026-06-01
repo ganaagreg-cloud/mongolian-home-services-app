@@ -1,6 +1,11 @@
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin-sidebar'
 
-export default function ShellLayout({ children }: { children: React.ReactNode }) {
+export default async function ShellLayout({ children }: { children: React.ReactNode }) {
+  const store = await cookies()
+  if (!store.get('hs-admin-session')) redirect('/login')
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
