@@ -15,32 +15,12 @@ services:
     ports:
       - "5432:5432"
 
-  web:
+  api:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    command: ["pnpm", "--filter", "@homeservices/api", "dev"]
     environment:
-      DATABASE_URL: postgresql://postgres:mongolia_secure_pass@db:5432/homeservices
-      NODE_ENV: development
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
-      CI: "true"
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      db:
-        condition: service_healthy
-
-  api:
-    image: mongolian-home-services-app-web
-    working_dir: /app/packages/api
-    command: sh -c "node_modules/.bin/tsx watch --clear-screen=false src/index.ts"
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgresql://postgres:mongolia_secure_pass@db:5432/homeservices
       BETTER_AUTH_SECRET: 6d160418ff8d92c5fcc3018cc5c1183b33f3b83759693775772630939251e22c
       BETTER_AUTH_URL: http://localhost:4000
@@ -50,20 +30,46 @@ services:
       NODE_ENV: development
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "4000:4000"
-    volumes_from:
-      - web
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
     depends_on:
       db:
         condition: service_healthy
-      web:
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: postgresql://postgres:mongolia_secure_pass@db:5432/homeservices
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/packages/web/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/web/.next
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
         condition: service_started
 
   admin:
-    image: mongolian-home-services-app-web
-    working_dir: /app/packages/admin
-    command: sh -c "node_modules/.bin/next dev -p 3001"
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: ["pnpm", "--filter", "@homeservices/admin", "dev"]
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:4000
       WATCHPACK_POLLING: "true"
@@ -71,12 +77,15 @@ services:
       NODE_ENV: development
     ports:
       - "3001:3001"
-    volumes_from:
-      - web
     volumes:
-      - admin_next:/app/packages/admin/.next
+      - .:/app
+      - /app/node_modules
+      - /app/packages/admin/node_modules
+      - /app/packages/admin/.next
     depends_on:
-      web:
+      db:
+        condition: service_healthy
+      api:
         condition: service_started
 
   adminer:
@@ -89,4 +98,3 @@ services:
 
 volumes:
   pgdata:
-  admin_next:

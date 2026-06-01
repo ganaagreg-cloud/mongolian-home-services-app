@@ -4,7 +4,13 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
+# Copy ALL workspace manifests before install so pnpm can resolve workspace deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/web/package.json ./packages/web/
+COPY packages/admin/package.json ./packages/admin/
+COPY packages/shared/package.json ./packages/shared/
+
 RUN pnpm install --frozen-lockfile
 
 COPY . .
@@ -13,6 +19,4 @@ EXPOSE 3000
 
 ENV HOSTNAME=0.0.0.0
 
-CMD ["pnpm", "dev"]
-
-
+CMD ["pnpm", "--filter", "@homeservices/web", "dev"]

@@ -116,6 +116,30 @@ export async function seed(pool: Pool): Promise<void> {
       [actualBaId],
     )
 
+    await client.query(`
+      INSERT INTO service_types (name_mn, icon, sort_order, pricing_model, base_rate, min_charge, unit_label, requires_property_type) VALUES
+        ('Цэвэрлэгээ',   'sparkles',        1, 'area',        800, 25000, 'м²',     true),
+        ('Угаалга',      'washing-machine', 2, 'unit',      20000, 20000, 'ширхэг', false),
+        ('Сантехник',    'wrench',          3, 'inspection', 35000, 35000, 'цаг',   false),
+        ('Цахилгаан',   'zap',             4, 'inspection', 40000, 40000, 'цаг',   false),
+        ('Будаг',        'paintbrush',      5, 'area',       1200, 35000, 'м²',     true),
+        ('Агааржуулалт', 'wind',            6, 'unit',      45000, 45000, 'ширхэг', false),
+        ('Жижиг засвар', 'hammer',          7, 'inspection', 30000, 25000, 'цаг',  false),
+        ('Нүүлгэлт',     'truck',           8, 'survey',         0, 50000, 'цаг',  false)
+      ON CONFLICT (name_mn) DO UPDATE SET
+        pricing_model          = EXCLUDED.pricing_model,
+        base_rate              = EXCLUDED.base_rate,
+        min_charge             = EXCLUDED.min_charge,
+        unit_label             = EXCLUDED.unit_label,
+        requires_property_type = EXCLUDED.requires_property_type
+    `)
+
+    // Build name → id map for service_types lookups
+    const stRows = (await client.query<{ id: number; name_mn: string }>(
+      'SELECT id, name_mn FROM service_types',
+    )).rows
+    const stMap = new Map(stRows.map((r) => [r.name_mn, r.id]))
+
     const { rows: [{ n: workerCount }] } = await client.query('SELECT COUNT(*) as n FROM workers')
     if (Number(workerCount) === 0) {
       await withTransaction(client, async () => {
@@ -209,47 +233,6 @@ export async function seed(pool: Pool): Promise<void> {
          SELECT w.id FROM workers w JOIN users u ON u.id = w.user_id WHERE u.phone = '99999999' LIMIT 1
        ) AND verified = false`,
     )
-
-    await client.query(`
-      INSERT INTO service_types (name_mn, icon, sort_order, pricing_model, base_rate, min_charge, unit_label, requires_property_type) VALUES
-        ('Цэвэрлэгээ',   'sparkles',        1, 'area',        800, 25000, 'м²',     true),
-        ('Угаалга',      'washing-machine', 2, 'unit',      20000, 20000, 'ширхэг', false),
-        ('Сантехник',    'wrench',          3, 'inspection', 35000, 35000, 'цаг',   false),
-        ('Цахилгаан',   'zap',             4, 'inspection', 40000, 40000, 'цаг',   false),
-        ('Будаг',        'paintbrush',      5, 'area',       1200, 35000, 'м²',     true),
-        ('Агааржуулалт', 'wind',            6, 'unit',      45000, 45000, 'ширхэг', false),
-        ('Жижиг засвар', 'hammer',          7, 'inspection', 30000, 25000, 'цаг',  false),
-        ('Нүүлгэлт',     'truck',           8, 'survey',         0, 50000, 'цаг',  false)
-      ON CONFLICT (name_mn) DO UPDATE SET
-        pricing_model          = EXCLUDED.pricing_model,
-        base_rate              = EXCLUDED.base_rate,
-        min_charge             = EXCLUDED.min_charge,
-        unit_label             = EXCLUDED.unit_label,
-        requires_property_type = EXCLUDED.requires_property_type
-    `)
-
-    // Build name → id map for service_types lookups
-    const stRows = (await client.query<{ id: number; name_mn: string }>(
-      'SELECT id, name_mn FROM service_types',
-    )).rows
-    const stMap = new Map(stRows.map((r) => [r.name_mn, r.id]))
-
-    // Backfill service_type_id for existing rows (idempotent — only sets NULL rows)
-    await client.query(`
-      UPDATE workers w SET service_type_id = st.id
-      FROM service_types st
-      WHERE w.specialty = st.name_mn AND w.service_type_id IS NULL
-    `)
-    await client.query(`
-      UPDATE orders o SET service_type_id = st.id
-      FROM service_types st
-      WHERE o.service = st.name_mn AND o.service_type_id IS NULL
-    `)
-    await client.query(`
-      UPDATE transactions t SET service_type_id = st.id
-      FROM service_types st
-      WHERE t.service = st.name_mn AND t.service_type_id IS NULL
-    `)
 
     // Backfill worker_services from workers.service_type_id — idempotent
     await client.query(`
