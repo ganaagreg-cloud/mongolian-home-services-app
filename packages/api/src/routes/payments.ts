@@ -42,6 +42,8 @@ router.post('/api/payments/create-invoice', async (c) => {
 // POST /api/payments/dev-sim-pay
 // Dev-only: marks the payment intent as paid. POST /api/orders checks this before inserting.
 router.post('/api/payments/dev-sim-pay', async (c) => {
+  if (process.env.NODE_ENV === 'production') return c.json({ success: false, error: 'Зөвхөн хөгжүүлэлтийн орчинд' }, 403)
+
   const session = await requireAuth(c)
   if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
 

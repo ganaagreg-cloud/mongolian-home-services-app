@@ -82,8 +82,11 @@ export function ConfirmScheduledWorkerScreen({
     if (orderPoll?.paymentStatus === 'paid') onConfirm()
   }, [orderPoll, onConfirm])
 
+  const isDevPanel = process.env.NEXT_PUBLIC_DEV_PANEL === 'true'
+
   const handleDevSim = async () => {
     if (!invoice) return
+    // real payment confirmation arrives via QPay webhook (Phase 2, parked) — dev-sim-pay is dev-only
     await apiFetch('/api/payments/dev-sim-pay', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -247,15 +250,21 @@ export function ConfirmScheduledWorkerScreen({
         </div>
       )}
 
-      {/* Fixed bottom — dev sim only */}
+      {/* Fixed bottom */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-6 lg:pt-6">
-        <button
-          onClick={() => { void handleDevSim() }}
-          disabled={!invoice}
-          className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
-        >
-          [Dev] Simulate Instant Success Tap
-        </button>
+        {isDevPanel ? (
+          <button
+            onClick={() => { void handleDevSim() }}
+            disabled={!invoice}
+            className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
+          >
+            [Dev] Simulate Instant Success Tap
+          </button>
+        ) : (
+          <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+            Төлбөр хүлээгдэж байна...
+          </div>
+        )}
       </div>
     </div>
   )

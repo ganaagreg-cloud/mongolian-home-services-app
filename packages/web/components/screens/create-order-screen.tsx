@@ -62,7 +62,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
 
   const [notes, setNotes] = useState('')
 
+  const isDevPanel = process.env.NEXT_PUBLIC_DEV_PANEL === 'true'
+
   const [isConfirming,       setIsConfirming]       = useState(false)
+  const [paymentPending,     setPaymentPending]     = useState(false)
   const [confirmError,       setConfirmError]       = useState<string | null>(null)
   const [step1Submitted,     setStep1Submitted]     = useState(false)
   const [step2Submitted,     setStep2Submitted]     = useState(false)
@@ -172,6 +175,12 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         return
       }
       const { invoice_id } = invoiceData.data
+
+      if (!isDevPanel) {
+        // real payment confirmation arrives via QPay webhook (Phase 2, parked) — dev-sim-pay is dev-only
+        setPaymentPending(true)
+        return
+      }
 
       // Step 2: confirm payment (dev environment only)
       const simPayRes = await apiFetch('/api/payments/dev-sim-pay', {
@@ -773,6 +782,15 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
             </div>
           )}
 
+          {paymentPending && (
+            <div className="mt-4 mx-6 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4">
+              <p className="text-sm font-semibold text-primary">Нэхэмжлэл үүсгэгдлээ</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                QPay төлбөр баталгаажсаны дараа захиалга үүснэ.
+              </p>
+            </div>
+          )}
+
           <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
             <p className="text-center text-xs text-muted-foreground">
               Захиалга илгээснээр та манай үйлчилгээний нөхцлийг зөвшөөрсөнд тооцно.
@@ -802,10 +820,10 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         ) : (
           <Button
             onClick={() => { void handleConfirm() }}
-            disabled={isConfirming || (!isSurvey && !breakdown)}
+            disabled={isConfirming || paymentPending || (!isSurvey && !breakdown)}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
           >
-            {isConfirming ? 'Илгээж байна...' : (
+            {isConfirming ? 'Илгээж байна...' : paymentPending ? 'Төлбөр хүлээгдэж байна' : (
               <>
                 <CheckCircle className="mr-2 h-5 w-5" />
                 {isSurvey
