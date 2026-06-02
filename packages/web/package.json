@@ -52,6 +52,7 @@
     "jose": "^6.2.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.564.0",
+    "hono": "latest",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "pg": "^8.21.0",
@@ -68,6 +69,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@homeservices/api": "workspace:*",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",

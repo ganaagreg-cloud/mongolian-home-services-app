@@ -186,7 +186,7 @@ function Panel() {
     >
       <div
         className="w-full max-w-[390px] max-h-[80vh] overflow-y-auto rounded-t-2xl bg-neutral-950 text-white p-4 pb-8 font-mono text-xs"
-        onClick={(e: MouseEvent) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">

@@ -50,3 +50,7 @@ const PORT = Number(process.env.PORT ?? 4000)
 dbReady
   .then(() => serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`)))
   .catch(() => process.exit(1))
+
+// Type-only export — safe for `import type { AppType } from '@homeservices/api'`
+// in Next.js; TypeScript erases this at build time, no Node.js code is bundled.
+export type AppType = typeof app
