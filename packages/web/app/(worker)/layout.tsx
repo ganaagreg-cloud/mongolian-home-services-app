@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SessionProvider, type SessionData } from '@/context/session-context'
 import { AppWorkerBottomNav } from '@/components/app-worker-bottom-nav'
+import { ModeToggle } from '@/components/mode-toggle'
 
 // ONE authoritative server → Hono call per navigation for the worker flow group.
 async function getSession(cookieHeader: string): Promise<SessionData | null> {
@@ -36,6 +37,7 @@ export default async function WorkerLayout({
       <main className="mx-auto max-w-[390px] min-h-screen bg-background">
         {children}
       </main>
+      <ModeToggle />
       <AppWorkerBottomNav />
     </SessionProvider>
   )

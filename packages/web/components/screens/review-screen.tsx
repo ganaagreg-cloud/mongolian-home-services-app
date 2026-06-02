@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Star, Home, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api-fetch'
@@ -8,12 +9,10 @@ import { Textarea } from '@/components/ui/textarea'
 
 interface ReviewScreenProps {
   orderId?: string
-  onSubmit: () => void
-  onHome: () => void
-  onRebook: () => void
 }
 
-export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScreenProps) {
+export function ReviewScreen({ orderId }: ReviewScreenProps) {
+  const router = useRouter()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [comment, setComment] = useState('')
@@ -39,7 +38,6 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
         }
       }
       setSubmitted(true)
-      onSubmit()
     } finally {
       setIsSubmitting(false)
     }
@@ -57,7 +55,7 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
         </p>
         <div className="mt-8 flex w-full gap-3">
           <Button
-            onClick={onRebook}
+            onClick={() => router.push('/orders/new')}
             variant="outline"
             className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
           >
@@ -65,7 +63,7 @@ export function ReviewScreen({ orderId, onSubmit, onHome, onRebook }: ReviewScre
             Дахин захиалах
           </Button>
           <Button
-            onClick={onHome}
+            onClick={() => router.push('/home')}
             className="h-14 flex-1 rounded-2xl bg-primary font-semibold shadow-md active:scale-95 transition-all"
           >
             <Home className="mr-2 h-5 w-5" />

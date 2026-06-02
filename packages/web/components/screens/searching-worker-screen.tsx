@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Star, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api-fetch'
@@ -9,9 +10,6 @@ import type { MatchedWorker } from '@/lib/types'
 
 interface SearchingWorkerScreenProps {
   orderId: string
-  onWorkerFound: (worker: MatchedWorker) => void
-  onNoWorkers: () => void
-  onBack: () => void
 }
 
 // searching  — calling /match
@@ -21,12 +19,8 @@ interface SearchingWorkerScreenProps {
 // none       — unexpected error fallback
 type Phase = 'searching' | 'waiting' | 'found' | 'none' | 'exhausted'
 
-export function SearchingWorkerScreen({
-  orderId,
-  onWorkerFound,
-  onNoWorkers,
-  onBack,
-}: SearchingWorkerScreenProps) {
+export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
+  const router = useRouter()
   const [phase,         setPhase]         = useState<Phase>('searching')
   const [worker,        setWorker]        = useState<MatchedWorker | null>(null)
   const [attemptNumber, setAttemptNumber] = useState(0) // 1–5, shown in waiting UI
@@ -113,7 +107,7 @@ export function SearchingWorkerScreen({
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -278,14 +272,14 @@ export function SearchingWorkerScreen({
 
           <div className="mt-8 w-full space-y-3">
             <button
-              onClick={onNoWorkers}
+              onClick={() => router.push(`/orders/${orderId}/board`)}
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
             >
               <CalendarDays className="h-5 w-5" />
               Цаг товлох
             </button>
             <button
-              onClick={onBack}
+              onClick={() => router.back()}
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-base font-semibold text-foreground shadow-sm hover:bg-muted/50 active:scale-95 transition-all"
             >
               Дахин хайх
@@ -309,7 +303,7 @@ export function SearchingWorkerScreen({
             Цаг товлох замаар олон ажилтнаас санал хүлээн авч болно.
           </p>
           <button
-            onClick={onNoWorkers}
+            onClick={() => router.push(`/orders/${orderId}/board`)}
             className="mt-6 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
           >
             Цаг товлох руу шилжих
@@ -321,7 +315,7 @@ export function SearchingWorkerScreen({
       {phase === 'found' && worker && (
         <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
           <Button
-            onClick={() => onWorkerFound(worker)}
+            onClick={() => router.push(`/orders/${orderId}/confirm`)}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
           >
             Баталгаажуулах

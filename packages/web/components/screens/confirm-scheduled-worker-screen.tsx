@@ -1,41 +1,33 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { ArrowLeft, Lock, Star, Clock, MapPin } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
-import type { Order, OrderAcceptance, PaymentInvoice } from '@/lib/types'
+import type { Order, Worker, PaymentInvoice } from '@/lib/types'
 
 interface ConfirmScheduledWorkerScreenProps {
   orderId: string
-  worker: OrderAcceptance
-  onConfirm: () => void
-  onBack: () => void
+  workerId: string
 }
 
 export function ConfirmScheduledWorkerScreen({
   orderId,
-  worker,
-  onConfirm,
-  onBack,
+  workerId,
 }: ConfirmScheduledWorkerScreenProps) {
-  const [order, setOrder]               = useState<Order | null>(null)
+  const router = useRouter()
   const [invoice, setInvoice]           = useState<PaymentInvoice | null>(null)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [devSimError,  setDevSimError]  = useState<string | null>(null)
 
   // Fetch order for price/job details
-  useEffect(() => {
-    apiFetch(`/api/orders/${orderId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((d: { success: boolean; data?: Order }) => { if (d.success && d.data) setOrder(d.data) })
-      .catch(() => {})
-  }, [orderId])
+  const { data: order } = useSWR<Order>(`/api/orders/${orderId}`, fetcher)
+
+  // Fetch worker display info
+  const { data: workerData } = useSWR<Worker>(`/api/workers/${workerId}`, fetcher)
 
   // 1. PATCH to assign worker, then 2. create invoice — sequential on mount
   useEffect(() => {
@@ -46,7 +38,7 @@ export function ConfirmScheduledWorkerScreen({
         const r = await apiFetch(`/api/orders/${orderId}`, {
           method:  'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ workerId: worker.workerId }),
+          body:    JSON.stringify({ workerId }),
         })
         if (!r.ok) {
           if (!cancelled) setInvoiceError(`HTTP ${r.status} — Ажилтан оноход алдаа гарлаа`)
@@ -82,19 +74,20 @@ export function ConfirmScheduledWorkerScreen({
     }
     void init()
     return () => { cancelled = true }
-  }, [orderId, worker.workerId])
+  }, [orderId, workerId])
 
-  // Poll every 3 s — only after invoice is created
+  // Poll every 3 s — only after invoice is created; navigate on payment confirmation
   const { data: orderPoll } = useSWR<Order | null>(
     invoice ? `/api/orders/${orderId}` : null,
     fetcher,
     { refreshInterval: 3000 },
   )
   useEffect(() => {
-    if (orderPoll?.paymentStatus === 'paid') onConfirm()
-  }, [orderPoll, onConfirm])
+    if (orderPoll?.paymentStatus === 'paid') router.push(`/active/${orderId}`)
+  }, [orderPoll, orderId, router])
 
   const isDevPanel = process.env.NEXT_PUBLIC_DEV_PANEL === 'true'
+  const pricePerHour = workerData?.pricePerHour ?? 0
 
   const handleDevSim = async () => {
     if (!invoice) return
@@ -122,12 +115,12 @@ export function ConfirmScheduledWorkerScreen({
     : '—'
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32 lg:ml-64">
+    <div className="flex min-h-screen flex-col bg-background pb-32">
 
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-12 lg:pt-8">
+      <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -141,24 +134,24 @@ export function ConfirmScheduledWorkerScreen({
         <div className="flex items-start gap-4">
           <Avatar className="h-16 w-16 shrink-0">
             <AvatarFallback className="bg-primary/10 text-2xl font-bold text-primary">
-              {worker.workerName[0]}
+              {(workerData?.name ?? '?')[0]}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate text-lg font-bold text-foreground">{worker.workerName}</p>
+              <p className="truncate text-lg font-bold text-foreground">{workerData?.name ?? '—'}</p>
               <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
                 ДАН
               </span>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{worker.workerSpecialty}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{workerData?.specialty ?? '—'}</p>
             <div className="mt-2 flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                <span className="text-sm font-semibold text-foreground">{worker.workerRating}</span>
+                <span className="text-sm font-semibold text-foreground">{workerData?.rating ?? '—'}</span>
               </div>
               <span className="text-sm font-semibold text-primary">
-                ₮{worker.workerPricePerHour.toLocaleString()}/цаг
+                ₮{pricePerHour.toLocaleString()}/цаг
               </span>
             </div>
           </div>
@@ -203,17 +196,17 @@ export function ConfirmScheduledWorkerScreen({
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">
-                {order.service} ({order.hours} цаг × ₮{worker.workerPricePerHour.toLocaleString()})
+                {order.service} ({order.hours} цаг × ₮{pricePerHour.toLocaleString()})
               </span>
               <span className="text-foreground">
-                ₮{(worker.workerPricePerHour * order.hours).toLocaleString()}
+                ₮{(pricePerHour * order.hours).toLocaleString()}
               </span>
             </div>
             {order.urgent && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Яаралтай (+20%)</span>
                 <span className="font-medium text-accent">
-                  +₮{Math.round(worker.workerPricePerHour * order.hours * 0.2).toLocaleString()}
+                  +₮{Math.round(pricePerHour * order.hours * 0.2).toLocaleString()}
                 </span>
               </div>
             )}
@@ -274,7 +267,7 @@ export function ConfirmScheduledWorkerScreen({
       )}
 
       {/* Fixed bottom */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4 lg:static lg:translate-x-0 lg:max-w-full lg:bg-transparent lg:px-6 lg:pb-6 lg:pt-6">
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
         {isDevPanel ? (
           <>
             <button

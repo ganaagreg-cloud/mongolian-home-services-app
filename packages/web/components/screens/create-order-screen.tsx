@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, MapPin, Lock, Sparkles, Droplets,
   Zap, Wrench, Paintbrush, Wind, Camera, Hammer, Truck, WashingMachine,
@@ -14,10 +15,7 @@ import { calculatePrice, DEFAULT_PLATFORM_SETTINGS } from '@/lib/pricing'
 import type { MatchingStrategy, PricingModel } from '@/lib/types'
 import { apiFetch } from '@/lib/api-fetch'
 
-interface CreateOrderScreenProps {
-  onBack: () => void
-  onOrderCreated: (orderId: string, strategy: MatchingStrategy, totalAmount: number) => void
-}
+interface CreateOrderScreenProps {}
 
 // Matches GET /api/service-types response shape
 interface ServiceType {
@@ -45,7 +43,8 @@ const TIME_SLOTS = [
 
 const STEP_LABELS = ['Үйлчилгээ', 'Цаг', 'Тэмдэглэл', 'Үнэ', 'Баталгаа']
 
-export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenProps) {
+export function CreateOrderScreen(_: CreateOrderScreenProps) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
 
   const [serviceTypes,    setServiceTypes]    = useState<ServiceType[]>([])
@@ -237,7 +236,12 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
         error?: string
       }
       if (data.success && data.data) {
-        onOrderCreated(data.data.id, data.data.matchingStrategy, data.data.totalAmount)
+        const { id, matchingStrategy: ms } = data.data
+        if (ms === 'scheduled') {
+          router.push(`/orders/${id}/board`)
+        } else {
+          router.push(`/orders/${id}/searching`)
+        }
       } else {
         setConfirmError(data.error ?? 'Захиалга үүсгэхэд алдаа гарлаа')
       }
@@ -258,7 +262,7 @@ export function CreateOrderScreen({ onBack, onOrderCreated }: CreateOrderScreenP
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={
-            step === 1 ? onBack :
+            step === 1 ? () => router.back() :
             (step === 3 && isInspection) ? () => setStep(1) :
             (step === 4 && isSurvey) ? () => setStep(1) :
             () => setStep((s) => s - 1)

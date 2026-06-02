@@ -1,32 +1,31 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { ArrowLeft, Lock, Star } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
-import type { MatchedWorker, Order, PaymentInvoice } from '@/lib/types'
+import type { Order, Worker, PaymentInvoice } from '@/lib/types'
 
 interface ConfirmWorkerScreenProps {
   orderId: string
-  worker: MatchedWorker
-  onConfirm: () => void
-  onBack: () => void
 }
 
-export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: ConfirmWorkerScreenProps) {
-  const [order, setOrder]               = useState<Order | null>(null)
+export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
+  const router = useRouter()
   const [invoice, setInvoice]           = useState<PaymentInvoice | null>(null)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
 
-  // Fetch order for price summary
-  useEffect(() => {
-    apiFetch(`/api/orders/${orderId}`)
-      .then((r) => r.json())
-      .then((d: { success: boolean; data?: Order }) => { if (d.success && d.data) setOrder(d.data) })
-      .catch(() => {})
-  }, [orderId])
+  // Fetch order for price summary + workerId
+  const { data: order } = useSWR<Order>(`/api/orders/${orderId}`, fetcher)
+
+  // Fetch matched worker details once order has workerId
+  const { data: workerData } = useSWR<Worker>(
+    order?.workerId ? `/api/workers/${order.workerId}` : null,
+    fetcher,
+  )
 
   // Create invoice on mount
   useEffect(() => {
@@ -50,17 +49,18 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
     return () => { cancelled = true }
   }, [orderId])
 
-  // Poll every 3 s — only after invoice is created so we don't navigate immediately
+  // Poll every 3 s — only after invoice is created; navigate on payment confirmation
   const { data: orderPoll } = useSWR<Order | null>(
     invoice ? `/api/orders/${orderId}` : null,
     fetcher,
     { refreshInterval: 3000 },
   )
   useEffect(() => {
-    if (orderPoll?.paymentStatus === 'paid') onConfirm()
-  }, [orderPoll, onConfirm])
+    if (orderPoll?.paymentStatus === 'paid') router.push(`/active/${orderId}`)
+  }, [orderPoll, orderId, router])
 
   const isDevPanel = process.env.NEXT_PUBLIC_DEV_PANEL === 'true'
+  const pricePerHour = workerData?.pricePerHour ?? 0
 
   const handleDevSim = async () => {
     if (!invoice) return
@@ -78,7 +78,7 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -91,24 +91,24 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
         <div className="flex items-start gap-4">
           <Avatar className="h-16 w-16 shrink-0">
             <AvatarFallback className="bg-primary/10 text-2xl font-bold text-primary">
-              {worker.name[0]}
+              {(workerData?.name ?? '?')[0]}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate text-lg font-bold text-foreground">{worker.name}</p>
+              <p className="truncate text-lg font-bold text-foreground">{workerData?.name ?? '—'}</p>
               <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
                 ДАН
               </span>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{worker.specialty}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{workerData?.specialty ?? '—'}</p>
             <div className="mt-2 flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                <span className="text-sm font-semibold text-foreground">{worker.rating}</span>
+                <span className="text-sm font-semibold text-foreground">{workerData?.rating ?? '—'}</span>
               </div>
               <span className="text-sm font-semibold text-primary">
-                ₮{worker.pricePerHour.toLocaleString()}/цаг
+                ₮{pricePerHour.toLocaleString()}/цаг
               </span>
             </div>
           </div>
@@ -122,13 +122,13 @@ export function ConfirmWorkerScreen({ orderId, worker, onConfirm, onBack }: Conf
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{order.service} ({order.hours} цаг)</span>
-              <span className="text-foreground">₮{(worker.pricePerHour * order.hours).toLocaleString()}</span>
+              <span className="text-foreground">₮{(pricePerHour * order.hours).toLocaleString()}</span>
             </div>
             {order.urgent && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Яаралтай нэмэгдэл (+20%)</span>
                 <span className="font-medium text-accent">
-                  +₮{Math.round(worker.pricePerHour * order.hours * 0.2).toLocaleString()}
+                  +₮{Math.round(pricePerHour * order.hours * 0.2).toLocaleString()}
                 </span>
               </div>
             )}

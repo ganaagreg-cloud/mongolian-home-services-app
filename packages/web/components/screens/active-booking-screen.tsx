@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { MessageCircle, Check, MapPin, Star, AlertTriangle, FileText, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,14 +13,10 @@ import {
 import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
-import { SosButton } from '@/components/sos-button'
 import type { Order } from '@/lib/types'
 
 interface ActiveBookingScreenProps {
   orderId?: string
-  onChat: () => void
-  onBack: () => void
-  onReview?: () => void
 }
 
 const STATUS_STEPS = [
@@ -70,7 +67,8 @@ function getCancelInfo(order: Order): { canCancel: boolean; fee: number; refundA
   return { canCancel: false, fee: 0, refundAmount: 0 }
 }
 
-export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBookingScreenProps) {
+export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
+  const router = useRouter()
   const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
   const { data: order, isLoading, mutate } = useSWR<Order | null>(url, fetcher, { refreshInterval: 8000 })
   const [showCancelDialog, setShowCancelDialog] = useState(false)
@@ -173,7 +171,7 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
               <p className="text-sm text-muted-foreground">Платформ чатаар холбоо барина уу</p>
             </div>
             <button
-              onClick={onChat}
+              onClick={() => router.push('/chat')}
               className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 active:scale-95 transition-all"
             >
               <MessageCircle className="h-5 w-5 text-primary" />
@@ -375,7 +373,7 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
       {/* Chat Button */}
       <div className="mt-4 mx-6">
         <Button
-          onClick={onChat}
+          onClick={() => router.push('/chat')}
           variant="outline"
           className="h-14 w-full rounded-2xl border-border bg-card text-base font-semibold shadow-sm active:scale-95 transition-all"
         >
@@ -385,10 +383,10 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
       </div>
 
       {/* Review CTA */}
-      {order?.status === 'completed' && onReview && (
+      {order?.status === 'completed' && (
         <div className="mt-3 mx-6">
           <Button
-            onClick={onReview}
+            onClick={() => router.push(`/review/${orderId ?? order?.id ?? ''}`)}
             className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-white shadow-md hover:bg-accent/90 active:scale-95 transition-all"
           >
             <Star className="mr-2 h-5 w-5" />
@@ -409,9 +407,6 @@ export function ActiveBookingScreen({ orderId, onChat, onReview }: ActiveBooking
           </Button>
         </div>
       )}
-
-      {/* Floating SOS FAB */}
-      <SosButton orderId={orderId} />
 
       {/* Reject Quote Confirm Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

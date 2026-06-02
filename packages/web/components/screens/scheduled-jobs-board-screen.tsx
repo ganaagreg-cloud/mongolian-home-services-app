@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, Star, Clock, MapPin, Users } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -10,15 +11,10 @@ import type { Order, OrderAcceptance } from '@/lib/types'
 
 interface ScheduledJobsBoardScreenProps {
   orderId: string
-  onWorkerPicked: (acceptance: OrderAcceptance) => void
-  onBack: () => void
 }
 
-export function ScheduledJobsBoardScreen({
-  orderId,
-  onWorkerPicked,
-  onBack,
-}: ScheduledJobsBoardScreenProps) {
+export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenProps) {
+  const router = useRouter()
   const [order, setOrder]               = useState<Order | null>(null)
   const [acceptances, setAcceptances]   = useState<OrderAcceptance[]>([])
   const [loadingAcceptances, setLoadingAcceptances] = useState(true)
@@ -68,7 +64,7 @@ export function ScheduledJobsBoardScreen({
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -180,7 +176,7 @@ export function ScheduledJobsBoardScreen({
                   </div>
                 </div>
                 <Button
-                  onClick={() => onWorkerPicked(a)}
+                  onClick={() => router.push(`/orders/${orderId}/confirm-scheduled/${a.workerId}`)}
                   className="mt-3 h-11 w-full rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
                 >
                   Сонгох

@@ -39,6 +39,9 @@ Before ANY change to auth, routing, or middleware:
 Before ANY change to app/page.tsx, API routes, or DB:
 → Read `.claude/decisions/architecture.md`
 
+Before ANY change to App Router layouts, route groups, middleware, or the typed API client:
+→ Read `.claude/decisions/app-router-migration.md`
+
 Violations are caught by hooks and will block execution.
 
 ## Skills — Read Before Acting
@@ -94,15 +97,38 @@ After completing any implementation:
 
 ## Architecture
 
-Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a standalone Next.js admin panel (port 3001); `packages/shared` holds shared TypeScript types. The UI layer in packages/web is a client-side state machine; the data layer is PostgreSQL (via `pg` Pool) in Docker. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
+Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a standalone Next.js admin panel (port 3001); `packages/shared` holds shared TypeScript types. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
 
-### Navigation: State Machine, Not Next.js Routing
+### App Router Migration — Sprint M1 complete
 
-The entire app lives in a single page (`app/page.tsx`). Navigation is driven by `currentScreen` state of type `Screen` (26 string literals, defined locally in `app/page.tsx`). Every transition is `setCurrentScreen(...)`. No `<Link>` or `router.push()` anywhere.
+**Status (M1):** Two reference routes migrated (`/home`, `/jobs`). Legacy state machine preserved in `components/screens/*` — M2–M5 migrate remaining screens. M6 deletes the old state machine.
 
-Pre-auth screens (`login | register | forgot-password | otp-verify | pin-reset`) are controlled by a separate `preAuthScreen` state.
+**New routing model** (read `.claude/decisions/app-router-migration.md` for full details):
+- `app/page.tsx` — pure Server Component dispatcher (reads session, redirects to /login, /home, or /jobs)
+- `app/(auth)/login/page.tsx` — full pre-auth flow (login + register + forgot-password + OTP)
+- `app/(app)/layout.tsx` — user auth gate (Server Component): fetches `/api/auth/me` once per nav, seeds `SessionProvider`, mounts `AppBottomNav`
+- `app/(app)/home/page.tsx` — reference migration of HomeScreen
+- `app/(worker)/layout.tsx` — worker auth gate: same as (app) but also asserts `is_worker`
+- `app/(worker)/jobs/page.tsx` — reference migration of WorkerJobsScreen
+- `middleware.ts` — edge UX redirect (no session cookie → /login); NOT authoritative for authz
+- `context/session-context.tsx` — `SessionProvider` + `useSession()`. Auth state lives ONLY here.
+- `lib/api-client.ts` — typed `hc<AppType>` client (server mode: forwards cookie; browser mode: credentials:include)
 
-`app/page.tsx` owns all shared state and passes callbacks down as props. Key state: `currentScreen`, `preAuthScreen`, `isWorker`, `activeMode`, `hasActiveBooking`, `activeOrderId`, `matchedWorker`, `selectedAcceptor`, `activeWorkerOrderId`, `chatOrderId`, `chatBack`, `otpContext`, `userName`, `userPhone`.
+**3-layer authz**: edge middleware (UX only) → layout server gate (authoritative) → Hono API (token-level).
+
+### Navigation: Route-Aware Link Nav (M2 complete)
+
+Tab bars (`AppBottomNav`, `AppWorkerBottomNav`) use `<Link href>` with active state from `usePathname().startsWith(href)`. Browser Back works natively. All tab routes prefetch automatically (always in viewport).
+
+**ModeToggle** (`components/mode-toggle.tsx`) — standalone component mounted in both `(app)/layout.tsx` and `(worker)/layout.tsx`:
+- Visible only when `session.isWorker === true`
+- Display mode derived from pathname: `/jobs` or `/worker*` → worker mode, else → user mode — never a prop
+- On switch: `router.push` immediately (optimistic), then `PATCH /api/me/mode` to persist; on failure → toast + revert push
+- `active_mode` is written ONLY by ModeToggle — not by layout entry or any page load
+
+Legacy state machine in `app/page.tsx` is now a redirect dispatcher. Screen components in `components/screens/` keep their callback-prop API; intra-flow navigation wired in M3–M5 with each flow's routes.
+
+`app/page.tsx` (legacy) owned all shared state. Key state that screen components still expect as props: `currentScreen`, `isWorker`, `activeMode`, `hasActiveBooking`, `activeOrderId`, `matchedWorker`, `selectedAcceptor`, `activeWorkerOrderId`, `chatOrderId`, `chatBack`, `otpContext`, `userName`, `userPhone`.
 
 ### Two Roles + Worker Mode
 
@@ -118,12 +144,32 @@ Workers are **users** with `is_worker = true` in the DB. They switch modes via a
 
 ```
 packages/web/
-  app/page.tsx                # Single-page entry; owns all shared state
+  middleware.ts               # Edge UX redirect (no cookie → /login)
+  app/
+    page.tsx                  # Server dispatcher (→ /login | /home | /jobs)
+    layout.tsx                # html/body, SWRConfig, Toaster
+    providers.tsx             # SWRConfig + Toaster (client component)
+    (auth)/
+      layout.tsx              # Redirect authed users to /
+      login/page.tsx          # Full pre-auth flow (login/register/forgot-pw/OTP)
+    (app)/
+      layout.tsx              # User auth gate + SessionProvider + ModeToggle + AppBottomNav
+      home/page.tsx           # HomeScreen (M1 reference migration)
+      loading.tsx  error.tsx
+    (worker)/
+      layout.tsx              # Worker auth gate (is_worker required) + ModeToggle + WorkerBottomNav
+      jobs/page.tsx           # WorkerJobsScreen (M1 reference migration)
+      loading.tsx  error.tsx
+  context/
+    session-context.tsx       # SessionProvider + useSession() — single auth state source
   components/
     screens/                  # 24 screen components (one per Screen value)
     ui/                       # shadcn/ui + Radix UI primitives (do not edit)
-    bottom-nav.tsx            # User tab bar
+    bottom-nav.tsx            # User tab bar (raw, callback-based)
     worker-bottom-nav.tsx
+    mode-toggle.tsx           # Worker mode switch — pathname-derived, PATCH /me/mode on toggle
+    app-bottom-nav.tsx        # App Router adapter: <Link>-based tabs, usePathname active state
+    app-worker-bottom-nav.tsx
     login-screen.tsx  register-screen.tsx  oauth-onboarding-screen.tsx
     otp-verify-screen.tsx  forgot-password-screen.tsx  pin-reset-screen.tsx
     dan-success-screen.tsx  sos-button.tsx  dev-panel.tsx
@@ -131,6 +177,7 @@ packages/web/
     use-mobile.ts             # 768px breakpoint detector
     use-toast.ts
   lib/
+    api-client.ts             # Typed hc<AppType> client (server + browser modes)
     auth.ts                   # Better Auth client-side config (web only)
     auth-client.ts            # Better Auth browser client (useSession, signOut, signIn.social)
     types.ts                  # re-exports from @homeservices/shared (UserRole, OrderStatus, Order, …)

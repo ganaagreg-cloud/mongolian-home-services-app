@@ -1,8 +1,8 @@
 # App Router Migration — Decision Record
 
-**Sprint:** M1 (App Router foundation)  
+**Sprint:** M3 (Booking flow routes)  
 **Date:** 2026-06-02  
-**Status:** Active — M1 complete, M2–M6 pending
+**Status:** Active — M1–M3 complete, M4–M6 pending
 
 ---
 
@@ -88,19 +88,64 @@ app/
     layout.tsx                 — redirect authed users to /
     login/page.tsx             — full auth flow (login + register + forgot-password + OTP)
   (app)/
-    layout.tsx                 — user auth gate + SessionProvider + AppBottomNav
-    home/page.tsx              — HomeScreen (reference migration)
+    layout.tsx                 — user auth gate + SessionProvider + AppBottomNav + ModeToggle
+    home/page.tsx              — HomeScreen (M1 reference migration)
+    orders/new/                — CreateOrderScreen
+    orders/[orderId]/
+      searching/               — SearchingWorkerScreen
+      board/                   — ScheduledJobsBoardScreen
+      confirm/                 — ConfirmWorkerScreen (instant match)
+      confirm-scheduled/[workerId]/  — ConfirmScheduledWorkerScreen
+    active/[orderId]/
+      layout.tsx               — SosButton overlay (persists across sub-routes)
+      page.tsx                 — ActiveBookingScreen
+    review/[orderId]/          — ReviewScreen
   (worker)/
-    layout.tsx                 — worker auth gate (is_worker required) + WorkerBottomNav
-    jobs/page.tsx              — WorkerJobsScreen (reference migration)
+    layout.tsx                 — worker auth gate (is_worker required) + WorkerBottomNav + ModeToggle
+    jobs/page.tsx              — WorkerJobsScreen (M1 reference migration)
 ```
 
 ---
 
-## What M1 does NOT do (deferred to M2–M5)
+## M3 pattern: server shell + client screen
 
-- Navigation within the app (all callbacks are no-ops in M1 — M2 wires router.push).
-- Migrating screens other than /home and /jobs.
-- Deleting `components/screens/*` — M3–M5 mount them in their routes.
-- Removing legacy state from app/page.tsx completely (that's M6).
+Every booking flow route follows this pattern:
+
+**`page.tsx`** — async Server Component, awaits params, delegates to screen:
+```tsx
+export default async function Page({ params }: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = await params
+  return <SomeScreen orderId={orderId} />
+}
+```
+
+**Screen component** — `'use client'`, receives only primitive ids (not full objects):
+- Fetches its own data via `useSWR` using `fetcher` from `lib/api-client.ts`
+- SWR chaining: fetch order → get `workerId` → fetch worker (for confirm screens)
+- Navigation via `useRouter()` — no `onNavigate`/`setCurrentScreen` callbacks
+- Back navigation via `router.back()`
+
+**`loading.tsx`** — skeleton that matches the screen's real layout (no generic spinner).  
+**`error.tsx`** — `'use client'`, `useEffect` logs error, Mongolian error message, reset button.
+
+**Ambient state eliminated**: screens no longer receive `worker: MatchedWorker` or `order: Order` as props from a parent state machine. They own their own data fetching.
+
+**SOS layout**: `active/[orderId]/layout.tsx` is a Server Component that wraps children with `<SosButton orderId={orderId} bottomClass="bottom-24" />`. The layout accepts `params: Promise<unknown>` (Next.js LayoutProps constraint) and casts internally: `const { orderId } = (await params) as { orderId: string }`.
+
+---
+
+## M2 pattern: route-aware Link nav + ModeToggle
+
+- `AppBottomNav` / `AppWorkerBottomNav`: `<Link href>` tabs, active state via `usePathname().startsWith(href)`.
+- `ModeToggle`: reads current mode from pathname, `PATCH /api/me/mode` to persist, toast+revert on failure. Rendered in both `(app)/layout.tsx` and `(worker)/layout.tsx`. `active_mode` written ONLY by ModeToggle.
+
+---
+
+## What M1–M3 does NOT do (deferred to M4–M6)
+
+- Orders list screen (`/orders`) — M4.
+- Chat screen (`/chat`) — M4. Chat button currently pushes `/chat` as a stub.
+- Profile screen (`/profile`) — M5.
+- Worker-mode screens (worker-active, worker-earnings, worker-profile) — M5.
+- Deleting legacy state from `app/page.tsx` — M6.
 - Full response-body type safety in the hc client (needs Zod validators on routes).
