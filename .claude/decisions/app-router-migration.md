@@ -1,8 +1,8 @@
 # App Router Migration — Decision Record
 
-**Sprint:** M4 (Worker flow routes)  
+**Sprint:** M6 (Teardown — legacy state machine dissolved)  
 **Date:** 2026-06-02  
-**Status:** Active — M1–M4 complete, M5–M6 pending
+**Status:** Migration complete — M1–M6 done. M7 (perf) deferred.
 
 ---
 
@@ -91,6 +91,7 @@ app/
     layout.tsx                 — user auth gate + SessionProvider + AppBottomNav + ModeToggle
     home/page.tsx              — HomeScreen (M1 reference migration)
     orders/new/                — CreateOrderScreen
+    orders/page.tsx           — OrdersScreen (M5)
     orders/[orderId]/
       searching/               — SearchingWorkerScreen
       board/                   — ScheduledJobsBoardScreen
@@ -100,6 +101,9 @@ app/
       layout.tsx               — SosButton overlay (persists across sub-routes)
       page.tsx                 — ActiveBookingScreen
     review/[orderId]/          — ReviewScreen
+    chat/[orderId]/page.tsx   — ChatScreen (M5; 3s poll; no phone field)
+    profile/page.tsx          — ProfileScreen (M5)
+    settings/page.tsx         — PersonalInfoScreen (M5; route name diverges from screen name)
   (worker)/
     layout.tsx                 — worker auth gate (is_worker + activeMode=worker required) + WorkerBottomNav + ModeToggle
     jobs/page.tsx              — WorkerJobsScreen (M1 reference; M4 upgraded to server shell)
@@ -108,6 +112,23 @@ app/
     worker-earnings/page.tsx   — WorkerEarningsScreen
     worker-profile/page.tsx    — WorkerProfileScreen
 ```
+
+### Worker route URL contract
+
+| File | URL |
+|---|---|
+| `(worker)/jobs/page.tsx` | `/jobs` |
+| `(worker)/jobs/[id]/page.tsx` | `/jobs/[id]` |
+| `(worker)/worker-active/page.tsx` | `/worker-active` |
+| `(worker)/worker-earnings/page.tsx` | `/worker-earnings` |
+| `(worker)/worker-profile/page.tsx` | `/worker-profile` |
+
+Worker URLs are flat with `worker-` prefix. No nesting under `/worker/` segment —
+avoids route group conflict with `app/(worker)`. Pattern: `(worker)/worker-{name}/`
+for all worker-specific routes except `/jobs`.
+
+`AppWorkerBottomNav` hrefs verified against actual routes: `/jobs`, `/worker-active`,
+`/worker-earnings`, `/worker-profile` — all correct as of M4.
 
 ---
 
@@ -152,8 +173,41 @@ export default async function Page({ params }: { params: Promise<{ orderId: stri
 - `WorkerProfileScreen` no longer receives `phone` prop — `SessionData` has no phone field. Screen shows 'Утас нэмааг?й' fallback verbatim.
 - Worker layout now also guards `activeMode !== 'worker'` (was only `!isWorker` in M1). Redirects to `/home?hint=worker_mode`; `WorkerModeHintToast` in `(app)/layout.tsx` shows the Mongolian toast.
 
-## What M1–M4 does NOT do (deferred to M5–M6)
+## M5 deviations and notes
 
-- User-flow screens: orders list, chat, profile, personal-info, saved-workers, help, privacy — M5.
-- app/page.tsx full teardown — M6.
+- `/chat` tab removed from `AppBottomNav` — chat is a drill-down (`/chat/[orderId]`) reached from the active-booking screen, not a top-level destination. No thread-list screen exists.
+- `/settings` mounts `PersonalInfoScreen` — route name and screen file name diverge intentionally. Comment in `settings/page.tsx` marks it for grep.
+- `session.screen: string` in `SessionData` is dead ambient state — no M5 screen reads it. **M6 residual:** remove from `SessionData` interface and strip from `/api/auth/me` response.
+- OTP re-verification post-auth (phone/email in `/settings`) sends the OTP but does not navigate to a verify screen — that flow is deferred. Success toast shown instead.
+- `orders/[id]` route NOT created — `OrdersScreen` is list-only; detail is handled by existing M3 routes (`/active/[orderId]`, `/orders/[orderId]/board`).
+- Profile sub-screens (`/help`, `/privacy`, `/saved-workers`) defer to a future sprint; menu items `router.push()` to nonexistent routes → clean Next.js 404.
+
+## What M1–M5 does NOT do (deferred to M6)
+
+- `app/page.tsx` full teardown + deletion of legacy state machine remnants — **done in M6**.
+- `session.screen` field removal from `SessionData` + `/api/auth/me` response — **done in M6**.
+- Profile sub-screens: `/help` (HelpScreen), `/privacy` (PrivacyScreen), `/saved-workers` (SavedWorkersScreen) — future sprint.
+- Post-auth OTP verify flow for phone/email re-verification — future sprint.
 - Full response-body type safety in the hc client (needs Zod validators on routes).
+
+## M6 — Teardown (complete)
+
+**What was removed:**
+- `screen` field from `SessionData` interface (`context/session-context.tsx`) — was dead; no client component read it.
+- `screen` computed field from `GET /api/auth/me` response (`packages/api/src/routes/auth.ts`) — replaced by explicit `role` and `needsOnboarding` fields.
+- `components/bottom-nav.tsx` — original callback-based user nav (zero imports post-M2).
+- `components/worker-bottom-nav.tsx` — original callback-based worker nav (zero imports post-M2).
+- Stale comment in `tests/e2e/order-flows-dual.spec.js` referencing `setCurrentScreen`.
+
+**What replaced it:**
+- `/api/auth/me` now returns `role: string` and `needsOnboarding: boolean` instead of `screen: string`.
+- `app/admin/layout.tsx` admin gate: `role !== 'admin'` (was `screen !== 'admin'`).
+- `app/page.tsx` dispatcher: `needsOnboarding → /login` (was `screen === 'oauth-onboarding' → /onboarding`; `/onboarding` route never existed — pre-existing bug now fixed).
+
+**Screen type:** Never existed as a named type — nothing to remove.
+
+**Deferred to future sprints:**
+- Profile sub-screens (`/help`, `/privacy`, `/saved-workers`).
+- Post-auth OTP re-verification flow.
+- Full hc client response-body type safety (Zod validators on routes).
+- M7 perf work.

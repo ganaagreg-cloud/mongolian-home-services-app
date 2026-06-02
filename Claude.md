@@ -87,8 +87,8 @@ After completing any implementation:
 2. Email+password login, or Google/Facebook OAuth button
 3. Forgot-password path: enter phone → OTP verify → PIN reset → back to login
 4. Register path: phone + name + password (no consent checkbox yet — PDPL gap)
-5. App calls `/api/auth/me` and routes: admin → admin screen, worker mode → worker-jobs, else → home
-6. OAuth users with no phone → `oauth-onboarding` screen to collect phone
+5. App calls `/api/auth/me` → returns `{ role, needsOnboarding, isWorker, activeMode, … }`; dispatcher routes: `needsOnboarding` → `/login`; worker mode → `/jobs`; else → `/home`
+6. OAuth users with no phone (`needsOnboarding: true`) are sent to `/login` to complete phone collection
 
 ### API Integration Testing
 - Session cookie set by Better Auth (`better-auth.session_token`)
@@ -99,20 +99,20 @@ After completing any implementation:
 
 Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a standalone Next.js admin panel (port 3001); `packages/shared` holds shared TypeScript types. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
 
-### App Router Migration — Sprint M1 complete
+### App Router Migration — Complete (M1–M6)
 
-**Status (M4):** Worker flow routes complete — `/jobs`, `/jobs/[id]`, `/worker-active`, `/worker-earnings`, `/worker-profile`. All four worker screens adapted (ambient state removed, router.push navigation, authClient logout). Worker layout now enforces `activeMode=worker`. M5 migrates user-flow screens. M6 deletes the old state machine.
+**Status (M6):** Migration complete. Legacy state machine dissolved. M7 (perf) deferred.
 
-**New routing model** (read `.claude/decisions/app-router-migration.md` for full details):
-- `app/page.tsx` — pure Server Component dispatcher (reads session, redirects to /login, /home, or /jobs)
+**Routing model** (read `.claude/decisions/app-router-migration.md` for full details):
+- `app/page.tsx` — Server Component root dispatcher: no session → `/login`; `needsOnboarding` → `/login`; worker mode → `/jobs`; else → `/home`
 - `app/(auth)/login/page.tsx` — full pre-auth flow (login + register + forgot-password + OTP)
 - `app/(app)/layout.tsx` — user auth gate (Server Component): fetches `/api/auth/me` once per nav, seeds `SessionProvider`, mounts `AppBottomNav`
-- `app/(app)/home/page.tsx` — reference migration of HomeScreen
-- `app/(worker)/layout.tsx` — worker auth gate: same as (app) but also asserts `is_worker`
-- `app/(worker)/jobs/page.tsx` — reference migration of WorkerJobsScreen
+- `app/(worker)/layout.tsx` — worker auth gate: same as (app) but also asserts `is_worker` + `activeMode === 'worker'`
 - `middleware.ts` — edge UX redirect (no session cookie → /login); NOT authoritative for authz
 - `context/session-context.tsx` — `SessionProvider` + `useSession()`. Auth state lives ONLY here.
 - `lib/api-client.ts` — typed `hc<AppType>` client (server mode: forwards cookie; browser mode: credentials:include)
+
+**`/api/auth/me` response shape:** `{ id, name, avatarUrl, isWorker, activeMode, role, needsOnboarding }`. The old `screen` field is gone.
 
 **3-layer authz**: edge middleware (UX only) → layout server gate (authoritative) → Hono API (token-level).
 
@@ -125,10 +125,6 @@ Tab bars (`AppBottomNav`, `AppWorkerBottomNav`) use `<Link href>` with active st
 - Display mode derived from pathname: `/jobs` or `/worker*` → worker mode, else → user mode — never a prop
 - On switch: `router.push` immediately (optimistic), then `PATCH /api/me/mode` to persist; on failure → toast + revert push
 - `active_mode` is written ONLY by ModeToggle — not by layout entry or any page load
-
-Legacy state machine in `app/page.tsx` is now a redirect dispatcher. Screen components in `components/screens/` keep their callback-prop API; intra-flow navigation wired in M3–M5 with each flow's routes.
-
-`app/page.tsx` (legacy) owned all shared state. Key state that screen components still expect as props: `currentScreen`, `isWorker`, `activeMode`, `hasActiveBooking`, `activeOrderId`, `matchedWorker`, `selectedAcceptor`, `activeWorkerOrderId`, `chatOrderId`, `chatBack`, `otpContext`, `userName`, `userPhone`.
 
 ### Two Roles + Worker Mode
 

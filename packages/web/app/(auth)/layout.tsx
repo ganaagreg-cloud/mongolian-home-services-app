@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 async function isAuthenticated(cookieHeader: string): Promise<boolean> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
   try {
     const res = await fetch(`${apiBase}/api/auth/me`, {
       headers: { cookie: cookieHeader },

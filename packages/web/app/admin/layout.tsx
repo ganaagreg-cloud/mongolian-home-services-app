@@ -4,9 +4,9 @@ import { AdminSidebar } from '@/components/admin/sidebar'
 
 export const metadata = { title: 'Admin — HomeService' }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
-async function getAdminSession(): Promise<{ name: string; screen: string } | null> {
+async function getAdminSession(): Promise<{ name: string; role: string } | null> {
   const h = await headers()
   const cookie = h.get('cookie') ?? ''
   try {
@@ -15,7 +15,7 @@ async function getAdminSession(): Promise<{ name: string; screen: string } | nul
       cache: 'no-store',
     })
     if (!res.ok) return null
-    const json = await res.json() as { success: boolean; data?: { name: string; screen: string } }
+    const json = await res.json() as { success: boolean; data?: { name: string; role: string } }
     if (!json.success || !json.data) return null
     return json.data
   } catch {
@@ -25,7 +25,7 @@ async function getAdminSession(): Promise<{ name: string; screen: string } | nul
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession()
-  if (!session || session.screen !== 'admin') redirect('/')
+  if (!session || session.role !== 'admin') redirect('/')
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

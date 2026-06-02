@@ -66,21 +66,16 @@ router.get('/api/auth/me', async (c) => {
 
   if (!user) return c.json({ success: false, error: 'User not found' }, 404)
 
-  const screen =
-    !user.phone       ? 'oauth-onboarding' :
-    user.role === 'admin' ? 'admin' :
-    (user.is_worker && user.active_mode === 'worker') ? 'worker-jobs' :
-    'home'
-
   return c.json({
     success: true,
     data: {
-      id:         user.id,
-      name:       user.name,
-      avatarUrl:  user.avatar_url,
-      isWorker:   user.is_worker,
-      activeMode: user.active_mode,
-      screen,
+      id:              user.id,
+      name:            user.name,
+      avatarUrl:       user.avatar_url,
+      isWorker:        user.is_worker,
+      activeMode:      user.active_mode,
+      role:            user.role,
+      needsOnboarding: !user.phone,
     },
   })
 })

@@ -2,18 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, ClipboardList, MessageCircle, User } from 'lucide-react'
+import { Home, ClipboardList, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Intended tab routes for M3–M5:
-// /orders  → OrdersScreen (M3)
-// /chat    → ChatScreen (M4, shared with worker flow)
-// /profile → ProfileScreen (M5)
+// Chat is a drill-down from an active order (/chat/[orderId]), not a top-level tab.
 const navItems = [
-  { href: '/home',    icon: Home,          label: 'Нүүр' },
+  { href: '/home',    icon: Home,          label: 'Нүүр'     },
   { href: '/orders',  icon: ClipboardList, label: 'Захиалга' },
-  { href: '/chat',    icon: MessageCircle, label: 'Чат' },
-  { href: '/profile', icon: User,          label: 'Профайл' },
+  { href: '/profile', icon: User,          label: 'Профайл'  },
 ] as const
 
 export function AppBottomNav() {

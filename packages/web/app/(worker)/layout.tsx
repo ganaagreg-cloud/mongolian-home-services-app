@@ -6,7 +6,7 @@ import { ModeToggle } from '@/components/mode-toggle'
 
 // ONE authoritative server → Hono call per navigation for the worker flow group.
 async function getSession(cookieHeader: string): Promise<SessionData | null> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
   try {
     const res = await fetch(`${apiBase}/api/auth/me`, {
       headers: { cookie: cookieHeader },

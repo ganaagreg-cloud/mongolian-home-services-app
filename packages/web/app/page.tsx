@@ -4,11 +4,11 @@ import { redirect } from 'next/navigation'
 type MeData = {
   isWorker: boolean
   activeMode: 'user' | 'worker'
-  screen: string
+  needsOnboarding: boolean
 }
 
 async function resolveDestination(cookieHeader: string): Promise<string> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
   try {
     const res = await fetch(`${apiBase}/api/auth/me`, {
       headers: { cookie: cookieHeader },
@@ -19,7 +19,7 @@ async function resolveDestination(cookieHeader: string): Promise<string> {
     if (!json.success || !json.data) return '/login'
 
     const { data } = json
-    if (data.screen === 'oauth-onboarding') return '/onboarding'
+    if (data.needsOnboarding) return '/login'
     if (data.isWorker && data.activeMode === 'worker') return '/jobs'
     return '/home'
   } catch {

@@ -9,7 +9,7 @@ import { WorkerModeHintToast } from '@/components/worker-mode-hint-toast'
 // ONE authoritative server → Hono call per navigation for the user app group.
 // Pages within this layout fetch their own data client-side via fetcher() / browserClient.
 async function getSession(cookieHeader: string): Promise<SessionData | null> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
   try {
     const res = await fetch(`${apiBase}/api/auth/me`, {
       headers: { cookie: cookieHeader },

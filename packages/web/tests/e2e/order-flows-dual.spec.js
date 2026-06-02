@@ -21,7 +21,6 @@ async function loginAs(page, role) {
   return false
 }
 
-// Switch the demo role chip (triggers setCurrentScreen in app/page.tsx, required for correct initial state)
 async function switchRole(page, role) {
   const label = role === 'user' ? 'User' : role === 'worker' ? 'Worker' : 'Admin'
   await page.locator(`button:has-text("${label}")`).first().click()

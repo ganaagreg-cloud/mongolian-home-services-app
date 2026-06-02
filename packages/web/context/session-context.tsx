@@ -8,7 +8,6 @@ export interface SessionData {
   avatarUrl: string
   isWorker: boolean
   activeMode: 'user' | 'worker'
-  screen: string
 }
 
 const SessionContext = createContext<SessionData | null>(null)
