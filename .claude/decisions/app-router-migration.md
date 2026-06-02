@@ -1,8 +1,8 @@
 # App Router Migration — Decision Record
 
-**Sprint:** M3 (Booking flow routes)  
+**Sprint:** M4 (Worker flow routes)  
 **Date:** 2026-06-02  
-**Status:** Active — M1–M3 complete, M4–M6 pending
+**Status:** Active — M1–M4 complete, M5–M6 pending
 
 ---
 
@@ -101,8 +101,12 @@ app/
       page.tsx                 — ActiveBookingScreen
     review/[orderId]/          — ReviewScreen
   (worker)/
-    layout.tsx                 — worker auth gate (is_worker required) + WorkerBottomNav + ModeToggle
-    jobs/page.tsx              — WorkerJobsScreen (M1 reference migration)
+    layout.tsx                 — worker auth gate (is_worker + activeMode=worker required) + WorkerBottomNav + ModeToggle
+    jobs/page.tsx              — WorkerJobsScreen (M1 reference; M4 upgraded to server shell)
+    jobs/[id]/page.tsx         — WorkerActiveScreen with specific orderId (drill-down)
+    worker-active/page.tsx     — WorkerActiveScreen without orderId (auto-fetches active job)
+    worker-earnings/page.tsx   — WorkerEarningsScreen
+    worker-profile/page.tsx    — WorkerProfileScreen
 ```
 
 ---
@@ -141,11 +145,15 @@ export default async function Page({ params }: { params: Promise<{ orderId: stri
 
 ---
 
-## What M1–M3 does NOT do (deferred to M4–M6)
+## M4 deviations from sprint brief
 
-- Orders list screen (`/orders`) — M4.
-- Chat screen (`/chat`) — M4. Chat button currently pushes `/chat` as a stub.
-- Profile screen (`/profile`) — M5.
-- Worker-mode screens (worker-active, worker-earnings, worker-profile) — M5.
-- Deleting legacy state from `app/page.tsx` — M6.
+- Sprint brief listed bottom nav hrefs as `/earnings` and `/worker/profile`. Actual M2 `AppWorkerBottomNav` code uses `/worker-earnings` and `/worker-profile`. Routes were created to match the code, not the brief.
+- `/worker-active` route created to match the `/worker-active` nav tab (auto-fetches active order). `/jobs/[id]` is the drill-down for a specific accepted job. Both render `WorkerActiveScreen`.
+- `WorkerProfileScreen` no longer receives `phone` prop — `SessionData` has no phone field. Screen shows 'Утас нэмааг?й' fallback verbatim.
+- Worker layout now also guards `activeMode !== 'worker'` (was only `!isWorker` in M1). Redirects to `/home?hint=worker_mode`; `WorkerModeHintToast` in `(app)/layout.tsx` shows the Mongolian toast.
+
+## What M1–M4 does NOT do (deferred to M5–M6)
+
+- User-flow screens: orders list, chat, profile, personal-info, saved-workers, help, privacy — M5.
+- app/page.tsx full teardown — M6.
 - Full response-body type safety in the hc client (needs Zod validators on routes).

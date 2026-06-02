@@ -101,7 +101,7 @@ Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `
 
 ### App Router Migration — Sprint M1 complete
 
-**Status (M1):** Two reference routes migrated (`/home`, `/jobs`). Legacy state machine preserved in `components/screens/*` — M2–M5 migrate remaining screens. M6 deletes the old state machine.
+**Status (M4):** Worker flow routes complete — `/jobs`, `/jobs/[id]`, `/worker-active`, `/worker-earnings`, `/worker-profile`. All four worker screens adapted (ambient state removed, router.push navigation, authClient logout). Worker layout now enforces `activeMode=worker`. M5 migrates user-flow screens. M6 deletes the old state machine.
 
 **New routing model** (read `.claude/decisions/app-router-migration.md` for full details):
 - `app/page.tsx` — pure Server Component dispatcher (reads session, redirects to /login, /home, or /jobs)

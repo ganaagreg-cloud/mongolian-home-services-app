@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SessionProvider, type SessionData } from '@/context/session-context'
 import { AppBottomNav } from '@/components/app-bottom-nav'
 import { ModeToggle } from '@/components/mode-toggle'
+import { WorkerModeHintToast } from '@/components/worker-mode-hint-toast'
 
 // ONE authoritative server → Hono call per navigation for the user app group.
 // Pages within this layout fetch their own data client-side via fetcher() / browserClient.
@@ -33,6 +35,9 @@ export default async function AppLayout({
 
   return (
     <SessionProvider initialData={session}>
+      <Suspense>
+        <WorkerModeHintToast />
+      </Suspense>
       <main className="mx-auto max-w-[390px] min-h-screen bg-background">
         {children}
       </main>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { Wallet, TrendingUp, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,11 +15,8 @@ interface EarningsData {
   transactions:    Transaction[]
 }
 
-interface WorkerEarningsScreenProps {
-  onManageBank: () => void
-}
-
-export function WorkerEarningsScreen({ onManageBank }: WorkerEarningsScreenProps) {
+export function WorkerEarningsScreen() {
+  const router = useRouter()
   const { data, isLoading, error, mutate } = useSWR<EarningsData>(
     '/api/workers/me/earnings',
     fetcher,
@@ -156,7 +154,7 @@ export function WorkerEarningsScreen({ onManageBank }: WorkerEarningsScreenProps
       {/* Manage Bank */}
       <div className="mx-6 mt-6">
         <Button
-          onClick={onManageBank}
+          onClick={() => router.push('/worker-profile')}
           variant="outline"
           className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
         >

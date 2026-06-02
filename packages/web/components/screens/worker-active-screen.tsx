@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Camera, MessageCircle, MapPin, Clock, AlertCircle, FileText, CheckCircle2, ArrowUpDown, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,11 +13,10 @@ import type { Order } from '@/lib/types'
 
 interface WorkerActiveScreenProps {
   orderId?: string | null
-  onChat: () => void
-  onComplete: () => void
 }
 
-export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActiveScreenProps) {
+export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
+  const router = useRouter()
   const url = orderId ? `/api/orders/${orderId}` : '/api/orders?worker_active=1'
   const { data: order, isLoading, mutate } = useSWR<Order | null>(url, fetcher, { refreshInterval: 10000 })
 
@@ -49,7 +49,7 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
         setUpdateError(d.error ?? 'Алдаа гарлаа')
       } else {
         await mutate()
-        if (status === 'completed') onComplete()
+        if (status === 'completed') router.push('/jobs')
       }
     } catch {
       setUpdateError('Сүлжээний алдаа. Дахин оролдоно уу.')
@@ -445,7 +445,7 @@ export function WorkerActiveScreen({ orderId, onChat, onComplete }: WorkerActive
       {/* Chat button */}
       <div className="mt-6 mx-6">
         <Button
-          onClick={onChat}
+          onClick={() => router.push('/chat')}
           variant="outline"
           className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
         >

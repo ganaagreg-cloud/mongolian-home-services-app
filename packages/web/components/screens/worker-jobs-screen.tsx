@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { MapPin, Clock, Check, X, Zap, CalendarDays, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,14 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
 import type { Order } from '@/lib/types'
-
-interface WorkerJobsScreenProps {
-  onAcceptJob: (jobId: string) => void
-  onDeclineJob: (jobId: string) => void
-  isWorker?: boolean
-  activeMode?: 'user' | 'worker'
-  onModeToggle?: (mode: 'user' | 'worker') => void
-}
 
 // ── Countdown hook ──────────────────────────────────────────
 function useCountdown(seconds: number) {
@@ -188,7 +181,8 @@ function ScheduledJobCard({
 }
 
 // ── Main screen ─────────────────────────────────────────────
-export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, activeMode = 'worker', onModeToggle }: WorkerJobsScreenProps) {
+export function WorkerJobsScreen() {
+  const router = useRouter()
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set())
   const [acceptError, setAcceptError] = useState<string | null>(null)
 
@@ -221,7 +215,7 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
     try {
       await apiFetch(`/api/orders/${jobId}/accept-instant`, { method: 'POST' })
     } catch { /* ignore; card already removed from UI */ }
-    onAcceptJob(jobId)
+    router.push(`/jobs/${jobId}`)
   }
 
   const handleAcceptScheduled = async (orderId: string) => {
@@ -248,27 +242,6 @@ export function WorkerJobsScreen({ onAcceptJob, onDeclineJob, isWorker = false, 
       {/* Header */}
       <div className="px-6 pt-12">
         <h1 className="text-xl font-bold text-foreground">Ажлын самбар</h1>
-
-        {/* Mode toggle — always visible when is_worker */}
-        {isWorker && (
-          <div className="mt-4">
-            <div className="flex rounded-2xl bg-card p-1 shadow-sm">
-              {(['user', 'worker'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => onModeToggle?.(m)}
-                  className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-95 ${
-                    activeMode === m
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {m === 'user' ? 'Хэрэглэгч' : 'Ажилтан'}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <>

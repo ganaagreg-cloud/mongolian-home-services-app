@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import {
   UserCircle, HelpCircle, Shield, LogOut, BadgeCheck, Star, Briefcase,
@@ -12,14 +13,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
+import { useSession } from '@/context/session-context'
+import { authClient } from '@/lib/auth-client'
 import type { BankingInfo, Worker } from '@/lib/types'
-
-interface WorkerProfileScreenProps {
-  workerName: string
-  phone: string
-  onMenuClick: (menu: string) => void
-  onLogout: () => void
-}
 
 interface ServiceType {
   id: number
@@ -52,7 +48,10 @@ const menuItems = [
   { id: 'privacy',       icon: Shield,     label: 'Нууцлал' },
 ]
 
-export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }: WorkerProfileScreenProps) {
+export function WorkerProfileScreen() {
+  const router  = useRouter()
+  const session = useSession()
+
   // ── Remote data ────────────────────────────────────────────────────────────
   const { data: workerData } = useSWR<Worker | null>(
     '/api/workers/me', fetcher, { shouldRetryOnError: false },
@@ -225,8 +224,14 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
     }
   }
 
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    await authClient.signOut()
+    router.push('/login')
+  }
+
   // ── Derived display values ─────────────────────────────────────────────────
-  const displayName   = workerData?.name ?? workerName
+  const displayName   = workerData?.name ?? session?.name ?? ''
   const displayRating = workerData?.rating ?? 4.9
   const reviewCount   = workerData?.reviewCount ?? 0
 
@@ -247,7 +252,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold text-foreground">{displayName}</p>
           <p className="text-sm text-muted-foreground">
-            {phone || 'Утас нэмааг?й'}
+            Утас нэмааг?й
           </p>
           <div className="mt-1 flex items-center gap-2">
             <div className="flex items-center gap-1">
@@ -660,7 +665,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
           return (
             <button
               key={item.id}
-              onClick={() => onMenuClick(item.id)}
+              onClick={() => router.push(`/${item.id}`)}
               className={`flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 active:scale-[0.98] ${
                 index !== menuItems.length - 1 ? 'border-b border-border' : ''
               }`}
@@ -677,7 +682,7 @@ export function WorkerProfileScreen({ workerName, phone, onMenuClick, onLogout }
       {/* Logout */}
       <div className="mx-6 mt-4">
         <Button
-          onClick={onLogout}
+          onClick={() => { void handleLogout() }}
           variant="ghost"
           className="h-14 w-full rounded-2xl font-semibold text-destructive hover:bg-destructive/10"
         >
