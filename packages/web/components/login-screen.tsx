@@ -49,14 +49,25 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
     }
     setLoading('phone')
     try {
-      const res = await apiFetch('/api/auth/phone-login', {
+      // Step 1: resolve phone → email (email is internal; never shown to user)
+      const lookupRes = await apiFetch('/api/auth/phone-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: normalized, password }),
+        body: JSON.stringify({ phone: normalized }),
       })
-      const data = await res.json() as { success: boolean; error?: string }
-      if (!data.success) {
-        setError(data.error ?? 'Утасны дугаар эсвэл нууц үг буруу байна')
+      const lookupData = await lookupRes.json() as { success: boolean; email?: string; error?: string }
+      if (!lookupData.success || !lookupData.email) {
+        setError(lookupData.error ?? 'Утасны дугаар бүртгэлгүй байна')
+        return
+      }
+
+      // Step 2: sign in via Better Auth directly — preserves cross-origin cookie behaviour
+      const { error: signInError } = await authClient.signIn.email({
+        email: lookupData.email,
+        password,
+      })
+      if (signInError) {
+        setError('Утасны дугаар эсвэл нууц үг буруу байна')
       } else {
         window.location.href = '/'
       }
