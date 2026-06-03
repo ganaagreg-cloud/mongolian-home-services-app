@@ -28,11 +28,12 @@ export const auth = betterAuth({
     cookies: {
       session_token: {
         name: 'better-auth.session_token',
+        attributes: isProd ? { sameSite: 'none' as const, secure: true } : {},
       },
     },
     crossSubDomainCookies: {
-      enabled: isProd,
-      domain: process.env.COOKIE_DOMAIN ?? '.homeservice.mn',
+      enabled: !!process.env.COOKIE_DOMAIN,
+      domain: process.env.COOKIE_DOMAIN,
     },
     useSecureCookies: isProd,
   },
