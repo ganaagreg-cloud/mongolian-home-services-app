@@ -34,4 +34,4 @@ COPY --from=builder /app/packages/web/.next/static  packages/web/.next/standalon
 COPY --from=builder /app/packages/web/public        packages/web/.next/standalone/packages/web/public
 
 EXPOSE 3000
-CMD ["node", "packages/web/.next/standalone/packages/web/server.js"]
+CMD PORT=${PORT:-3000} node packages/web/.next/standalone/packages/web/server.js
