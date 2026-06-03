@@ -1,40 +1,34 @@
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 type MeData = {
-  isWorker: boolean
-  activeMode: 'user' | 'worker'
   needsOnboarding: boolean
+  isWorker: boolean
+  activeMode: string
 }
 
-async function resolveDestination(cookieHeader: string): Promise<string> {
-  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
-  try {
-    const res = await fetch(`${apiBase}/api/auth/me`, {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    })
-    if (!res.ok) return '/login'
-    const json = (await res.json()) as { success: boolean; data?: MeData }
-    if (!json.success || !json.data) return '/login'
+export default function RootPage() {
+  const router = useRouter()
 
-    const { data } = json
-    if (data.needsOnboarding) return '/login'
-    if (data.isWorker && data.activeMode === 'worker') return '/jobs'
-    return '/home'
-  } catch {
-    return '/login'
-  }
-}
+  useEffect(() => {
+    const api = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+    fetch(`${api}/api/auth/me`, { credentials: 'include', cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { success: false })
+      .then((json: { success: boolean; data?: MeData }) => {
+        if (!json.success || !json.data) { router.replace('/login'); return }
+        const { data } = json
+        if (data.needsOnboarding) { router.replace('/login'); return }
+        if (data.isWorker && data.activeMode === 'worker') { router.replace('/jobs'); return }
+        router.replace('/home')
+      })
+      .catch(() => router.replace('/login'))
+  }, [router])
 
-// Server-side dispatcher: the single entry point that routes to the right
-// App Router segment based on session state.
-// - No session → /login (middleware catches this first, but gate here too)
-// - Worker in worker mode → /jobs
-// - Everyone else → /home
-export default async function RootPage() {
-  const cookieStore = await cookies()
-  const cookieHeader = cookieStore.toString()
-  const destination = await resolveDestination(cookieHeader)
-  redirect(destination)
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  )
 }

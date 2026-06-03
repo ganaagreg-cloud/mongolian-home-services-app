@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { SessionProvider, type SessionData } from '@/context/session-context'
 import { AppBottomNav } from '@/components/app-bottom-nav'
 import { ModeToggle } from '@/components/mode-toggle'
@@ -30,8 +29,6 @@ export default async function AppLayout({
 }) {
   const cookieStore = await cookies()
   const session = await getSession(cookieStore.toString())
-
-  if (!session) redirect('/login')
 
   return (
     <SessionProvider initialData={session}>

@@ -68,13 +68,13 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
           })
           const updateData = await updateRes.json() as { success: boolean }
           if (updateData.success || updateRes.ok) {
-            window.location.reload()
+            window.location.href = '/'
           } else {
             setError('Профиль шинэчлэхэд алдаа гарлаа')
           }
         } catch {
           // Even if phone update fails, account is created + cookie is set
-          window.location.reload()
+          window.location.href = '/'
         }
       }
     } catch {

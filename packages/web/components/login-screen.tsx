@@ -55,7 +55,7 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
       if (error) {
         setError('Утасны дугаар эсвэл нууц үг буруу байна')
       } else {
-        window.location.reload()
+        window.location.href = '/'
       }
     } catch {
       setError('Сүлжээний алдаа гарлаа')

@@ -28,11 +28,10 @@ export default async function WorkerLayout({
   const cookieStore = await cookies()
   const session = await getSession(cookieStore.toString())
 
-  if (!session) redirect('/login')
-  // Non-workers trying to access any /worker/* route → send to /home
-  if (!session.isWorker) redirect('/home')
-  // Workers in user mode hitting /worker/* → send to /home with a mode-switch hint
-  if (session.activeMode !== 'worker') redirect('/home?hint=worker_mode')
+  // When session is available server-side, enforce worker guards immediately.
+  // When null (cross-origin Render: cookie not forwarded), SessionProvider handles redirect.
+  if (session && !session.isWorker) redirect('/home')
+  if (session && session.activeMode !== 'worker') redirect('/home?hint=worker_mode')
 
   return (
     <SessionProvider initialData={session}>
