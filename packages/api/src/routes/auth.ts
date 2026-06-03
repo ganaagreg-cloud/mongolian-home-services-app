@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { scrypt, randomBytes, createHmac } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { db, dbReady } from '../db'
-import { requireAuth } from '../auth'
+import { requireAuth, auth } from '../auth'
 import { mockDANVerification } from '../mocks/dan'
 import type { UserRole } from '@homeservices/shared'
 
@@ -78,6 +78,55 @@ router.get('/api/auth/me', async (c) => {
       needsOnboarding: !user.phone,
     },
   })
+})
+
+// POST /api/auth/phone-login — look up real email for phone, proxy sign-in to Better Auth.
+// No session required (this IS the login endpoint).
+const phoneLookupSchema = z.object({
+  phone:    z.string().regex(/^[89]\d{7}$/),
+  password: z.string().min(1),
+})
+
+router.post('/api/auth/phone-login', async (c) => {
+  let body: unknown
+  try { body = await c.req.json() } catch { body = {} }
+
+  const parsed = phoneLookupSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+
+  await dbReady
+
+  const user = (await db.query(
+    'SELECT email FROM users WHERE phone = $1',
+    [parsed.data.phone],
+  )).rows[0] as { email: string } | undefined
+
+  if (!user?.email) {
+    return c.json({ success: false, error: 'Утасны дугаар бүртгэлгүй байна' }, 400)
+  }
+
+  try {
+    const response = await auth.api.signInEmail({
+      body:     { email: user.email, password: parsed.data.password },
+      headers:  c.req.raw.headers,
+      asResponse: true,
+    })
+
+    const setCookies = response.headers.getSetCookie?.() ?? []
+    for (const cookie of setCookies) {
+      c.header('Set-Cookie', cookie, { append: true })
+    }
+
+    if (!response.ok) {
+      return c.json({ success: false, error: 'Утасны дугаар эсвэл нууц үг буруу байна' }, 401)
+    }
+
+    return c.json({ success: true })
+  } catch {
+    return c.json({ error: 'Request failed' }, 500)
+  }
 })
 
 // GET /api/auth/dan — returns mock auth_url

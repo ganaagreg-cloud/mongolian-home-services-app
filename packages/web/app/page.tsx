@@ -19,7 +19,7 @@ export default function RootPage() {
       .then((json: { success: boolean; data?: MeData }) => {
         if (!json.success || !json.data) { router.replace('/login'); return }
         const { data } = json
-        if (data.needsOnboarding) { router.replace('/login'); return }
+        if (data.needsOnboarding) { router.replace('/onboarding'); return }
         if (data.isWorker && data.activeMode === 'worker') { router.replace('/jobs'); return }
         router.replace('/home')
       })

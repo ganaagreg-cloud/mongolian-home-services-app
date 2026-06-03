@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, User, Phone, Lock, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, User, Phone, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { apiFetch } from '@/lib/api-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
+import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
 
 interface RegisterScreenProps {
   onGoLogin: () => void
@@ -16,6 +16,7 @@ interface RegisterScreenProps {
 export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
   const [firstName,       setFirstName]       = useState('')
   const [lastName,        setLastName]        = useState('')
+  const [email,           setEmail]           = useState('')
   const [phone,           setPhone]           = useState('')
   const [password,        setPassword]        = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -25,10 +26,13 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
   const [error,           setError]           = useState('')
   const [consentChecked,  setConsentChecked]  = useState(false)
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
   const canSubmit =
     !loading &&
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
+    emailValid &&
     phone.length === 8 &&
     password.length >= 8 &&
     confirmPassword.length >= 8 &&
@@ -41,42 +45,42 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
       setError('Утасны дугаар буруу байна (8 оронтой, 8x эсвэл 9x-ээр эхэлнэ)')
       return
     }
+    if (!emailValid) {
+      setError('Имэйл хаяг буруу байна')
+      return
+    }
     if (password !== confirmPassword) {
       setError('Нууц үг таарахгүй байна')
       return
     }
     setLoading(true)
     try {
-      const email = phoneToEmail(normalized)
       const name = `${firstName} ${lastName}`
-      
+
       const { error: signUpError } = await authClient.signUp.email({
         email,
         password,
         name,
       })
-      
+
       if (signUpError) {
         setError('Бүртгэл үүсгэхэд алдаа гарлаа')
-      } else {
-        // Update phone + name breakdown after signup
-        try {
-          const updateRes = await apiFetch('/api/me', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: normalized }),
-          })
-          const updateData = await updateRes.json() as { success: boolean }
-          if (updateData.success || updateRes.ok) {
-            window.location.href = '/'
-          } else {
-            setError('Профиль шинэчлэхэд алдаа гарлаа')
-          }
-        } catch {
-          // Even if phone update fails, account is created + cookie is set
-          window.location.href = '/'
-        }
+        return
       }
+
+      // Store phone — must succeed before navigating
+      const updateRes = await apiFetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: normalized }),
+      })
+      const updateData = await updateRes.json() as { success: boolean; error?: string }
+      if (!updateData.success) {
+        setError(updateData.error ?? 'Утасны дугаар хадгалахад алдаа гарлаа')
+        return
+      }
+
+      window.location.href = '/'
     } catch {
       setError('Сүлжээний алдаа гарлаа')
     } finally {
@@ -123,6 +127,21 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
                 className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Email */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Имэйл хаяг</p>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              inputMode="email"
+              placeholder="example@gmail.com"
+              value={email}
+              onChange={(e) => { setError(''); setEmail(e.target.value) }}
+              className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+            />
           </div>
         </div>
 

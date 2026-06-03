@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Home, Phone, Eye, EyeOff, Lock } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
+import { apiFetch } from '@/lib/api-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { normalizePhone, validateMongolianPhone, phoneToEmail } from '@/lib/phone'
+import { normalizePhone, validateMongolianPhone } from '@/lib/phone'
 
 // Brand SVGs — exception to lucide-only rule for OAuth provider identity
 const GoogleIcon = () => (
@@ -48,12 +49,14 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
     }
     setLoading('phone')
     try {
-      const { error } = await authClient.signIn.email({
-        email: phoneToEmail(normalized),
-        password,
+      const res = await apiFetch('/api/auth/phone-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: normalized, password }),
       })
-      if (error) {
-        setError('Утасны дугаар эсвэл нууц үг буруу байна')
+      const data = await res.json() as { success: boolean; error?: string }
+      if (!data.success) {
+        setError(data.error ?? 'Утасны дугаар эсвэл нууц үг буруу байна')
       } else {
         window.location.href = '/'
       }

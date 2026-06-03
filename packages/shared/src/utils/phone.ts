@@ -8,7 +8,3 @@ export function normalizePhone(raw: string): string {
 export function validateMongolianPhone(phone: string): boolean {
   return /^[89]\d{7}$/.test(phone)
 }
-
-export function phoneToEmail(phone: string): string {
-  return `${phone}@homeservice.local`
-}
