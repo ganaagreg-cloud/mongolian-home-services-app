@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Send, Shield } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import useSWR from 'swr'
@@ -10,10 +11,10 @@ import type { Message } from '@/lib/types'
 
 interface ChatScreenProps {
   orderId: string
-  onBack: () => void
 }
 
-export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
+export function ChatScreen({ orderId }: ChatScreenProps) {
+  const router = useRouter()
   const [draft,    setDraft]    = useState('')
   const [sending,  setSending]  = useState(false)
   const [myId,     setMyId]     = useState<string | null>(null)
@@ -74,7 +75,7 @@ export function ChatScreen({ orderId, onBack }: ChatScreenProps) {
       {/* Header */}
       <div className="flex items-center gap-4 border-b border-border px-6 pt-12 pb-4">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />

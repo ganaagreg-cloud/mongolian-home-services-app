@@ -1,32 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, User, Phone, Mail, Calendar, MapPin, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api-fetch'
-
-interface PersonalInfoScreenProps {
-  userName:       string
-  phone:          string
-  onBack:         () => void
-  onVerifyPhone:  (phone: string) => void
-  onVerifyEmail:  (email: string) => void
-}
+import { useSession } from '@/context/session-context'
 
 type MeData = {
   name: string; email: string; phone: string
   phoneVerified: boolean; emailVerified: boolean; isGoogleOAuth: boolean
 }
 
-export function PersonalInfoScreen({
-  userName, phone, onBack, onVerifyPhone, onVerifyEmail,
-}: PersonalInfoScreenProps) {
-  const [name,          setName]          = useState(userName)
+export function PersonalInfoScreen() {
+  const router = useRouter()
+  const session = useSession()
+  const [name,          setName]          = useState(session?.name ?? '')
   const [email,         setEmail]         = useState('')
-  const [localPhone,    setLocalPhone]    = useState(phone)
+  const [localPhone,    setLocalPhone]    = useState('')
   const [birthDate,     setBirthDate]     = useState('1990-01-15')
   const [address,       setAddress]       = useState('Улаанбаатар, Сүхбаатар дүүрэг')
   const [saving,        setSaving]        = useState(false)
@@ -41,16 +35,16 @@ export function PersonalInfoScreen({
       .then((r) => r.json())
       .then((json: { success: boolean; data?: MeData }) => {
         if (json.success && json.data) {
-          setName(json.data.name || userName)
+          setName(json.data.name || '')
           setEmail(json.data.email)
-          setLocalPhone(json.data.phone || phone)
+          setLocalPhone(json.data.phone || '')
           setPhoneVerified(json.data.phoneVerified)
           setEmailVerified(json.data.emailVerified)
           setIsGoogleOAuth(json.data.isGoogleOAuth)
         }
       })
       .catch(() => {})
-  }, [userName, phone])
+  }, [])
 
   const handleSave = async () => {
     setError('')
@@ -91,7 +85,7 @@ export function PersonalInfoScreen({
         toast.error(data.error ?? 'Алдаа гарлаа')
         return
       }
-      onVerifyPhone(localPhone)
+      toast.success('Баталгаажуулах код илгээлээ')
     } catch {
       toast.error('Алдаа гарлаа')
     } finally {
@@ -112,7 +106,7 @@ export function PersonalInfoScreen({
         toast.error(data.error ?? 'Алдаа гарлаа')
         return
       }
-      onVerifyEmail(email)
+      toast.success('Баталгаажуулах код илгээлээ')
     } catch {
       toast.error('Алдаа гарлаа')
     } finally {
@@ -125,7 +119,7 @@ export function PersonalInfoScreen({
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />

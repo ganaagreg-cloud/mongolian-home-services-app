@@ -1,8 +1,8 @@
 # App Router Migration — Decision Record
 
-**Sprint:** M6 (Teardown — legacy state machine dissolved)  
-**Date:** 2026-06-02  
-**Status:** Migration complete — M1–M6 done. M7 (perf) deferred.
+**Sprint:** M7 (Performance pass — bundle analysis + Lighthouse)  
+**Date:** 2026-06-03  
+**Status:** Migration COMPLETE — M1–M7 done.
 
 ---
 
@@ -210,4 +210,36 @@ export default async function Page({ params }: { params: Promise<{ orderId: stri
 - Profile sub-screens (`/help`, `/privacy`, `/saved-workers`).
 - Post-auth OTP re-verification flow.
 - Full hc client response-body type safety (Zod validators on routes).
-- M7 perf work.
+
+## M7 — Performance Pass (complete)
+
+**Bundle baseline (webpack prod build, gzip):**
+- Framework overhead (React 19 + Next.js 16): ~183 KB — unavoidable
+- First-load JS per route: ~210–232 KB gzip (framework + Sonner + shared chunks)
+- Route-specific chunks: 3–8 KB each (screens are thin)
+- Leaflet map: dynamically imported via `await import('leaflet')` — NOT in first-load JS
+- recharts (`chart.tsx`): zero importers — NOT bundled; confirmed dead, defer delete to M8
+- jose: zero imports in web package — NOT bundled; confirmed dead
+
+**Phase 1 change: `home/page.tsx` → Server Component shell**
+- Converted from `'use client'` to a pure server-component pass-through (M3 pattern)
+- `useSession()`, `useRouter()`, `hasActiveBooking` stub moved into `HomeScreen`
+- Rejected: Floating UI swap on `/orders/new` — Radix Select stays (accessibility + mobile touch)
+
+**Lighthouse (mobile, 4x CPU slowdown, slow 4G / 1.6 Mbps):**
+
+| Route | Perf | A11y | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|
+| `/home` | 72 | 96 | 1.2 s | 6.6 s | 140 ms | 0.116 |
+| `/orders` | 75 | 89 | 1.2 s | 7.2 s | 130 ms | 0 |
+| `/orders/new` | 72 | 94 | 1.2 s | 6.8 s | 160 ms | 0.111 |
+| `/profile` | 76 | 96 | 1.2 s | 6.7 s | 100 ms | 0 |
+
+**Analysis:**
+- FCP 1.2 s across all routes is good — server shell renders quickly
+- LCP 6.6–7.2 s is expected: client-side SWR fetches drive LCP elements (worker cards, order list). Reducing LCP would require RSC data prefetch across the Hono boundary — explicitly deferred, out of scope for M7
+- TBT 100–160 ms is acceptable (threshold for "needs improvement" is 200 ms)
+- CLS 0.116 on `/home` and `/orders/new` is from skeleton → content swap; fixable with explicit min-height on skeleton containers in a future sprint
+- Unused JS 365–419 KB Lighthouse estimate is largely unavoidable framework overhead; the real savings are the dead recharts + jose which are already not bundled
+
+**`/jobs` note:** Lighthouse measured the login redirect (M7 test user is not a worker). Worker page performance is structurally identical to `/home` (same shell/SWR pattern, similarly sized chunks).

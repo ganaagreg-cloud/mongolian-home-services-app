@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search, Camera, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,40 +20,34 @@ import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
 import type { Order, OrderStatus } from '@/lib/types'
 
-interface OrdersScreenProps {
-  onBack: () => void
-  onViewActive: (orderId: string) => void
-  onViewScheduledBoard: (orderId: string) => void
-}
-
 const ACTIVE_STATUSES: OrderStatus[] = [
   'searching_worker', 'pending_acceptances', 'pending_worker_acceptance', 'worker_assigned', 'worker_on_the_way', 'in_progress',
 ]
 
 const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg: string; text: string }> = {
-  pending_acceptances:       { label: 'Санал хүлээж байна',       icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
-  searching_worker:          { label: 'Ажилтан хайж байна',       icon: Search,       bg: 'bg-primary/10',     text: 'text-primary' },
-  pending_worker_acceptance: { label: 'Ажилтан хариу өгөхийг хүлээж байна', icon: Clock, bg: 'bg-primary/10', text: 'text-primary' },
-  pending_payment:           { label: 'Төлбөр хүлээж байна',      icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
-  worker_assigned:     { label: 'Ажилтан олдлоо',      icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary' },
-  worker_on_the_way:   { label: 'Ирж байна',            icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
-  in_progress:         { label: 'Ажиллаж байна',        icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent' },
-  completed:           { label: 'Дууссан',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
-  rated:               { label: 'Үнэлсэн',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success' },
-  cancelled_by_user:   { label: 'Цуцлагдсан',           icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  cancelled_by_worker: { label: 'Ажилтан цуцалсан',     icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  no_workers_found:    { label: 'Ажилтан олдсонгүй',    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  awaiting_quote:      { label: 'Үнийн санал хүлээж байна', icon: Clock,    bg: 'bg-primary/10',     text: 'text-primary' },
-  quote_submitted:     { label: 'Үнийн санал ирсэн',    icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent' },
-  quote_approved:      { label: 'Үнийн санал зөвшөөрсөн', icon: CheckCircle2, bg: 'bg-success/10',  text: 'text-success' },
-  quote_rejected:      { label: 'Үнийн санал татгалзсан', icon: XCircle,    bg: 'bg-destructive/10', text: 'text-destructive' },
+  pending_acceptances:       { label: 'Санал хүлээж байна',                  icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
+  searching_worker:          { label: 'Ажилтан хайж байна',                  icon: Search,       bg: 'bg-primary/10',     text: 'text-primary'     },
+  pending_worker_acceptance: { label: 'Ажилтан хариу өгөхийг хүлээж байна', icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
+  pending_payment:           { label: 'Төлбөр хүлээж байна',                 icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
+  worker_assigned:           { label: 'Ажилтан олдлоо',                      icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
+  worker_on_the_way:         { label: 'Ирж байна',                           icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
+  in_progress:               { label: 'Ажиллаж байна',                       icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent'      },
+  completed:                 { label: 'Дууссан',                             icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
+  rated:                     { label: 'Үнэлсэн',                             icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
+  cancelled_by_user:         { label: 'Цуцлагдсан',                          icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  cancelled_by_worker:       { label: 'Ажилтан цуцалсан',                    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  no_workers_found:          { label: 'Ажилтан олдсонгүй',                   icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
+  awaiting_quote:            { label: 'Үнийн санал хүлээж байна',            icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
+  quote_submitted:           { label: 'Үнийн санал ирсэн',                   icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
+  quote_approved:            { label: 'Үнийн санал зөвшөөрсөн',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
+  quote_rejected:            { label: 'Үнийн санал татгалзсан',              icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
 }
 
 const DISPUTE_REASONS = [
-  { value: 'хохирол',           label: 'Хохирол учруулсан' },
-  { value: 'чанар муу',         label: 'Ажлын чанар муу' },
-  { value: 'ажилтан ирээгүй',   label: 'Ажилтан ирээгүй' },
-  { value: 'бусад',             label: 'Бусад' },
+  { value: 'хохирол',         label: 'Хохирол учруулсан' },
+  { value: 'чанар муу',       label: 'Ажлын чанар муу'   },
+  { value: 'ажилтан ирээгүй', label: 'Ажилтан ирээгүй'   },
+  { value: 'бусад',           label: 'Бусад'              },
 ] as const
 
 function isWithin7Days(dateStr: string): boolean {
@@ -61,15 +56,12 @@ function isWithin7Days(dateStr: string): boolean {
 
 function OrderCard({
   order,
-  onViewActive,
-  onViewScheduledBoard,
   onDispute,
 }: {
   order: Order
-  onViewActive: (id: string) => void
-  onViewScheduledBoard: (id: string) => void
   onDispute: (order: Order) => void
 }) {
+  const router = useRouter()
   const cfg = statusConfig[order.status]
   const StatusIcon = cfg.icon
   const isActive = ACTIVE_STATUSES.includes(order.status)
@@ -79,9 +71,9 @@ function OrderCard({
 
   const handleViewClick = () => {
     if (isPendingAcceptances) {
-      onViewScheduledBoard(order.id)
+      router.push(`/orders/${order.id}/board`)
     } else {
-      onViewActive(order.id)
+      router.push(`/active/${order.id}`)
     }
   }
 
@@ -136,7 +128,8 @@ function OrderCard({
   )
 }
 
-export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: OrdersScreenProps) {
+export function OrdersScreen() {
+  const router = useRouter()
   const [tab, setTab] = useState<'active' | 'past'>('active')
   const { data: orders, isLoading, error } = useSWR<Order[]>('/api/orders', fetcher)
 
@@ -207,7 +200,7 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -266,8 +259,6 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
             <OrderCard
               key={order.id}
               order={order}
-              onViewActive={onViewActive}
-              onViewScheduledBoard={onViewScheduledBoard}
               onDispute={handleOpenDispute}
             />
           ))
@@ -282,7 +273,6 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Reason */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Шалтгаан</p>
               <Select value={reason} onValueChange={setReason}>
@@ -299,7 +289,6 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
               </Select>
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
                 Тайлбар
@@ -313,7 +302,6 @@ export function OrdersScreen({ onBack, onViewActive, onViewScheduledBoard }: Ord
               />
             </div>
 
-            {/* Photos */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
                 Зураг <span className="text-xs">(заавал биш, хамгийн ихдээ 3)</span>

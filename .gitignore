@@ -33,3 +33,19 @@ tsconfig.tsbuildinfo
 # Generated / uploaded content
 public/uploads/
 screenshots/
+
+# Playwright MCP artifacts (screenshots, snapshots, logs, Lighthouse JSON)
+.playwright-mcp/
+
+# Turbo cache
+.turbo/
+packages/*/.turbo/
+
+# Build output
+packages/api/dist/
+
+# Local test scripts
+test-admin-*.mjs
+test-*.mjs
+session-*.png
+test-*.png

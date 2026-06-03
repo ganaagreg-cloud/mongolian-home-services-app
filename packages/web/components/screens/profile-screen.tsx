@@ -1,35 +1,32 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { ChevronRight, History, Heart, Bell, HelpCircle, Shield, LogOut, Briefcase, UserCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useSession } from '@/context/session-context'
+import { authClient } from '@/lib/auth-client'
 
-interface ProfileScreenProps {
-  userName: string
-  phone: string
-  isWorker?: boolean
-  onMenuClick: (menu: string) => void
-  onBecomeWorker: () => void
-  onLogout: () => void
-}
-
-const menuItems = [
-  { id: 'personal-info', icon: UserCircle, label: 'Хувийн мэдээлэл' },
-  { id: 'history', icon: History, label: 'Захиалгын түүх' },
-  { id: 'saved', icon: Heart, label: 'Хадгалсан ажилтнууд' },
-  { id: 'notifications', icon: Bell, label: 'Мэдэгдэл' },
-  { id: 'help', icon: HelpCircle, label: 'Тусламж' },
-  { id: 'privacy', icon: Shield, label: 'Нууцлал' },
+const menuItems: Array<{ id: string; icon: React.ComponentType<{ className?: string }>; label: string; href: string | null }> = [
+  { id: 'settings',      icon: UserCircle, label: 'Хувийн мэдээлэл',     href: '/settings'      },
+  { id: 'orders',        icon: History,    label: 'Захиалгын түүх',       href: '/orders'        },
+  { id: 'saved-workers', icon: Heart,      label: 'Хадгалсан ажилтнууд', href: '/saved-workers' },
+  { id: 'notifications', icon: Bell,       label: 'Мэдэгдэл',            href: null             },
+  { id: 'help',          icon: HelpCircle, label: 'Тусламж',             href: '/help'          },
+  { id: 'privacy',       icon: Shield,     label: 'Нууцлал',             href: '/privacy'       },
 ]
 
-export function ProfileScreen({
-  userName,
-  phone,
-  isWorker = false,
-  onMenuClick,
-  onBecomeWorker,
-  onLogout,
-}: ProfileScreenProps) {
+export function ProfileScreen() {
+  const router = useRouter()
+  const session = useSession()
+  const userName = session?.name ?? ''
+  const isWorker = session?.isWorker ?? false
+
+  const handleLogout = async () => {
+    await authClient.signOut()
+    router.push('/login')
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
       {/* Header */}
@@ -48,7 +45,7 @@ export function ProfileScreen({
         <div className="flex-1">
           <p className="text-lg font-semibold text-foreground">{userName}</p>
           <p className="text-sm text-muted-foreground">
-            {phone || 'Утас нэмааг?й'}
+            Утас нэмааг?й
           </p>
         </div>
       </div>
@@ -60,7 +57,7 @@ export function ProfileScreen({
           return (
             <button
               key={item.id}
-              onClick={() => onMenuClick(item.id)}
+              onClick={() => { if (item.href) router.push(item.href) }}
               className={`flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 ${
                 index !== menuItems.length - 1 ? 'border-b border-border' : ''
               }`}
@@ -79,7 +76,7 @@ export function ProfileScreen({
       {!isWorker && (
         <div className="mt-6 mx-6">
           <Button
-            onClick={onBecomeWorker}
+            onClick={() => router.push('/worker-register')}
             variant="outline"
             className="h-14 w-full rounded-2xl border-accent text-accent font-semibold shadow-sm hover:bg-accent/10"
           >
@@ -92,7 +89,7 @@ export function ProfileScreen({
       {/* Logout Button */}
       <div className="mt-4 mx-6">
         <Button
-          onClick={onLogout}
+          onClick={() => { void handleLogout() }}
           variant="ghost"
           className="h-14 w-full rounded-2xl text-destructive font-semibold hover:bg-destructive/10"
         >

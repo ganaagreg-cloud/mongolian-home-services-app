@@ -1,6 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
+import { useRouter } from 'next/navigation'
 import {
   Bell, Sparkles, Droplets, Zap, Wrench, Paintbrush, Wind,
   Star, ChevronRight, Hammer, Truck, WashingMachine, type LucideIcon,
@@ -8,6 +9,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetcher } from '@/lib/fetcher'
+import { useSession } from '@/context/session-context'
 import type { Worker } from '@/lib/types'
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -25,24 +27,24 @@ const ICON_MAP: Record<string, LucideIcon> = {
 type ServiceType = { id: number; name_mn: string; icon: string }
 
 interface HomeScreenProps {
-  userName: string
-  onCreateOrder: () => void
   onActiveBookingClick?: () => void
-  hasActiveBooking?: boolean
   isWorker?: boolean
   activeMode?: 'user' | 'worker'
   onModeToggle?: (mode: 'user' | 'worker') => void
 }
 
 export function HomeScreen({
-  userName,
-  onCreateOrder,
   onActiveBookingClick,
-  hasActiveBooking = false,
   isWorker = false,
   activeMode = 'user',
   onModeToggle,
 }: HomeScreenProps) {
+  const session = useSession()
+  const router = useRouter()
+  const userName = session?.name ?? '...'
+  const onCreateOrder = () => router.push('/orders/new')
+  // hasActiveBooking detection deferred — wired to real order state in a future sprint
+  const hasActiveBooking = false
   const { data: featuredWorkers, isLoading } = useSWR<Worker[]>(
     '/api/workers?sort=rating',
     fetcher,

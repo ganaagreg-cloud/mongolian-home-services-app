@@ -99,9 +99,9 @@ After completing any implementation:
 
 Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `packages/web` is a Next.js 16 App Router frontend (port 3000); `packages/admin` is a standalone Next.js admin panel (port 3001); `packages/shared` holds shared TypeScript types. Auth is Google/Facebook OAuth via Better Auth (session cookies, issued by packages/api).
 
-### App Router Migration — Complete (M1–M6)
+### App Router Migration — Complete (M1–M7)
 
-**Status (M6):** Migration complete. Legacy state machine dissolved. M7 (perf) deferred.
+**Status (M7):** Migration complete. Performance pass done. See `.claude/decisions/app-router-migration.md` for full Lighthouse results and bundle analysis.
 
 **Routing model** (read `.claude/decisions/app-router-migration.md` for full details):
 - `app/page.tsx` — Server Component root dispatcher: no session → `/login`; `needsOnboarding` → `/login`; worker mode → `/jobs`; else → `/home`
