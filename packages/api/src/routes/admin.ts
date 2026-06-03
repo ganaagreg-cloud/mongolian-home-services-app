@@ -41,6 +41,13 @@ router.post('/api/admin/logout', (c) => {
   return c.json({ success: true })
 })
 
+// GET /api/admin/me — lightweight admin session check for the panel's client-side gate
+router.get('/api/admin/me', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, 403)
+  return c.json({ success: true })
+})
+
 // GET /api/admin/stats
 router.get('/api/admin/stats', async (c) => {
   const session = await requireAdmin(c)

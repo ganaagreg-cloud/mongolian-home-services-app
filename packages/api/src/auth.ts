@@ -127,13 +127,19 @@ function verifyAdminToken(token: string): boolean {
   } catch { return false }
 }
 
+// The admin panel and API are separate origins on Render, so the cookie is set
+// and sent cross-site. Browsers only store/send a cross-site cookie when it is
+// SameSite=None; Secure. Localhost dev is http and same-site-enough → keep Lax.
+function adminCookieSameSite(): string {
+  return process.env.NODE_ENV === 'production' ? 'None; Secure' : 'Lax'
+}
+
 export function clearAdminCookie(): string {
-  return `${ADMIN_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+  return `${ADMIN_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=${adminCookieSameSite()}`
 }
 
 export function setAdminCookie(token: string): string {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
-  return `${ADMIN_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax${secure}`
+  return `${ADMIN_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=${adminCookieSameSite()}`
 }
 
 export async function requireAdmin(c: Context): Promise<SessionPayload | null> {
