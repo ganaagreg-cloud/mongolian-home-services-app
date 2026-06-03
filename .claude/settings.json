@@ -1,16 +1,49 @@
 {
-  "enabledMcpjsonServers": ["postgres", "context7"],
+  "enabledMcpjsonServers": [
+    "postgres",
+    "context7"
+  ],
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/skill-reminder.sh",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/typecheck-gate.sh" },
-          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/ui-token-lint.sh" },
-          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/api-security-lint.sh" },
-          { "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/business-rules-lint.sh" }
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/typecheck-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/ui-token-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/api-security-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/business-rules-lint.sh"
+          }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true
   }
 }
