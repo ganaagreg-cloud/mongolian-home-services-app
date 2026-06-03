@@ -35,4 +35,4 @@ COPY --from=builder /app/packages/admin/.next/static  packages/admin/.next/stand
 COPY --from=builder /app/packages/admin/public        packages/admin/.next/standalone/packages/admin/public
 
 EXPOSE 3001
-CMD ["node", "packages/admin/.next/standalone/packages/admin/server.js"]
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 PORT=${PORT:-10000} node packages/admin/.next/standalone/packages/admin/server.js"]
