@@ -11,12 +11,13 @@ const nextConfig = {
     root: resolve(import.meta.dirname, '../..'),
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
   },
   serverExternalPackages: ['pg'],
+  output: 'standalone',
 }
 
 export default withBundleAnalyzer(nextConfig)

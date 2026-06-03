@@ -1,7 +1,9 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { dbReady } from './db'
+import { pinoLogger } from 'hono-pino'
+import { rateLimiter } from 'hono-rate-limiter'
+import { db, dbReady } from './db'
 import { auth } from './auth'
 import authRouter       from './routes/auth'
 import meRouter         from './routes/me'
@@ -29,8 +31,42 @@ app.use('*', cors({
   credentials: true,
 }))
 
-// Health check
+app.use('*', pinoLogger({
+  http: {
+    onReqBindings: (c) => ({ req: { method: c.req.method, path: c.req.path } }),
+    onResBindings: (c) => ({ res: { status: c.res.status } }),
+    responseTime: true,
+  },
+}))
+
+// Health check — no auth, must stay fast
+app.get('/api/health', async (c) => {
+  try {
+    await db.query('SELECT 1')
+    return c.json({ status: 'ok', db: 'ok', ts: Date.now() })
+  } catch {
+    return c.json({ status: 'degraded', db: 'error', ts: Date.now() }, 503)
+  }
+})
+
 app.get('/health', (c) => c.json({ ok: true }))
+
+// Per-route rate limiters (in-memory, per IP)
+app.use('/api/payments/*', rateLimiter({
+  windowMs: 60_000,
+  limit: 20,
+  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+}))
+app.use('/api/auth/dan', rateLimiter({
+  windowMs: 60_000,
+  limit: 10,
+  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+}))
+app.use('/api/sos', rateLimiter({
+  windowMs: 60_000,
+  limit: 60,
+  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+}))
 
 // Custom auth routes first (before Better Auth wildcard)
 app.route('/', authRouter)

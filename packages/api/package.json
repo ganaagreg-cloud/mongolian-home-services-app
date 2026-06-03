@@ -15,7 +15,10 @@
     "bcryptjs": "^3.0.2",
     "better-auth": "latest",
     "hono": "latest",
+    "hono-pino": "^0.10.3",
+    "hono-rate-limiter": "^0.5.3",
     "pg": "^8.11.0",
+    "pino": "^10.3.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
