@@ -20,6 +20,7 @@ RUN pnpm --filter @homeservices/api build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+COPY --from=builder /app/node_modules               ./node_modules
 COPY --from=builder /app/packages/api/dist         packages/api/dist
 COPY --from=builder /app/packages/api/node_modules packages/api/node_modules
 COPY --from=builder /app/packages/shared            packages/shared
