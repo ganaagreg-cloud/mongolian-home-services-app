@@ -51,4 +51,3 @@ databases:
   - name: homeservices-db
     plan: free
     databaseName: homeservices
-    user: postgres
