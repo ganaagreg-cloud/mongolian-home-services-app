@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import Script from 'next/script'
 import { Providers } from './providers'
 import './globals.css'
@@ -52,7 +51,6 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        {process.env.NEXT_PUBLIC_VERCEL_ENV && <Analytics />}
         <Script id="sw-register" strategy="afterInteractive">
           {`if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`}
         </Script>
