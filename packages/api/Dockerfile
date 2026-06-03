@@ -23,8 +23,9 @@ WORKDIR /app
 COPY --from=builder /app/node_modules               ./node_modules
 COPY --from=builder /app/packages/api/dist         packages/api/dist
 COPY --from=builder /app/packages/api/node_modules packages/api/node_modules
-COPY --from=builder /app/packages/shared/dist        packages/shared/dist
+COPY --from=builder /app/packages/shared/dist         packages/shared/dist
 COPY --from=builder /app/packages/shared/package.json packages/shared/package.json
+COPY --from=builder /app/packages/shared/node_modules packages/shared/node_modules
 
 ENV NODE_ENV=production
 EXPOSE 4000

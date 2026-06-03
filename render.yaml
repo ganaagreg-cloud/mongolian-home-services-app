@@ -28,6 +28,8 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: DB_SSL
+        value: true
 
   - type: web
     name: homeservices-web

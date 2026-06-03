@@ -7,9 +7,7 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: true }
-    : false,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
 })
 
 async function init(): Promise<void> {
