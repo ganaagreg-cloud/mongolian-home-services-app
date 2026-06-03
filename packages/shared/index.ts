@@ -1,3 +1,3 @@
-export * from './src/types'
-export * from './src/utils/phone'
-export * from './src/utils/cn'
+export * from './src/types/index.js'
+export * from './src/utils/phone.js'
+export * from './src/utils/cn.js'
