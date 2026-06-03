@@ -19,7 +19,7 @@ ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm --filter @homeservices/web build
+RUN pnpm --filter @homeservices/shared build && pnpm --filter @homeservices/web build
 
 # ── Stage 2: runner ───────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner

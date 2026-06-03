@@ -44,6 +44,7 @@ packages/*/.turbo/
 
 # Build output
 packages/api/dist/
+packages/shared/dist/
 
 # Local test scripts
 test-admin-*.mjs
