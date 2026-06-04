@@ -361,4 +361,40 @@ export const TABLES: string[] = [
   `CREATE INDEX IF NOT EXISTS notifications_user_time
     ON notifications(user_id, created_at DESC)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_read_at TIMESTAMPTZ DEFAULT NULL`,
+
+  // ── Scheduled bidding infrastructure ────────────────────────────────────────
+  // btree_gist is required for integer columns inside a GIST exclusion index
+  `CREATE EXTENSION IF NOT EXISTS btree_gist`,
+
+  // Worker applications to scheduled orders (unlimited per worker, non-binding)
+  `CREATE TABLE IF NOT EXISTS applications (
+    id         SERIAL PRIMARY KEY,
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
+    order_id   INTEGER NOT NULL REFERENCES orders(id),
+    status     TEXT NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending', 'withdrawn', 'selected')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (worker_id, order_id)
+  )`,
+
+  // Worker calendar slots — exclusion constraint enforces no-overlap per worker.
+  // time_range = [scheduled_start, scheduled_end + 60 min) — half-open, so
+  // back-to-back jobs exactly 60 min apart are allowed (no false conflicts).
+  // A 'pending_payment' row is inserted when the customer selects a worker,
+  // blocking concurrent bookings before payment is confirmed.
+  `CREATE TABLE IF NOT EXISTS worker_schedule (
+    id         SERIAL PRIMARY KEY,
+    worker_id  INTEGER NOT NULL REFERENCES workers(id),
+    order_id   INTEGER NOT NULL REFERENCES orders(id),
+    time_range TSTZRANGE NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'pending_payment'
+               CHECK (status IN ('pending_payment', 'booked')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    EXCLUDE USING gist (worker_id WITH =, time_range WITH &&)
+  )`,
+
+  // Payment window deadline for scheduled orders in 'awaiting_payment' state
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_deadline TIMESTAMPTZ`,
 ]
