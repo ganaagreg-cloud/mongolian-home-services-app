@@ -191,7 +191,7 @@ export function WorkerJobsScreen() {
     fetcher,
     { refreshInterval: 5000 },
   )
-  const { data: scheduledJobs = [], isLoading: loadingScheduled } = useSWR<Order[]>(
+  const { data: scheduledJobs = [], isLoading: loadingScheduled, mutate: mutateScheduled } = useSWR<Order[]>(
     '/api/orders?scheduled=1',
     fetcher,
     { refreshInterval: 5000 },
@@ -220,15 +220,20 @@ export function WorkerJobsScreen() {
 
   const handleAcceptScheduled = async (orderId: string) => {
     setAcceptError(null)
+    // Optimistic: show "applied" immediately and remove on next refresh
+    setAcceptedIds((prev) => new Set([...prev, orderId]))
     try {
-      const res = await apiFetch(`/api/orders/${orderId}/accept`, { method: 'POST' })
+      const res = await apiFetch(`/api/orders/${orderId}/apply`, { method: 'POST' })
       const data = (await res.json()) as { success: boolean; error?: string }
-      if (data.success) {
-        setAcceptedIds((prev) => new Set([...prev, orderId]))
-      } else {
+      if (!data.success) {
+        setAcceptedIds((prev) => { const s = new Set(prev); s.delete(orderId); return s })
         setAcceptError(data.error ?? 'Хүсэлт илгээхэд алдаа гарлаа.')
+      } else {
+        // Remove from list — server will also filter it out on next poll
+        void mutateScheduled((prev = []) => prev.filter((j) => j.id !== orderId), { revalidate: false })
       }
     } catch {
+      setAcceptedIds((prev) => { const s = new Set(prev); s.delete(orderId); return s })
       setAcceptError('Сүлжээний алдаа. Дахин оролдоно уу.')
     }
   }

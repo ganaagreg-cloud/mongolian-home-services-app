@@ -97,8 +97,8 @@ router.get('/api/orders', async (c) => {
         )
         AND o.user_id != $2
         AND NOT EXISTS (
-          SELECT 1 FROM order_acceptances oa
-          WHERE oa.order_id = o.id AND oa.worker_id = $1
+          SELECT 1 FROM applications a
+          WHERE a.order_id = o.id AND a.worker_id = $1 AND a.status != 'withdrawn'
         )
       ORDER BY o.created_at DESC
     `, [workerRow.id, session.sub])).rows as OrderRow[]
