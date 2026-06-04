@@ -4,6 +4,7 @@ import { SessionProvider, type SessionData } from '@/context/session-context'
 import { AppBottomNav } from '@/components/app-bottom-nav'
 import { ModeToggle } from '@/components/mode-toggle'
 import { WorkerModeHintToast } from '@/components/worker-mode-hint-toast'
+import { DevPanel } from '@/components/dev-panel'
 
 // ONE authoritative server → Hono call per navigation for the user app group.
 // Pages within this layout fetch their own data client-side via fetcher() / browserClient.
@@ -40,6 +41,7 @@ export default async function AppLayout({
       </main>
       <ModeToggle />
       <AppBottomNav />
+      <DevPanel />
     </SessionProvider>
   )
 }
