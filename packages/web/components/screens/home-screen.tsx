@@ -54,6 +54,12 @@ export function HomeScreen({
     fetcher,
   )
   const categories = serviceTypesData ?? []
+  const { data: badgeData } = useSWR<{ count: number }>(
+    '/api/notifications/badge',
+    fetcher,
+    { refreshInterval: 30000 },
+  )
+  const notifCount = badgeData?.count ?? 0
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-24">
@@ -65,11 +71,16 @@ export function HomeScreen({
           </h1>
           <p className="text-sm text-muted-foreground">Өнөөдөр юу хийх вэ?</p>
         </div>
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm">
+        <button
+          onClick={() => router.push('/notifications')}
+          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+        >
           <Bell className="h-5 w-5 text-foreground" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
-            2
-          </span>
+          {notifCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
+              {notifCount > 9 ? '9+' : notifCount}
+            </span>
+          )}
         </button>
       </div>
 

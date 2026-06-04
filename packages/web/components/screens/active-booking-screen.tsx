@@ -28,6 +28,7 @@ const STATUS_STEPS = [
 ]
 
 const QUOTE_STATUSES = new Set(['awaiting_quote', 'quote_submitted', 'quote_rejected'])
+const TERMINAL_STATUSES = new Set(['completed', 'rated', 'cancelled_by_user', 'cancelled_by_worker', 'no_workers_found', 'quote_rejected'])
 
 function statusToStep(status: string | undefined): number {
   switch (status) {
@@ -70,7 +71,9 @@ function getCancelInfo(order: Order): { canCancel: boolean; fee: number; refundA
 export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
   const router = useRouter()
   const url = orderId ? `/api/orders/${orderId}` : '/api/orders?active=1'
-  const { data: order, isLoading, mutate } = useSWR<Order | null>(url, fetcher, { refreshInterval: 8000 })
+  const { data: order, isLoading, mutate } = useSWR<Order | null>(url, fetcher, {
+    refreshInterval: (data) => data != null && TERMINAL_STATUSES.has(data.status) ? 0 : 5000,
+  })
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancelling,       setCancelling]       = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
@@ -83,7 +86,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
     : null
   const { data: quoteData } = useSWR<{
     id: string; amount: number; description: string; status: string
-  }>(quoteUrl, fetcher, { refreshInterval: 8000 })
+  }>(quoteUrl, fetcher, { refreshInterval: 5000 })
 
   const currentStepIndex = statusToStep(order?.status)
   const showTimeline     = !QUOTE_STATUSES.has(order?.status ?? '')

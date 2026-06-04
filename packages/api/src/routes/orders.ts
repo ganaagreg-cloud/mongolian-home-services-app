@@ -5,6 +5,7 @@ import path from 'path'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
 import { getSettings } from '../lib/settings'
+import { notify } from '../lib/notifications'
 import type {
   Order, OrderStatus, PaymentStatus, PropertyType, MatchingStrategy, PricingModel,
   SurveyDetails, OrderAcceptance, Message,
@@ -253,6 +254,8 @@ router.post('/api/orders', async (c) => {
 
     // Consume the intent — one invoice pays for exactly one order
     await db.query('DELETE FROM payment_intents WHERE id = $1', [invoiceId])
+
+    void notify(session.sub, 'payment_confirmed', { orderId: Number(result.id), amount: serverTotal })
 
     return c.json({ success: true, data: { id: String(result.id), matchingStrategy, totalAmount: serverTotal } }, 201)
   } catch {
@@ -746,6 +749,13 @@ router.post('/api/orders/:id/accept', async (c) => {
     return c.json({ success: false, error: 'Хүлээж авахад алдаа гарлаа' }, 500)
   }
 
+  void (async () => {
+    try {
+      const nameRow = (await db.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [session.sub])).rows[0]
+      void notify(Number(order.user_id), 'order_accepted', { orderId: Number(id), workerName: nameRow?.name ?? '' })
+    } catch {}
+  })()
+
   return c.json({ success: true, data: undefined }, 201)
 })
 
@@ -838,6 +848,13 @@ router.post('/api/orders/:id/accept-instant', async (c) => {
     `UPDATE orders SET status = 'worker_assigned', updated_at = NOW() WHERE id = $1`,
     [id],
   )
+
+  void (async () => {
+    try {
+      const nameRow = (await db.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [session.sub])).rows[0]
+      void notify(Number(order.user_id), 'order_accepted', { orderId: Number(id), workerName: nameRow?.name ?? '' })
+    } catch {}
+  })()
 
   return c.json({ success: true, data: undefined })
 })
@@ -989,6 +1006,37 @@ router.patch('/api/orders/:id/status', async (c) => {
     client.release()
   }
 
+  if (status === 'worker_on_the_way' || status === 'completed' || status === 'cancelled_by_worker') {
+    void (async () => {
+      try {
+        const row = (await db.query<{ user_id: string }>('SELECT user_id FROM orders WHERE id = $1', [id])).rows[0]
+        if (!row) return
+        if (status === 'worker_on_the_way') {
+          const nameRow = (await db.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [session.sub])).rows[0]
+          void notify(Number(row.user_id), 'worker_on_the_way', { orderId: Number(id), workerName: nameRow?.name ?? '' })
+        } else if (status === 'completed') {
+          void notify(Number(row.user_id), 'order_completed', { orderId: Number(id) })
+        } else {
+          void notify(Number(row.user_id), 'order_cancelled', { orderId: Number(id), cancelledBy: 'worker' })
+        }
+      } catch {}
+    })()
+  } else if (status === 'cancelled_by_user') {
+    void (async () => {
+      try {
+        const row = (await db.query<{ worker_user_id: string }>(
+          `SELECT u.id AS worker_user_id FROM orders o
+           JOIN workers w ON o.worker_id = w.id
+           JOIN users u ON w.user_id = u.id
+           WHERE o.id = $1`,
+          [id],
+        )).rows[0]
+        if (!row) return
+        void notify(Number(row.worker_user_id), 'order_cancelled', { orderId: Number(id), cancelledBy: 'user' })
+      } catch {}
+    })()
+  }
+
   return c.json({ success: true, data: undefined })
 })
 
@@ -1133,6 +1181,17 @@ router.post('/api/orders/:id/cancel', async (c) => {
     return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
   } finally {
     client.release()
+  }
+
+  if (order.worker_id) {
+    void (async () => {
+      try {
+        const workerUserRow = (await db.query<{ user_id: string }>('SELECT user_id FROM workers WHERE id = $1', [order.worker_id])).rows[0]
+        if (workerUserRow) {
+          void notify(Number(workerUserRow.user_id), 'order_cancelled', { orderId: Number(orderId), cancelledBy: 'user' })
+        }
+      } catch {}
+    })()
   }
 
   return c.json({ success: true, data: { refundAmount, fee } })

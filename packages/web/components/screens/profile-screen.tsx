@@ -11,7 +11,7 @@ const menuItems: Array<{ id: string; icon: React.ComponentType<{ className?: str
   { id: 'settings',      icon: UserCircle, label: 'Хувийн мэдээлэл',     href: '/settings'      },
   { id: 'orders',        icon: History,    label: 'Захиалгын түүх',       href: '/orders'        },
   { id: 'saved-workers', icon: Heart,      label: 'Хадгалсан ажилтнууд', href: '/saved-workers' },
-  { id: 'notifications', icon: Bell,       label: 'Мэдэгдэл',            href: null             },
+  { id: 'notifications', icon: Bell,       label: 'Мэдэгдэл',            href: '/notifications' },
   { id: 'help',          icon: HelpCircle, label: 'Тусламж',             href: '/help'          },
   { id: 'privacy',       icon: Shield,     label: 'Нууцлал',             href: '/privacy'       },
 ]
