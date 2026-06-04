@@ -15,7 +15,9 @@ import { calculatePrice, DEFAULT_PLATFORM_SETTINGS } from '@/lib/pricing'
 import type { MatchingStrategy, PricingModel } from '@/lib/types'
 import { apiFetch } from '@/lib/api-fetch'
 
-interface CreateOrderScreenProps {}
+interface CreateOrderScreenProps {
+  preSelectedServiceId?: number | null
+}
 
 // Matches GET /api/service-types response shape
 interface ServiceType {
@@ -43,7 +45,7 @@ const TIME_SLOTS = [
 
 const STEP_LABELS = ['Үйлчилгээ', 'Цаг', 'Тэмдэглэл', 'Үнэ', 'Баталгаа']
 
-export function CreateOrderScreen(_: CreateOrderScreenProps) {
+export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenProps) {
   const router = useRouter()
   const [step, setStep] = useState(1)
 
@@ -81,12 +83,16 @@ export function CreateOrderScreen(_: CreateOrderScreenProps) {
       .then((j: { success: boolean; data?: ServiceType[] }) => {
         if (j.success && j.data?.length) {
           setServiceTypes(j.data)
-          setServiceTypeId(j.data[0]!.id)
+          const validId = preSelectedServiceId != null && j.data.some((s) => s.id === preSelectedServiceId)
+            ? preSelectedServiceId
+            : j.data[0]!.id
+          setServiceTypeId(validId)
         } else {
           setServiceLoadError(true)
         }
       })
       .catch(() => setServiceLoadError(true))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Generate next 14 days
@@ -256,7 +262,7 @@ export function CreateOrderScreen(_: CreateOrderScreenProps) {
   const showTimeError    = step2Submitted && matchingStrategy === 'scheduled' && !selectedTime
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-32">
+    <div className="flex min-h-screen flex-col bg-background pb-48">
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
@@ -300,30 +306,47 @@ export function CreateOrderScreen(_: CreateOrderScreenProps) {
             {serviceLoadError && (
               <p className="mt-2 text-sm text-destructive">Үйлчилгээний мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.</p>
             )}
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {serviceTypes.map((s) => {
-                const Icon = ICON_MAP[s.icon as keyof typeof ICON_MAP] ?? Sparkles
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      setServiceTypeId(s.id)
-                      // Reset booking data when service changes
-                      setBookingData({ quantity: 0, estimatedHours: 1, isValid: false })
-                      setStep1Submitted(false)
-                    }}
-                    className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
-                      serviceTypeId === s.id
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'bg-card text-foreground shadow-sm hover:shadow-md'
-                    }`}
-                  >
-                    <Icon className="h-6 w-6" />
-                    <span className="text-center text-xs font-medium leading-tight">{s.name_mn}</span>
-                  </button>
-                )
-              })}
-            </div>
+            {preSelectedServiceId != null ? (
+              /* Pre-selected from home screen — read-only chip */
+              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 shadow-sm">
+                {selectedService && (() => {
+                  const Icon = ICON_MAP[selectedService.icon as keyof typeof ICON_MAP] ?? Sparkles
+                  return (
+                    <>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="font-semibold text-primary">{selectedService.name_mn}</span>
+                    </>
+                  )
+                })()}
+              </div>
+            ) : (
+              /* Full picker grid */
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {serviceTypes.map((s) => {
+                  const Icon = ICON_MAP[s.icon as keyof typeof ICON_MAP] ?? Sparkles
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setServiceTypeId(s.id)
+                        setBookingData({ quantity: 0, estimatedHours: 1, isValid: false })
+                        setStep1Submitted(false)
+                      }}
+                      className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
+                        serviceTypeId === s.id
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-card text-foreground shadow-sm hover:shadow-md'
+                      }`}
+                    >
+                      <Icon className="h-6 w-6" />
+                      <span className="text-center text-xs font-medium leading-tight">{s.name_mn}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Address — hidden for survey; SurveyForm collects fromAddress + toAddress */}
@@ -826,8 +849,8 @@ export function CreateOrderScreen(_: CreateOrderScreenProps) {
         />
       )}
 
-      {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
+      {/* Fixed bottom CTA — sits above AppBottomNav (~88px) */}
+      <div className="fixed bottom-20 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-2 pt-4">
         {step < 5 ? (
           <Button
             onClick={handleNext}

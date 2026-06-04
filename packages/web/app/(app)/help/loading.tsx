@@ -1,5 +1,5 @@
 import { PageSpinner } from '@/components/page-spinner'
 
-export default function WorkerLoading() {
+export default function Loading() {
   return <PageSpinner />
 }

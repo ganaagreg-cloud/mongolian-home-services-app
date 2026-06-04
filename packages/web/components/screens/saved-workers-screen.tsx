@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { ArrowLeft, Star, Heart, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -8,11 +9,8 @@ import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
 import type { Worker } from '@/lib/types'
 
-interface SavedWorkersScreenProps {
-  onBack: () => void
-}
-
-export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
+export function SavedWorkersScreen() {
+  const router = useRouter()
   const { data: workers, isLoading, mutate } = useSWR<Worker[]>('/api/me/saved-workers', fetcher)
 
   const handleRemove = async (workerId: string) => {
@@ -30,7 +28,7 @@ export function SavedWorkersScreen({ onBack }: SavedWorkersScreenProps) {
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />

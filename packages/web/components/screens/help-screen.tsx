@@ -1,11 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown, ChevronUp, MessageCircle, Phone } from 'lucide-react'
-
-interface HelpScreenProps {
-  onBack: () => void
-}
 
 const faqs = [
   {
@@ -46,7 +43,8 @@ const faqs = [
   },
 ]
 
-export function HelpScreen({ onBack }: HelpScreenProps) {
+export function HelpScreen() {
+  const router = useRouter()
   const [openId, setOpenId] = useState<string | null>(null)
 
   const toggle = (id: string) => setOpenId(openId === id ? null : id)
@@ -56,7 +54,7 @@ export function HelpScreen({ onBack }: HelpScreenProps) {
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
-          onClick={onBack}
+          onClick={() => router.back()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />

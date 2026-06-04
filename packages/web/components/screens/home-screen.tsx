@@ -42,7 +42,7 @@ export function HomeScreen({
   const session = useSession()
   const router = useRouter()
   const userName = session?.name ?? '...'
-  const onCreateOrder = () => router.push('/orders/new')
+  const onCreateOrder = (serviceId: number) => router.push(`/orders/new?service=${serviceId}`)
   // hasActiveBooking detection deferred — wired to real order state in a future sprint
   const hasActiveBooking = false
   const { data: featuredWorkers, isLoading } = useSWR<Worker[]>(
@@ -134,7 +134,7 @@ export function HomeScreen({
                 return (
                   <button
                     key={category.id}
-                    onClick={onCreateOrder}
+                    onClick={() => onCreateOrder(category.id)}
                     className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-sm transition-all hover:shadow-md active:scale-95"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
