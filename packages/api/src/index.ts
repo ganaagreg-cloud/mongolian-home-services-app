@@ -14,7 +14,8 @@ import paymentsRouter   from './routes/payments'
 import sosRouter        from './routes/sos'
 import disputesRouter   from './routes/disputes'
 import serviceTypesRouter from './routes/service-types'
-import notificationsRouter from './routes/notifications'
+import notificationsRouter   from './routes/notifications'
+import applicationsRouter  from './routes/applications'
 
 const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
   .split(',')
@@ -83,6 +84,7 @@ app.route('/', sosRouter)
 app.route('/', disputesRouter)
 app.route('/', serviceTypesRouter)
 app.route('/', notificationsRouter)
+app.route('/', applicationsRouter)
 
 const PORT = Number(process.env.PORT ?? 4000)
 dbReady

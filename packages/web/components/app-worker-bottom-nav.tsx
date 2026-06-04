@@ -2,20 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, ClipboardList, MessageCircle, Wallet, User } from 'lucide-react'
+import { Briefcase, ClipboardList, CalendarDays, Wallet, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Intended tab routes for M3–M5:
-// /worker-active   → WorkerActiveScreen (M3)
-// /chat            → ChatScreen (M4, shared with user flow)
-// /worker-earnings → WorkerEarningsScreen (M4)
-// /worker-profile  → WorkerProfileScreen (M5)
 const navItems = [
-  { href: '/jobs',            icon: Briefcase,    label: 'Ажил' },
-  { href: '/worker-active',   icon: ClipboardList, label: 'Идэвхтэй' },
-  { href: '/chat',            icon: MessageCircle, label: 'Чат' },
-  { href: '/worker-earnings', icon: Wallet,        label: 'Орлого' },
-  { href: '/worker-profile',  icon: User,          label: 'Профайл' },
+  { href: '/jobs',              icon: Briefcase,    label: 'Ажил'    },
+  { href: '/worker-active',     icon: ClipboardList, label: 'Идэвхтэй' },
+  { href: '/worker-schedule',   icon: CalendarDays,  label: 'Хуваарь' },
+  { href: '/worker-earnings',   icon: Wallet,        label: 'Орлого'  },
+  { href: '/worker-profile',    icon: User,          label: 'Профайл' },
 ] as const
 
 export function AppWorkerBottomNav() {

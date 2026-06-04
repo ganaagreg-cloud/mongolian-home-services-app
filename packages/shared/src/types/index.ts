@@ -97,6 +97,7 @@ export type OrderStatus =
   | 'searching_worker'          // instant — system looking for a match
   | 'pending_worker_acceptance' // instant — offer sent to a worker, awaiting their response
   | 'pending_payment'           // worker confirmed, awaiting user payment
+  | 'awaiting_payment'          // bid: worker selected, slot reserved, waiting for customer payment
   | 'worker_assigned'           // worker matched + paid, job locked
   | 'worker_on_the_way'   // worker en route
   | 'in_progress'         // job is happening

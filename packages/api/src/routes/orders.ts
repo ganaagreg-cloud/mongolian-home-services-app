@@ -55,7 +55,7 @@ function toOrder(row: OrderRow): Order {
   }
 }
 
-const ACTIVE_STATUSES = `('searching_worker','pending_acceptances','pending_worker_acceptance','worker_assigned','worker_on_the_way','in_progress','awaiting_quote','quote_submitted')`
+const ACTIVE_STATUSES = `('searching_worker','pending_acceptances','awaiting_payment','pending_worker_acceptance','worker_assigned','worker_on_the_way','in_progress','awaiting_quote','quote_submitted')`
 
 const SELECT_COLS = `
   o.id, o.user_id, o.worker_id, u.name as worker_name,
@@ -161,7 +161,7 @@ const surveyDetailsSchema = z.object({
 })
 
 const createSchema = z.object({
-  invoiceId:        z.string().min(1),
+  invoiceId:        z.string().min(1).optional(),
   serviceTypeId:    z.number().int().positive(),
   address:          z.string().min(1),
   scheduledDate:    z.string().min(1),
@@ -236,12 +236,26 @@ router.post('/api/orders', async (c) => {
       ? 'awaiting_quote'
       : matchingStrategy === 'instant' ? 'searching_worker' : 'pending_acceptances'
 
+    // Bid orders (scheduled, area/unit pricing) are posted without upfront payment.
+    // Instant + inspection/survey orders require a confirmed payment_intent.
+    const isBidOrder = initialStatus === 'pending_acceptances'
+    if (!isBidOrder) {
+      if (!invoiceId) return c.json({ success: false, error: 'Төлбөр баталгаажаагүй байна' }, 402)
+      const intent = (await db.query(
+        'SELECT id FROM payment_intents WHERE id = $1 AND user_id = $2 AND paid_at IS NOT NULL',
+        [invoiceId, session.sub],
+      )).rows[0]
+      if (!intent) return c.json({ success: false, error: 'Төлбөр баталгаажаагүй байна' }, 402)
+    }
+
+    const paymentStatus = isBidOrder ? 'unpaid' : 'paid'
+
     const result = (await db.query(`
       INSERT INTO orders
         (user_id, service_type_id, status, address, scheduled_date,
          hours, total_amount, urgent, rooms, area_sqm, property_type, notes, matching_strategy,
          survey_details, gateway_invoice_id, payment_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'paid')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id
     `, [
       session.sub, serviceTypeId, initialStatus, address, scheduledDate,
@@ -249,13 +263,15 @@ router.post('/api/orders', async (c) => {
       rooms ?? null, areaSqm ?? null, propertyType ?? null, notes ?? null,
       matchingStrategy,
       surveyDetails ? JSON.stringify(surveyDetails) : null,
-      invoiceId,
+      isBidOrder ? null : (invoiceId ?? null),
+      paymentStatus,
     ])).rows[0] as { id: string }
 
-    // Consume the intent — one invoice pays for exactly one order
-    await db.query('DELETE FROM payment_intents WHERE id = $1', [invoiceId])
-
-    void notify(session.sub, 'payment_confirmed', { orderId: Number(result.id), amount: serverTotal })
+    if (!isBidOrder && invoiceId) {
+      // Consume the intent — one invoice pays for exactly one order
+      await db.query('DELETE FROM payment_intents WHERE id = $1', [invoiceId])
+      void notify(session.sub, 'payment_confirmed', { orderId: Number(result.id), amount: serverTotal })
+    }
 
     return c.json({ success: true, data: { id: String(result.id), matchingStrategy, totalAmount: serverTotal } }, 201)
   } catch {
@@ -1117,7 +1133,7 @@ router.post('/api/orders/:id/upload', async (c) => {
 })
 
 const FREE_STATUSES = new Set([
-  'pending_acceptances', 'searching_worker', 'pending_worker_acceptance', 'pending_payment',
+  'pending_acceptances', 'awaiting_payment', 'searching_worker', 'pending_worker_acceptance', 'pending_payment',
 ])
 const FEE_STATUSES = new Set(['worker_assigned', 'worker_on_the_way'])
 

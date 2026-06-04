@@ -508,6 +508,71 @@ router.put('/api/workers/me/services', async (c) => {
   return c.json({ success: true, data: { serviceTypeIds: uniqueIds } })
 })
 
+// GET /api/workers/me/schedule?from=<ISO>&to=<ISO>
+// Returns this worker's worker_schedule entries that overlap the requested range.
+router.get('/api/workers/me/schedule', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  await dbReady
+  const workerRow = (await db.query<{ id: number }>(
+    'SELECT id FROM workers WHERE user_id = $1 AND rejected_at IS NULL',
+    [session.sub],
+  )).rows[0]
+  if (!workerRow) return c.json({ success: true, data: [] })
+
+  const fromStr = c.req.query('from')
+  const toStr   = c.req.query('to')
+
+  const now   = new Date()
+  const from  = fromStr ? new Date(fromStr) : (() => { const d = new Date(now); d.setHours(0, 0, 0, 0); return d })()
+  const to    = toStr   ? new Date(toStr)   : (() => { const d = new Date(from); d.setDate(d.getDate() + 7); return d })()
+
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    return c.json({ success: false, error: 'Буруу огноо' }, 400)
+  }
+
+  type ScheduleRow = {
+    id: number; order_id: number; worker_id: number; status: string
+    range_start: string; range_end: string; hours: number
+    service_name: string; address: string
+  }
+
+  const rows = (await db.query<ScheduleRow>(`
+    SELECT
+      ws.id,
+      ws.order_id,
+      ws.worker_id,
+      ws.status,
+      lower(ws.time_range) AS range_start,
+      upper(ws.time_range) AS range_end,
+      o.hours,
+      COALESCE(st.name_mn, 'Үйлчилгээ') AS service_name,
+      o.address
+    FROM  worker_schedule ws
+    JOIN  orders       o  ON o.id  = ws.order_id
+    LEFT JOIN service_types st ON st.id = o.service_type_id
+    WHERE ws.worker_id = $1
+      AND ws.time_range && tstzrange($2::timestamptz, $3::timestamptz)
+    ORDER BY lower(ws.time_range) ASC
+  `, [workerRow.id, from.toISOString(), to.toISOString()])).rows
+
+  return c.json({
+    success: true,
+    data: rows.map((r) => ({
+      id:          r.id,
+      orderId:     r.order_id,
+      workerId:    r.worker_id,
+      status:      r.status,
+      rangeStart:  r.range_start,
+      rangeEnd:    r.range_end,
+      jobHours:    r.hours,
+      serviceName: r.service_name,
+      address:     r.address,
+    })),
+  })
+})
+
 // GET /api/workers/:id
 router.get('/api/workers/:id', async (c) => {
   const session = await requireAuth(c)

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search, Camera, X } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search, Camera, X, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,11 +21,12 @@ import { apiFetch } from '@/lib/api-fetch'
 import type { Order, OrderStatus } from '@/lib/types'
 
 const ACTIVE_STATUSES: OrderStatus[] = [
-  'searching_worker', 'pending_acceptances', 'pending_worker_acceptance', 'worker_assigned', 'worker_on_the_way', 'in_progress',
+  'searching_worker', 'pending_acceptances', 'awaiting_payment', 'pending_worker_acceptance', 'worker_assigned', 'worker_on_the_way', 'in_progress',
 ]
 
 const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg: string; text: string }> = {
   pending_acceptances:       { label: 'Санал хүлээж байна',                  icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
+  awaiting_payment:          { label: 'Төлбөр хийнэ үү',                     icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent'      },
   searching_worker:          { label: 'Ажилтан хайж байна',                  icon: Search,       bg: 'bg-primary/10',     text: 'text-primary'     },
   pending_worker_acceptance: { label: 'Ажилтан хариу өгөхийг хүлээж байна', icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
   pending_payment:           { label: 'Төлбөр хүлээж байна',                 icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
@@ -66,11 +67,17 @@ function OrderCard({
   const StatusIcon = cfg.icon
   const isActive = ACTIVE_STATUSES.includes(order.status)
   const isPendingAcceptances = order.status === 'pending_acceptances'
+  const isAwaitingPayment    = order.status === 'awaiting_payment'
+  const isBidFlow            = order.matchingStrategy === 'scheduled'
   const canDispute = order.status === 'completed' && isWithin7Days(order.updatedAt)
   const dateLabel = order.scheduledDate.split('T')[0] ?? order.scheduledDate
 
   const handleViewClick = () => {
-    if (isPendingAcceptances) {
+    if (isPendingAcceptances && isBidFlow) {
+      router.push(`/orders/${order.id}/applicants`)
+    } else if (isAwaitingPayment && order.workerId) {
+      router.push(`/orders/${order.id}/applicants/${order.workerId}/confirm`)
+    } else if (isPendingAcceptances) {
       router.push(`/orders/${order.id}/board`)
     } else {
       router.push(`/active/${order.id}`)
@@ -82,13 +89,13 @@ function OrderCard({
       <div className="flex items-start gap-3">
         <Avatar className="h-12 w-12 shrink-0">
           <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
-            {isPendingAcceptances ? order.service[0] : (order.workerName ?? '?')[0]}
+            {(isPendingAcceptances && !isAwaitingPayment) ? order.service[0] : (order.workerName ?? order.service[0])}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="truncate font-semibold text-foreground">
-              {isPendingAcceptances ? order.service : (order.workerName ?? '—')}
+              {(isPendingAcceptances && !isAwaitingPayment) ? order.service : (order.workerName ?? order.service)}
             </p>
             <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
               <StatusIcon className="h-3 w-3" />
@@ -117,9 +124,22 @@ function OrderCard({
             <Button
               onClick={handleViewClick}
               size="sm"
-              className="h-9 rounded-2xl bg-primary text-sm font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+              className={`h-9 rounded-2xl text-sm font-semibold shadow-md active:scale-95 transition-all ${
+                isAwaitingPayment
+                  ? 'bg-accent hover:bg-accent/90'
+                  : 'bg-primary hover:bg-primary/90'
+              }`}
             >
-              {isPendingAcceptances ? 'Саналууд харах' : 'Харах'}
+              {isPendingAcceptances && isBidFlow ? (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  Саналууд
+                </span>
+              ) : isAwaitingPayment ? (
+                'Төлбөр хийх'
+              ) : (
+                'Харах'
+              )}
             </Button>
           )}
         </div>
