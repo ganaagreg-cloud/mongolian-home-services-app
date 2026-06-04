@@ -346,4 +346,19 @@ export const TABLES: string[] = [
     code       TEXT        NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL
   )`,
+
+  // Notifications infrastructure
+  `CREATE TABLE IF NOT EXISTS notifications (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type       TEXT NOT NULL CHECK (type IN (
+      'order_accepted', 'worker_on_the_way', 'order_completed',
+      'order_cancelled', 'payment_confirmed', 'admin_broadcast'
+    )),
+    metadata   JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS notifications_user_time
+    ON notifications(user_id, created_at DESC)`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_read_at TIMESTAMPTZ DEFAULT NULL`,
 ]

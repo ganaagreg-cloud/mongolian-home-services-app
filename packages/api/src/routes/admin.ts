@@ -1363,4 +1363,40 @@ router.delete('/api/admin/districts/:id', async (c) => {
   return c.json({ success: true, data: null })
 })
 
+const broadcastSchema = z.object({
+  message: z.string().min(1, 'Мессеж хоосон байж болохгүй').max(500, 'Мессеж 500 тэмдэгтээс урт байж болохгүй'),
+})
+
+// POST /api/admin/broadcast — fan-out a notification to all active users (single INSERT … SELECT)
+router.post('/api/admin/broadcast', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, 403)
+
+  let body: unknown
+  try { body = await c.req.json() } catch {
+    return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  }
+
+  const parsed = broadcastSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' }, 400)
+  }
+
+  await dbReady
+
+  try {
+    const metadata = JSON.stringify({ message: parsed.data.message })
+    const result = await db.query(
+      `INSERT INTO notifications (user_id, type, metadata)
+       SELECT id, 'admin_broadcast', $1::jsonb
+       FROM users
+       WHERE deleted_at IS NULL`,
+      [metadata],
+    )
+    return c.json({ success: true, data: { count: result.rowCount ?? 0 } })
+  } catch {
+    return c.json({ success: false, error: 'Request failed' }, 500)
+  }
+})
+
 export default router

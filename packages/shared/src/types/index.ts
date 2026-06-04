@@ -384,3 +384,35 @@ export interface UpdateAvailabilityBody {
 export interface UpdateWorkerProfileBody {
   name?: string
 }
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'order_accepted'
+  | 'worker_on_the_way'
+  | 'order_completed'
+  | 'order_cancelled'
+  | 'payment_confirmed'
+  | 'admin_broadcast'
+
+export interface NotificationMeta {
+  order_accepted:    { orderId: number; workerName: string }
+  worker_on_the_way: { orderId: number; workerName: string }
+  order_completed:   { orderId: number }
+  order_cancelled:   { orderId: number; cancelledBy: 'user' | 'worker' }
+  payment_confirmed: { orderId: number; amount: number }
+  admin_broadcast:   { message: string }
+}
+
+// Discriminated union: narrowing `type` also narrows `metadata`
+export type Notification = {
+  [T in NotificationType]: {
+    id: string
+    userId: string
+    type: T
+    metadata: NotificationMeta[T]
+    createdAt: string
+    title: string
+    body: string
+  }
+}[NotificationType]

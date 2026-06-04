@@ -8,11 +8,12 @@ import type { Worker } from '@homeservices/shared'
 const router = new Hono()
 
 const patchMeSchema = z.object({
-  name:       z.string().min(2, 'Нэр 2-50 тэмдэгт байх ёстой').max(50).optional(),
-  email:      z.string().email('Имэйл хаяг буруу байна').optional(),
-  avatar_url: z.string().url('Зурагны URL буруу байна').optional(),
-  phone:      z.string().optional(),
-  password:   z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой').optional(),
+  name:                  z.string().min(2, 'Нэр 2-50 тэмдэгт байх ёстой').max(50).optional(),
+  email:                 z.string().email('Имэйл хаяг буруу байна').optional(),
+  avatar_url:            z.string().url('Зурагны URL буруу байна').optional(),
+  phone:                 z.string().optional(),
+  password:              z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой').optional(),
+  markNotificationsRead: z.boolean().optional(),
 }).refine(
   (d) => Object.values(d).some((v) => v !== undefined),
   { message: 'Хамгийн багадаа нэг талбар шаардлагатай' },
@@ -96,7 +97,7 @@ router.patch('/api/me', async (c) => {
   const session = await requireAuth(c)
   if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
 
-  const { name, email, avatar_url, phone: rawPhone, password } = parsed.data
+  const { name, email, avatar_url, phone: rawPhone, password, markNotificationsRead } = parsed.data
 
   let normalizedPhone: string | undefined
   if (rawPhone !== undefined) {
@@ -131,10 +132,11 @@ router.patch('/api/me', async (c) => {
   const sets: string[] = []
   const vals: unknown[] = []
   let idx = 1
-  if (name !== undefined)            { sets.push(`name = $${idx++}`);       vals.push(name) }
-  if (email !== undefined)           { sets.push(`email = $${idx++}`);      vals.push(email) }
-  if (avatar_url !== undefined)      { sets.push(`avatar_url = $${idx++}`); vals.push(avatar_url) }
-  if (normalizedPhone !== undefined) { sets.push(`phone = $${idx++}`);      vals.push(normalizedPhone) }
+  if (name !== undefined)            { sets.push(`name = $${idx++}`);                vals.push(name) }
+  if (email !== undefined)           { sets.push(`email = $${idx++}`);               vals.push(email) }
+  if (avatar_url !== undefined)      { sets.push(`avatar_url = $${idx++}`);          vals.push(avatar_url) }
+  if (normalizedPhone !== undefined) { sets.push(`phone = $${idx++}`);               vals.push(normalizedPhone) }
+  if (markNotificationsRead === true){ sets.push('notifications_read_at = NOW()') }
   vals.push(session.sub)
 
   if (sets.length > 0) {
