@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { randomInt } from 'crypto'
 import { db, dbReady } from '../db'
-import { requireAuth, auth } from '../auth'
+import { requireAuth, auth, hashOtp } from '../auth'
 import { normalizePhone, validateMongolianPhone } from '@homeservices/shared'
 import type { Worker } from '@homeservices/shared'
 
@@ -274,25 +275,46 @@ router.post('/api/me/send-verify-otp', async (c) => {
 
     if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
 
-    const code = String(Math.floor(100000 + Math.random() * 900000))
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
 
     if (parsed.data.type === 'phone') {
       if (!user.phone) return c.json({ success: false, error: 'Утасны дугаар бүртгэлгүй байна' }, 400)
+
+      const lastIssue = (await db.query(
+        'SELECT issued_at FROM otp_codes WHERE phone = $1',
+        [user.phone],
+      )).rows[0] as { issued_at: Date } | undefined
+      if (lastIssue && Date.now() - new Date(lastIssue.issued_at).getTime() < 60_000) {
+        return c.json({ success: false, error: 'Хэт олон хүсэлт гаргасан байна. 60 секунд хүлээнэ үү.' }, 429)
+      }
+
+      const code = String(randomInt(100000, 1000000))
       await db.query(
-        `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3)
-         ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
-        [user.phone, code, expiresAt],
+        `INSERT INTO otp_codes (phone, code, attempts, issued_at, expires_at)
+         VALUES ($1, $2, 0, NOW(), $3)
+         ON CONFLICT (phone) DO UPDATE SET code = $2, attempts = 0, issued_at = NOW(), expires_at = $3`,
+        [user.phone, hashOtp(code), expiresAt],
       )
-      console.log(`[MOCK SMS] Contact verify OTP: ${code}`)
+      if (process.env.NODE_ENV !== 'production') console.log(`[MOCK SMS] Contact verify OTP: ${code}`)
     } else {
       if (!user.email) return c.json({ success: false, error: 'Имэйл хаяг бүртгэлгүй байна' }, 400)
+
+      const lastIssue = (await db.query(
+        'SELECT issued_at FROM email_otp_codes WHERE email = $1',
+        [user.email],
+      )).rows[0] as { issued_at: Date } | undefined
+      if (lastIssue && Date.now() - new Date(lastIssue.issued_at).getTime() < 60_000) {
+        return c.json({ success: false, error: 'Хэт олон хүсэлт гаргасан байна. 60 секунд хүлээнэ үү.' }, 429)
+      }
+
+      const code = String(randomInt(100000, 1000000))
       await db.query(
-        `INSERT INTO email_otp_codes (email, code, expires_at) VALUES ($1, $2, $3)
-         ON CONFLICT (email) DO UPDATE SET code = $2, expires_at = $3`,
-        [user.email, code, expiresAt],
+        `INSERT INTO email_otp_codes (email, code, attempts, issued_at, expires_at)
+         VALUES ($1, $2, 0, NOW(), $3)
+         ON CONFLICT (email) DO UPDATE SET code = $2, attempts = 0, issued_at = NOW(), expires_at = $3`,
+        [user.email, hashOtp(code), expiresAt],
       )
-      console.log(`[MOCK EMAIL] Contact verify OTP: ${code}`)
+      if (process.env.NODE_ENV !== 'production') console.log(`[MOCK EMAIL] Contact verify OTP: ${code}`)
     }
 
     return c.json({ success: true })
@@ -334,11 +356,18 @@ router.patch('/api/me/verify-contact', async (c) => {
       if (!user.phone) return c.json({ success: false, error: 'Утасны дугаар бүртгэлгүй байна' }, 400)
 
       const row = (await db.query(
-        'SELECT code, expires_at FROM otp_codes WHERE phone = $1',
+        'SELECT code, attempts, expires_at FROM otp_codes WHERE phone = $1',
         [user.phone],
-      )).rows[0] as { code: string; expires_at: Date } | undefined
+      )).rows[0] as { code: string; attempts: number; expires_at: Date } | undefined
 
-      if (!row || new Date() > new Date(row.expires_at) || row.code !== parsed.data.code) {
+      if (!row || new Date() > new Date(row.expires_at)) {
+        return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
+      }
+      if (row.attempts >= 5) {
+        return c.json({ success: false, error: 'Хэт олон оролдлого хийлээ. Шинэ код авна уу.' }, 429)
+      }
+      if (row.code !== hashOtp(parsed.data.code)) {
+        await db.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = $1', [user.phone])
         return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
       }
 
@@ -348,11 +377,18 @@ router.patch('/api/me/verify-contact', async (c) => {
       if (!user.email) return c.json({ success: false, error: 'Имэйл хаяг бүртгэлгүй байна' }, 400)
 
       const row = (await db.query(
-        'SELECT code, expires_at FROM email_otp_codes WHERE email = $1',
+        'SELECT code, attempts, expires_at FROM email_otp_codes WHERE email = $1',
         [user.email],
-      )).rows[0] as { code: string; expires_at: Date } | undefined
+      )).rows[0] as { code: string; attempts: number; expires_at: Date } | undefined
 
-      if (!row || new Date() > new Date(row.expires_at) || row.code !== parsed.data.code) {
+      if (!row || new Date() > new Date(row.expires_at)) {
+        return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
+      }
+      if (row.attempts >= 5) {
+        return c.json({ success: false, error: 'Хэт олон оролдлого хийлээ. Шинэ код авна уу.' }, 429)
+      }
+      if (row.code !== hashOtp(parsed.data.code)) {
+        await db.query('UPDATE email_otp_codes SET attempts = attempts + 1 WHERE email = $1', [user.email])
         return c.json({ success: false, error: 'Код буруу эсвэл хугацаа дууссан' }, 400)
       }
 

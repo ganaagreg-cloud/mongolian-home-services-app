@@ -8,6 +8,13 @@ import type {
   AdminDispute, AdminBankingWorker,
 } from '@homeservices/shared'
 
+const [ADMIN_USERNAME, ADMIN_PASSWORD] = (() => {
+  const u = process.env.ADMIN_USERNAME
+  const p = process.env.ADMIN_PASSWORD
+  if (!u || !p) throw new Error('[admin] ADMIN_USERNAME and ADMIN_PASSWORD env vars are required')
+  return [u, p] as const
+})()
+
 const router = new Hono()
 
 const adminLoginSchema = z.object({
@@ -24,10 +31,7 @@ router.post('/api/admin/login', async (c) => {
   const parsed = adminLoginSchema.safeParse(body)
   if (!parsed.success) return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
 
-  const expectedUser = process.env.ADMIN_USERNAME ?? 'admin'
-  const expectedPass = process.env.ADMIN_PASSWORD ?? 'admin123'
-
-  if (parsed.data.username !== expectedUser || parsed.data.password !== expectedPass) {
+  if (parsed.data.username !== ADMIN_USERNAME || parsed.data.password !== ADMIN_PASSWORD) {
     return c.json({ success: false, error: 'Буруу нэвтрэх мэдээлэл' }, 401)
   }
 

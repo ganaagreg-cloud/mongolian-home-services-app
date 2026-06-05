@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { mkdir, writeFile } from 'fs/promises'
-import path from 'path'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
+import { uploadFile, InvalidImageError } from '../lib/storage'
 import { getSettings } from '../lib/settings'
 import { notify } from '../lib/notifications'
 import type {
@@ -12,8 +11,6 @@ import type {
 } from '@homeservices/shared'
 
 const router = new Hono()
-
-const UPLOAD_ROOT = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'public', 'uploads')
 
 type OrderRow = {
   id: string; user_id: string; worker_id: string | null; worker_name: string | null
@@ -202,15 +199,6 @@ router.post('/api/orders', async (c) => {
 
   await dbReady
   try {
-    // Verify the payment intent exists and has been confirmed before touching orders
-    const intent = (await db.query(
-      `SELECT id FROM payment_intents WHERE id = $1 AND user_id = $2 AND paid_at IS NOT NULL`,
-      [invoiceId, session.sub],
-    )).rows[0]
-    if (!intent) {
-      return c.json({ success: false, error: 'Төлбөр баталгаажаагүй байна' }, 402)
-    }
-
     // Recompute total server-side — never trust client's totalAmount
     const stRow = (await db.query<{ pricing_model: string; base_rate: number; min_charge: number }>(
       'SELECT pricing_model, base_rate, min_charge FROM service_types WHERE id = $1',
@@ -1101,16 +1089,15 @@ router.post('/api/orders/:id/upload', async (c) => {
   }
 
   const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'
-  const filename  = `${type}-${Date.now()}.${ext}`
-  const uploadDir = path.join(UPLOAD_ROOT, 'orders', orderId)
-  const filePath  = path.join(uploadDir, filename)
-  const publicUrl = `/uploads/orders/${orderId}/${filename}`
-
+  const key = `orders/${orderId}/${type}-${Date.now()}.${ext}`
+  let publicUrl: string
   try {
-    await mkdir(uploadDir, { recursive: true })
-    const bytes = await blob.arrayBuffer()
-    await writeFile(filePath, Buffer.from(bytes))
-  } catch {
+    const bytes = Buffer.from(await blob.arrayBuffer())
+    publicUrl = await uploadFile(key, bytes, blob.type)
+  } catch (e) {
+    if (e instanceof InvalidImageError) {
+      return c.json({ success: false, error: 'Зурагны агуулга зөвшөөрөгдсөн формат биш байна' }, 400)
+    }
     return c.json({ success: false, error: 'Зураг хадгалахад алдаа гарлаа' }, 500)
   }
 

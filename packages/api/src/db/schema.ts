@@ -189,10 +189,14 @@ export const TABLES: string[] = [
   )`,
 
   `CREATE TABLE IF NOT EXISTS otp_codes (
-    phone      VARCHAR(20) NOT NULL PRIMARY KEY,
-    code       TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL
+    phone      VARCHAR(20)  NOT NULL PRIMARY KEY,
+    code       TEXT         NOT NULL,
+    attempts   INTEGER      NOT NULL DEFAULT 0,
+    issued_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ  NOT NULL
   )`,
+  `ALTER TABLE otp_codes ADD COLUMN IF NOT EXISTS attempts  INTEGER     NOT NULL DEFAULT 0`,
+  `ALTER TABLE otp_codes ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 
   `CREATE TABLE IF NOT EXISTS order_match_attempts (
     id           SERIAL PRIMARY KEY,
@@ -342,10 +346,14 @@ export const TABLES: string[] = [
 
   // OTP codes for email contact verification
   `CREATE TABLE IF NOT EXISTS email_otp_codes (
-    email      TEXT        NOT NULL PRIMARY KEY,
-    code       TEXT        NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL
+    email      TEXT         NOT NULL PRIMARY KEY,
+    code       TEXT         NOT NULL,
+    attempts   INTEGER      NOT NULL DEFAULT 0,
+    issued_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ  NOT NULL
   )`,
+  `ALTER TABLE email_otp_codes ADD COLUMN IF NOT EXISTS attempts  INTEGER     NOT NULL DEFAULT 0`,
+  `ALTER TABLE email_otp_codes ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 
   // Notifications infrastructure
   `CREATE TABLE IF NOT EXISTS notifications (

@@ -1,17 +1,14 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { mkdir, writeFile } from 'fs/promises'
-import path from 'path'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
+import { uploadFile, InvalidImageError } from '../lib/storage'
 
 const router = new Hono()
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 const MAX_BYTES  = 5 * 1024 * 1024
 const MAX_PHOTOS = 3
-
-const UPLOAD_ROOT = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'public', 'uploads')
 
 const createSchema = z.object({
   order_id:    z.number().int().positive(),
@@ -122,16 +119,15 @@ router.post('/api/disputes/:id/upload', async (c) => {
   }
 
   const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'
-  const filename  = `${Date.now()}.${ext}`
-  const uploadDir = path.join(UPLOAD_ROOT, 'disputes', disputeId)
-  const filePath  = path.join(uploadDir, filename)
-  const publicUrl = `/uploads/disputes/${disputeId}/${filename}`
-
+  const key = `disputes/${disputeId}/${Date.now()}.${ext}`
+  let publicUrl: string
   try {
-    await mkdir(uploadDir, { recursive: true })
-    const bytes = await blob.arrayBuffer()
-    await writeFile(filePath, Buffer.from(bytes))
-  } catch {
+    const bytes = Buffer.from(await blob.arrayBuffer())
+    publicUrl = await uploadFile(key, bytes, blob.type)
+  } catch (e) {
+    if (e instanceof InvalidImageError) {
+      return c.json({ success: false, error: 'Зурагны агуулга зөвшөөрөгдсөн формат биш байна' }, 400)
+    }
     return c.json({ success: false, error: 'Зураг хадгалахад алдаа гарлаа' }, 500)
   }
 

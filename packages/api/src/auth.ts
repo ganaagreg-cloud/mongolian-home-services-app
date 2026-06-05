@@ -1,9 +1,21 @@
 import { betterAuth } from 'better-auth'
-import { scryptSync, randomBytes, createHmac } from 'crypto'
+import { scryptSync, randomBytes, createHmac, timingSafeEqual } from 'crypto'
 import { getCookie } from 'hono/cookie'
 import { db, dbReady } from './db'
 import type { SessionPayload, UserRole } from '@homeservices/shared'
 import type { Context } from 'hono'
+
+const ADMIN_HMAC_KEY = (() => {
+  const v = process.env.JWT_SECRET
+  if (!v) throw new Error('[auth] JWT_SECRET env var is required')
+  return v
+})()
+
+const ADMIN_TOKEN_TTL_MS = 12 * 60 * 60 * 1000 // 12 hours
+
+export function hashOtp(code: string): string {
+  return createHmac('sha256', ADMIN_HMAC_KEY).update(code).digest('hex')
+}
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex')
@@ -111,7 +123,7 @@ const ADMIN_COOKIE = 'hs-admin-session'
 
 export function createAdminToken(): string {
   const payload = `hs-admin.${Date.now()}`
-  const sig = createHmac('sha256', process.env.JWT_SECRET ?? 'dev-secret').update(payload).digest('hex')
+  const sig = createHmac('sha256', ADMIN_HMAC_KEY).update(payload).digest('hex')
   return Buffer.from(`${payload}|${sig}`).toString('base64url')
 }
 
@@ -122,8 +134,17 @@ function verifyAdminToken(token: string): boolean {
     if (sep < 0) return false
     const payload = decoded.slice(0, sep)
     const sig = decoded.slice(sep + 1)
-    const expected = createHmac('sha256', process.env.JWT_SECRET ?? 'dev-secret').update(payload).digest('hex')
-    return sig === expected
+    const expected = createHmac('sha256', ADMIN_HMAC_KEY).update(payload).digest('hex')
+
+    const sigBuf = Buffer.from(sig, 'hex')
+    const expBuf = Buffer.from(expected, 'hex')
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return false
+
+    // Reject tokens older than TTL — payload format: "hs-admin.{timestamp}"
+    const ts = Number(payload.split('.')[1])
+    if (isNaN(ts) || Date.now() - ts > ADMIN_TOKEN_TTL_MS) return false
+
+    return true
   } catch { return false }
 }
 
