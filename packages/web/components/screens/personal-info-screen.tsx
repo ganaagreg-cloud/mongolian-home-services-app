@@ -85,7 +85,7 @@ export function PersonalInfoScreen() {
         toast.error(data.error ?? 'Алдаа гарлаа')
         return
       }
-      toast.success('Баталгаажуулах код илгээлээ')
+      router.push(`/settings/verify-otp?type=phone&contact=${encodeURIComponent(localPhone)}`)
     } catch {
       toast.error('Алдаа гарлаа')
     } finally {
@@ -106,7 +106,7 @@ export function PersonalInfoScreen() {
         toast.error(data.error ?? 'Алдаа гарлаа')
         return
       }
-      toast.success('Баталгаажуулах код илгээлээ')
+      router.push(`/settings/verify-otp?type=email&contact=${encodeURIComponent(email)}`)
     } catch {
       toast.error('Алдаа гарлаа')
     } finally {
