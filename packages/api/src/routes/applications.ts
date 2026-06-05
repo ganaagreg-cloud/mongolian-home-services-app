@@ -6,6 +6,48 @@ import { notify } from '../lib/notifications'
 
 const router = new Hono()
 
+// Exported for use by the background expiry job in index.ts.
+// Atomically frees the pending_payment slot and re-lists the order.
+// Returns true if the order was expired, false if it was already in another state.
+export async function expireOrder(orderId: string): Promise<boolean> {
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows } = await client.query<{ status: string }>(
+      `SELECT status FROM orders WHERE id = $1 FOR UPDATE`,
+      [orderId],
+    )
+    if (!rows[0] || rows[0].status !== 'awaiting_payment') {
+      await client.query('ROLLBACK')
+      return false
+    }
+    await client.query(
+      `DELETE FROM worker_schedule WHERE order_id = $1 AND status = 'pending_payment'`,
+      [orderId],
+    )
+    await client.query(
+      `DELETE FROM payment_intents WHERE id LIKE ('INV-BID-' || $1::text || '-%') AND paid_at IS NULL`,
+      [orderId],
+    )
+    await client.query(
+      `UPDATE orders
+       SET status           = 'pending_acceptances',
+           worker_id        = NULL,
+           payment_deadline = NULL,
+           updated_at       = NOW()
+       WHERE id = $1`,
+      [orderId],
+    )
+    await client.query('COMMIT')
+    return true
+  } catch {
+    try { await client.query('ROLLBACK') } catch { /* ignore */ }
+    return false
+  } finally {
+    client.release()
+  }
+}
+
 const BANKS = [
   { name: 'Хаан банк',   description: 'Хаан банкны аппликейшнээр төлөх',  scheme: 'khanbank'  },
   { name: 'Голомт банк', description: 'Голомт банкны аппликейшнээр төлөх', scheme: 'golomt'    },
@@ -415,40 +457,8 @@ router.post('/api/orders/:id/expire-payment', async (c) => {
     return c.json({ success: false, error: 'Төлбөрийн хугацаа дуусаагүй байна' }, 409)
   }
 
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
-
-    // Free the slot — no payment was captured, no refund needed
-    await client.query(
-      `DELETE FROM worker_schedule WHERE order_id = $1 AND status = 'pending_payment'`,
-      [orderId],
-    )
-
-    // Clean up the unconsumed payment intent
-    await client.query(
-      `DELETE FROM payment_intents WHERE id LIKE ('INV-BID-' || $1::text || '-%') AND paid_at IS NULL`,
-      [orderId],
-    )
-
-    // Re-list the order for new bids
-    await client.query(
-      `UPDATE orders
-       SET status           = 'pending_acceptances',
-           worker_id        = NULL,
-           payment_deadline = NULL,
-           updated_at       = NOW()
-       WHERE id = $1`,
-      [orderId],
-    )
-
-    await client.query('COMMIT')
-  } catch {
-    try { await client.query('ROLLBACK') } catch { /* ignore */ }
-    return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
-  } finally {
-    client.release()
-  }
+  const ok = await expireOrder(orderId)
+  if (!ok) return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
 
   return c.json({ success: true, data: undefined })
 })

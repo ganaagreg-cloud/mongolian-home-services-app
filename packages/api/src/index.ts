@@ -15,7 +15,7 @@ import sosRouter        from './routes/sos'
 import disputesRouter   from './routes/disputes'
 import serviceTypesRouter from './routes/service-types'
 import notificationsRouter   from './routes/notifications'
-import applicationsRouter  from './routes/applications'
+import applicationsRouter, { expireOrder }  from './routes/applications'
 
 const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
   .split(',')
@@ -86,9 +86,23 @@ app.route('/', serviceTypesRouter)
 app.route('/', notificationsRouter)
 app.route('/', applicationsRouter)
 
+async function runExpiryJob() {
+  try {
+    const { rows } = await db.query<{ id: string }>(
+      `SELECT id FROM orders WHERE status = 'awaiting_payment' AND payment_deadline < NOW()`,
+    )
+    for (const { id } of rows) {
+      await expireOrder(id)
+    }
+  } catch { /* non-fatal: will retry next tick */ }
+}
+
 const PORT = Number(process.env.PORT ?? 4000)
 dbReady
-  .then(() => serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`)))
+  .then(() => {
+    serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`))
+    setInterval(() => void runExpiryJob(), 60_000)
+  })
   .catch(() => process.exit(1))
 
 // Type-only export — safe for `import type { AppType } from '@homeservices/api'`

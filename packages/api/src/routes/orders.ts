@@ -21,7 +21,7 @@ type OrderRow = {
   hours: number; total_amount: number; urgent: boolean
   rooms: number | null; area_sqm: number | null
   property_type: string | null; notes: string | null
-  matching_strategy: string | null; payment_status: string
+  matching_strategy: string | null; payment_deadline: string | null; payment_status: string
   before_photo_url: string | null; after_photo_url: string | null
   pricing_model: string | null; survey_details: SurveyDetails | null
   created_at: string; updated_at: string
@@ -45,6 +45,7 @@ function toOrder(row: OrderRow): Order {
     propertyType:     row.property_type as PropertyType | undefined,
     notes:            row.notes ?? undefined,
     matchingStrategy: (row.matching_strategy ?? 'scheduled') as MatchingStrategy,
+    paymentDeadline:  row.payment_deadline ?? undefined,
     paymentStatus:    row.payment_status as PaymentStatus,
     beforePhotoUrl:   row.before_photo_url ?? undefined,
     afterPhotoUrl:    row.after_photo_url ?? undefined,
@@ -61,7 +62,7 @@ const SELECT_COLS = `
   o.id, o.user_id, o.worker_id, u.name as worker_name,
   COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
   o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
-  o.property_type, o.notes, o.matching_strategy, o.payment_status,
+  o.property_type, o.notes, o.matching_strategy, o.payment_deadline, o.payment_status,
   o.before_photo_url, o.after_photo_url,
   st.pricing_model, o.survey_details,
   o.created_at, o.updated_at`
@@ -288,23 +289,13 @@ router.get('/api/orders/:id', async (c) => {
 
   await dbReady
   const row = (await db.query(`
-    SELECT o.id, o.user_id, o.worker_id, u.name as worker_name,
-           COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
-           o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
-           o.property_type, o.notes, o.payment_status,
-           o.before_photo_url, o.after_photo_url,
-           st.pricing_model, o.survey_details,
-           o.created_at, o.updated_at
-    FROM   orders o
-    LEFT JOIN workers w  ON w.id  = o.worker_id AND w.rejected_at IS NULL
-    LEFT JOIN users   u  ON u.id  = w.user_id
-    LEFT JOIN service_types st ON st.id = o.service_type_id
+    SELECT ${SELECT_COLS} FROM orders o ${JOIN_WORKER}
     WHERE  o.id = $1 AND (o.user_id = $2 OR w.user_id = $2)
-  `, [id, session.sub])).rows[0] as (OrderRow & { matching_strategy: null }) | undefined
+  `, [id, session.sub])).rows[0] as OrderRow | undefined
 
   if (!row) return c.json({ success: false, error: 'Захиалга олдсонгүй' }, 404)
 
-  return c.json({ success: true, data: toOrder({ ...row, matching_strategy: null }) })
+  return c.json({ success: true, data: toOrder(row) })
 })
 
 // PATCH /api/orders/:id — user picks a worker from scheduled acceptors

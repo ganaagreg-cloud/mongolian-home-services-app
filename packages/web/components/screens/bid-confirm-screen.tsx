@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { ArrowLeft, Lock, Star, Clock, MapPin } from 'lucide-react'
+import { ArrowLeft, Lock, Star, Clock, MapPin, AlertCircle } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
@@ -20,6 +20,8 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
   const [invoice,      setInvoice]      = useState<PaymentInvoice | null>(null)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [devSimError,  setDevSimError]  = useState<string | null>(null)
+  const [secondsLeft,  setSecondsLeft]  = useState<number | null>(null)
+  const deadlineRef = useRef<string | null>(null)
 
   const { data: order }      = useSWR<Order>(`/api/orders/${orderId}`, fetcher)
   const { data: workerData } = useSWR<Worker>(`/api/workers/${workerId}`, fetcher)
@@ -83,7 +85,19 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
     return () => { cancelled = true }
   }, [orderId, workerId, order?.status, order?.workerId, order?.paymentStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poll for payment confirmation — navigate to active once paid
+  // Countdown from paymentDeadline
+  useEffect(() => {
+    if (!order?.paymentDeadline) return
+    if (deadlineRef.current === order.paymentDeadline) return
+    deadlineRef.current = order.paymentDeadline
+    const deadline = new Date(order.paymentDeadline).getTime()
+    const tick = () => setSecondsLeft(Math.max(0, Math.round((deadline - Date.now()) / 1000)))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [order?.paymentDeadline])
+
+  // Poll for payment confirmation — navigate to active once paid, or back if expired
   const { data: orderPoll } = useSWR<Order>(
     invoice ? `/api/orders/${orderId}` : null,
     fetcher,
@@ -92,6 +106,9 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
   useEffect(() => {
     if (orderPoll?.paymentStatus === 'paid' || orderPoll?.status === 'worker_assigned') {
       router.push(`/active/${orderId}`)
+    } else if (orderPoll?.status === 'pending_acceptances') {
+      toast.error('Төлбөрийн хугацаа дуусан. Дахин ажилтан сонгоно уу.')
+      router.push(`/orders/${orderId}/applicants`)
     }
   }, [orderPoll, orderId, router])
 
@@ -224,6 +241,22 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
             <span className="font-semibold text-foreground">Нийт</span>
             <span className="text-lg font-bold text-primary">₮{order.totalAmount.toLocaleString()}</span>
           </div>
+        </div>
+      )}
+
+      {/* Payment deadline countdown */}
+      {secondsLeft !== null && (
+        <div className={`mt-4 mx-6 flex items-center gap-3 rounded-2xl p-3 ${
+          secondsLeft <= 60
+            ? 'border border-destructive/30 bg-destructive/5'
+            : 'border border-accent/30 bg-accent/5'
+        }`}>
+          <AlertCircle className={`h-4 w-4 shrink-0 ${secondsLeft <= 60 ? 'text-destructive' : 'text-accent'}`} />
+          <p className={`text-sm font-medium ${secondsLeft <= 60 ? 'text-destructive' : 'text-accent'}`}>
+            {secondsLeft > 0
+              ? `Төлбөр хийх хугацаа: ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
+              : 'Хугацаа дууслаа…'}
+          </p>
         </div>
       )}
 

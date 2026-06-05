@@ -155,6 +155,7 @@ export interface Order {
   propertyType?: PropertyType
   notes?: string
   matchingStrategy?: MatchingStrategy
+  paymentDeadline?: string          // ISO timestamp; set when status → awaiting_payment
   paymentStatus?: PaymentStatus
   beforePhotoUrl?: string
   afterPhotoUrl?: string
