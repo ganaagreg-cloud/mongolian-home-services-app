@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { LocationPicker } from '@/components/location-picker'
 import { BookingFields, type BookingFieldsValue } from '@/components/booking-fields'
 import { calculatePrice, DEFAULT_PLATFORM_SETTINGS } from '@/lib/pricing'
@@ -73,6 +74,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
   const [showLocationPicker, setShowLocationPicker] = useState(false)
 
   const [serviceLoadError, setServiceLoadError] = useState(false)
+  const [loadingServiceTypes, setLoadingServiceTypes] = useState(true)
 
   useEffect(() => {
     apiFetch('/api/service-types')
@@ -90,8 +92,12 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
         } else {
           setServiceLoadError(true)
         }
+        setLoadingServiceTypes(false)
       })
-      .catch(() => setServiceLoadError(true))
+      .catch(() => {
+        setServiceLoadError(true)
+        setLoadingServiceTypes(false)
+      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -308,7 +314,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             )}
             {preSelectedServiceId != null ? (
               /* Pre-selected from home screen — read-only chip */
-              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 shadow-sm">
+              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 shadow-sm min-h-[56px]">
                 {selectedService && (() => {
                   const Icon = ICON_MAP[selectedService.icon as keyof typeof ICON_MAP] ?? Sparkles
                   return (
@@ -320,6 +326,16 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                     </>
                   )
                 })()}
+              </div>
+            ) : loadingServiceTypes ? (
+              /* Skeleton grid — holds space while service types load */
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-sm">
+                    <Skeleton className="h-6 w-6 rounded-lg" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                ))}
               </div>
             ) : (
               /* Full picker grid */
