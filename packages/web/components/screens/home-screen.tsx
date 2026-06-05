@@ -167,7 +167,7 @@ export function HomeScreen({
           </p>
         </div>
 
-        <div className="mt-4 flex gap-3 overflow-x-auto px-6 pb-2 scrollbar-hide">
+        <div className="mt-4 flex gap-3 overflow-x-auto px-6 pb-2 scrollbar-hide min-h-[168px]">
           {isLoading
             ? [1, 2, 3].map((i) => (
                 <div key={i} className="flex min-w-[140px] flex-col items-center rounded-2xl bg-card p-4 shadow-sm">
