@@ -249,7 +249,7 @@ export function OrdersScreen() {
       </div>
 
       {/* Order List */}
-      <div className="mt-4 space-y-3 px-6">
+      <div className="mt-4 space-y-3 px-6 min-h-[264px]">
         {isLoading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
