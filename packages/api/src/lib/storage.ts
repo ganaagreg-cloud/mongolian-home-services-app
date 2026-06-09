@@ -1,6 +1,48 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
+
+// ── Adapter interface ──────────────────────────────────────────────────────
+
+export interface StorageAdapter {
+  /** Store buf at key; returns the public URL for that key. */
+  put(key: string, buf: Buffer, mime: string): Promise<string>
+  /** Derive the public URL for an already-stored key. */
+  url(key: string): string
+}
+
+// ── Local adapter (dev / single-instance) ─────────────────────────────────
+
+const LOCAL_ROOT = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads')
+
+class LocalAdapter implements StorageAdapter {
+  async put(key: string, buf: Buffer, _mime: string): Promise<string> {
+    const filePath = path.join(LOCAL_ROOT, key)
+    await mkdir(path.dirname(filePath), { recursive: true })
+    await writeFile(filePath, buf)
+    return this.url(key)
+  }
+  url(key: string): string {
+    return `/uploads/${key}`
+  }
+}
+
+// ── S3 / R2 adapter stub — wiring blocked until ХХК company registration ──
+
+class S3Adapter implements StorageAdapter {
+  async put(_key: string, _buf: Buffer, _mime: string): Promise<string> {
+    throw new Error('[S3Adapter] not configured — awaiting ХХК company registration')
+  }
+  url(_key: string): string {
+    throw new Error('[S3Adapter] not configured — awaiting ХХК company registration')
+  }
+}
+
+// ── Singleton selected by STORAGE_DRIVER env (default: 'local') ───────────
+
+export const adapter: StorageAdapter = (() => {
+  if ((process.env.STORAGE_DRIVER ?? 'local') === 's3') return new S3Adapter()
+  return new LocalAdapter()
+})()
 
 // ── Magic-byte validation ──────────────────────────────────────────────────
 
@@ -15,8 +57,8 @@ function validateMagicBytes(buf: Buffer, mimeType: string): boolean {
   if (mimeType === 'image/webp') {
     return (
       buf.length >= 12 &&
-      buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && // RIFF
-      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50  // WEBP
+      buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
     )
   }
   return false
@@ -26,52 +68,13 @@ export class InvalidImageError extends Error {
   constructor() { super('Magic bytes do not match declared MIME type') }
 }
 
-// ── R2 client (null when env vars absent → local-disk dev fallback) ────────
+// ── Compatibility wrapper (used by disputes and other non-thumbnail uploads) ─
 
-const r2Client = (() => {
-  const accountId       = process.env.R2_ACCOUNT_ID
-  const accessKeyId     = process.env.R2_ACCESS_KEY_ID
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
-  if (!accountId || !accessKeyId || !secretAccessKey) return null
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
-  })
-})()
-
-const R2_BUCKET     = process.env.R2_BUCKET_NAME ?? ''
-const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, '')
-const LOCAL_ROOT    = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads')
-
-// ── Public API ─────────────────────────────────────────────────────────────
-
-/**
- * Upload a validated image buffer.
- *   - R2 env vars present → uploads to Cloudflare R2, returns CDN URL.
- *   - R2 env vars absent  → writes to local disk (dev), returns /uploads/… path.
- * Throws InvalidImageError when magic bytes do not match the declared mimeType.
- */
 export async function uploadFile(
   key: string,
   bytes: Buffer,
   mimeType: string,
 ): Promise<string> {
   if (!validateMagicBytes(bytes, mimeType)) throw new InvalidImageError()
-
-  if (r2Client && R2_BUCKET && R2_PUBLIC_URL) {
-    await r2Client.send(new PutObjectCommand({
-      Bucket:      R2_BUCKET,
-      Key:         key,
-      Body:        bytes,
-      ContentType: mimeType,
-    }))
-    return `${R2_PUBLIC_URL}/${key}`
-  }
-
-  // Local-disk dev fallback
-  const filePath = path.join(LOCAL_ROOT, key)
-  await mkdir(path.dirname(filePath), { recursive: true })
-  await writeFile(filePath, bytes)
-  return `/uploads/${key}`
+  return adapter.put(key, bytes, mimeType)
 }

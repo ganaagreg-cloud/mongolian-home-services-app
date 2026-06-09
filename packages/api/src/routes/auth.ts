@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { scrypt, randomBytes, createHmac, randomInt } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { db, dbReady } from '../db'
-import { requireAuth, hashOtp } from '../auth'
+import { requireAuth, hashOtp, auth } from '../auth'
 import type { UserRole } from '@homeservices/shared'
 
 const RESET_HMAC_KEY = (() => {
@@ -53,6 +53,54 @@ function verifyResetToken(token: string): string | null {
 }
 
 const router = new Hono()
+
+// POST /api/auth/sign-in/email — intercept for account lockout, then proxy to Better Auth.
+// Mounted before the app.all('/api/auth/*') wildcard in index.ts so this handler wins.
+router.post('/api/auth/sign-in/email', async (c) => {
+  const rawClone = c.req.raw.clone()
+  let email: string | undefined
+  try {
+    const body = await c.req.json()
+    if (body !== null && typeof body === 'object' && typeof (body as Record<string, unknown>).email === 'string') {
+      email = (body as { email: string }).email
+    }
+  } catch { /* non-fatal — Better Auth will reject malformed bodies */ }
+
+  if (email) {
+    await dbReady
+    const row = (await db.query(
+      'SELECT locked_until FROM users WHERE email = $1',
+      [email],
+    )).rows[0] as { locked_until: Date | null } | undefined
+
+    if (row?.locked_until && new Date() < new Date(row.locked_until)) {
+      return c.json({ error: 'Request failed' }, 423)
+    }
+  }
+
+  const response = await auth.handler(rawClone)
+
+  if (email) {
+    if (response.status === 401) {
+      // Wrong password: increment counter; lock for 30 min once >= 5 failures
+      await db.query(
+        `UPDATE users
+         SET failed_login_attempts = failed_login_attempts + 1,
+             locked_until = CASE WHEN failed_login_attempts + 1 >= 5
+               THEN NOW() + interval '30 min' ELSE locked_until END
+         WHERE email = $1`,
+        [email],
+      )
+    } else if (response.ok) {
+      await db.query(
+        `UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE email = $1`,
+        [email],
+      )
+    }
+  }
+
+  return response
+})
 
 // GET /api/auth/me — bridges Better Auth session → our users table
 router.get('/api/auth/me', async (c) => {
@@ -287,8 +335,8 @@ router.post('/api/auth/verify-otp', async (c) => {
 })
 
 const resetPinSchema = z.object({
-  resetToken: z.string().min(1),
-  pin:        z.string().min(8),
+  resetToken: z.string().min(1).max(512),
+  pin:        z.string().min(8).max(128),
 })
 
 // POST /api/auth/reset-pin — hash new PIN with bcryptjs, update both tables.
