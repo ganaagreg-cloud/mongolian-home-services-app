@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
 import { uploadFile, InvalidImageError } from '../lib/storage'
+import { logAudit } from '../lib/audit'
 
 const router = new Hono()
 
@@ -70,6 +71,12 @@ router.post('/api/disputes', async (c) => {
   } catch {
     return c.json({ success: false, error: 'Алдаа гарлаа' }, 500)
   }
+
+  await logAudit(session.sub, 'dispute.create', {
+    disputeId: String(result.id),
+    orderId:   order_id,
+    reason,
+  })
 
   return c.json({ success: true, data: { id: String(result.id) } }, 201)
 })

@@ -9,7 +9,7 @@ const router = new Hono()
 type WorkerRow = {
   id: string; user_id: string; name: string; specialty: string
   service_type_id: string | null
-  price_per_hour: number; rating: number; review_count: number
+  price_per_hour: number; rating_sum: number; review_count: number
   is_available: boolean; is_active: boolean; dan_verified: boolean; created_at: string
 }
 
@@ -27,7 +27,7 @@ function toWorker(row: WorkerRow): Worker {
     specialty:     row.specialty ?? '',
     serviceTypeId: row.service_type_id ? Number(row.service_type_id) : undefined,
     pricePerHour:  row.price_per_hour,
-    rating:        row.rating,
+    rating:        row.review_count > 0 ? Math.round(row.rating_sum / row.review_count * 10) / 10 : 0,
     reviewCount:   row.review_count,
     isAvailable:   Boolean(row.is_available),
     isActive:      Boolean(row.is_active),
@@ -84,13 +84,13 @@ router.get('/api/workers', async (c) => {
   const orderBy =
     sort === 'price_asc'  ? 'w.price_per_hour ASC'  :
     sort === 'price_desc' ? 'w.price_per_hour DESC'  :
-    'w.rating DESC, w.review_count DESC'
+    '(w.rating_sum::float / NULLIF(w.review_count, 0)) DESC NULLS LAST, w.review_count DESC'
 
   await dbReady
   const rows = (await db.query(`
     SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
            w.service_type_id, w.price_per_hour,
-           w.rating, w.review_count, w.is_available, w.is_active,
+           w.rating_sum, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
@@ -181,7 +181,7 @@ router.get('/api/workers/me', async (c) => {
   const row = (await db.query(`
     SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
            w.service_type_id, w.price_per_hour,
-           w.rating, w.review_count, w.is_available, w.is_active,
+           w.rating_sum, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id
@@ -387,7 +387,10 @@ router.get('/api/workers/me/earnings', async (c) => {
     ),
     db.query<EarningsRow>(
       `SELECT COALESCE(FLOOR(SUM(total_amount)::NUMERIC * 83 / 100), 0)::INTEGER AS total
-       FROM orders WHERE worker_id = $1 AND status IN ('completed', 'rated') AND payment_status = 'paid'`,
+       FROM orders WHERE worker_id = $1 AND status IN ('completed', 'rated') AND payment_status = 'paid'
+         AND NOT EXISTS (
+           SELECT 1 FROM disputes WHERE order_id = orders.id AND status != 'resolved_release'
+         )`,
       [wid],
     ),
     db.query<TxRow>(
@@ -584,7 +587,7 @@ router.get('/api/workers/:id', async (c) => {
   const row = (await db.query(`
     SELECT w.id, w.user_id, u.name, COALESCE(st.name_mn, '') AS specialty,
            w.service_type_id, w.price_per_hour,
-           w.rating, w.review_count, w.is_available, w.is_active,
+           w.rating_sum, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   workers w
     JOIN   users   u ON u.id = w.user_id

@@ -3,17 +3,18 @@ import { z } from 'zod'
 import { randomInt } from 'crypto'
 import { db, dbReady } from '../db'
 import { requireAuth, auth, hashOtp } from '../auth'
+import { logAudit } from '../lib/audit'
 import { normalizePhone, validateMongolianPhone } from '@homeservices/shared'
 import type { Worker } from '@homeservices/shared'
 
 const router = new Hono()
 
 const patchMeSchema = z.object({
-  name:                  z.string().min(2, 'Нэр 2-50 тэмдэгт байх ёстой').max(50).optional(),
-  email:                 z.string().email('Имэйл хаяг буруу байна').optional(),
+  name:                  z.string().min(2, 'Нэр 2-100 тэмдэгт байх ёстой').max(100).optional(),
+  email:                 z.string().email('Имэйл хаяг буруу байна').max(200).optional(),
   avatar_url:            z.string().url('Зурагны URL буруу байна').optional(),
-  phone:                 z.string().optional(),
-  password:              z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой').optional(),
+  phone:                 z.string().regex(/^[89]\d{7}$/, 'Монгол дугаар (8 оронт) оруулна уу').optional(),
+  password:              z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой').max(128).optional(),
   markNotificationsRead: z.boolean().optional(),
 }).refine(
   (d) => Object.values(d).some((v) => v !== undefined),
@@ -28,7 +29,7 @@ const savedWorkerPostSchema = z.object({
 
 type WorkerRow = {
   id: string; user_id: string; name: string; specialty: string
-  price_per_hour: number; rating: number; review_count: number
+  price_per_hour: number; rating_sum: number; review_count: number
   is_available: boolean; is_active: boolean; dan_verified: boolean; created_at: string
 }
 
@@ -39,7 +40,7 @@ function toWorker(row: WorkerRow): Worker {
     name:         row.name,
     specialty:    row.specialty,
     pricePerHour: row.price_per_hour,
-    rating:       row.rating,
+    rating:       row.review_count > 0 ? Math.round(row.rating_sum / row.review_count * 10) / 10 : 0,
     reviewCount:  row.review_count,
     isAvailable:  Boolean(row.is_available),
     isActive:     Boolean(row.is_active),
@@ -56,26 +57,37 @@ router.get('/api/me', async (c) => {
   await dbReady
 
   const user = (await db.query(
-    'SELECT id, phone, name, email, avatar_url, phone_verified, email_verified, google_id FROM users WHERE id = $1',
+    'SELECT id, phone, name, email, avatar_url, phone_verified, email_verified, google_id, better_auth_id FROM users WHERE id = $1',
     [session.sub],
   )).rows[0] as {
     id: string; phone: string | null; name: string; email: string; avatar_url: string
     phone_verified: boolean; email_verified: boolean; google_id: string | null
+    better_auth_id: string | null
   } | undefined
 
   if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
 
+  let twoFactorEnabled = false
+  if (user.better_auth_id) {
+    const baRow = (await db.query(
+      `SELECT "twoFactorEnabled" FROM "user" WHERE id = $1`,
+      [user.better_auth_id],
+    )).rows[0] as { twoFactorEnabled: boolean } | undefined
+    twoFactorEnabled = baRow?.twoFactorEnabled ?? false
+  }
+
   return c.json({
     success: true,
     data: {
-      id:            String(user.id),
-      phone:         user.phone ?? '',
-      name:          user.name,
-      email:         user.email,
-      avatarUrl:     user.avatar_url,
-      phoneVerified: user.phone_verified,
-      emailVerified: user.email_verified,
-      isGoogleOAuth: user.google_id !== null,
+      id:               String(user.id),
+      phone:            user.phone ?? '',
+      name:             user.name,
+      email:            user.email,
+      avatarUrl:        user.avatar_url,
+      phoneVerified:    user.phone_verified,
+      emailVerified:    user.email_verified,
+      isGoogleOAuth:    user.google_id !== null,
+      twoFactorEnabled,
     },
   })
 })
@@ -198,7 +210,7 @@ router.get('/api/me/saved-workers', async (c) => {
 
   const rows = (await db.query(`
     SELECT w.id, w.user_id, u.name, w.specialty, w.price_per_hour,
-           w.rating, w.review_count, w.is_available, w.is_active,
+           w.rating_sum, w.review_count, w.is_available, w.is_active,
            u.dan_verified, w.created_at
     FROM   saved_workers sw
     JOIN   workers w ON w.id = sw.worker_id AND w.rejected_at IS NULL
@@ -397,6 +409,248 @@ router.patch('/api/me/verify-contact', async (c) => {
     }
 
     return c.json({ success: true })
+  } catch {
+    return c.json({ error: 'Request failed' }, 500)
+  }
+})
+
+// ── PDPL subject-access + erasure ────────────────────────────────────────────
+
+// GET /api/me/export — returns all rows owned by the authenticated user.
+// Every query is filtered by session.sub — no other user's data is accessible.
+router.get('/api/me/export', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  const uid = Number(session.sub)
+  await dbReady
+
+  try {
+    const [profile, orders, reviews, messages, disputes, savedWorkers, notifications, paymentIntents] =
+      await Promise.all([
+        db.query(
+          `SELECT id, name, phone, email, avatar_url,
+                  firstname, lastname, registernumber,
+                  role, is_worker, active_mode,
+                  dan_verified, is_verified,
+                  phone_verified, email_verified,
+                  created_at
+           FROM users WHERE id = $1`,
+          [uid],
+        ),
+        db.query(
+          `SELECT id, service_type_id, status, address, scheduled_date,
+                  hours, total_amount, urgent, rooms, area_sqm, property_type,
+                  notes, matching_strategy, payment_status, survey_details,
+                  before_photo_url, after_photo_url, created_at, updated_at
+           FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
+          [uid],
+        ),
+        // Reviews are authored by the user (no user_id column — linked via order)
+        db.query(
+          `SELECT r.id, r.order_id, r.rating, r.comment, r.created_at
+           FROM reviews r
+           JOIN orders o ON o.id = r.order_id
+           WHERE o.user_id = $1
+           ORDER BY r.created_at DESC`,
+          [uid],
+        ),
+        // All messages in the user's orders (both sides of conversation)
+        db.query(
+          `SELECT m.id, m.order_id, m.sender_id, m.text, m.created_at
+           FROM messages m
+           JOIN orders o ON o.id = m.order_id
+           WHERE o.user_id = $1
+           ORDER BY m.created_at DESC`,
+          [uid],
+        ),
+        db.query(
+          `SELECT d.id, d.order_id, d.issue, d.status, d.compensation_amount,
+                  d.photo_urls, d.created_at, d.updated_at
+           FROM disputes d
+           JOIN orders o ON o.id = d.order_id
+           WHERE o.user_id = $1
+           ORDER BY d.created_at DESC`,
+          [uid],
+        ),
+        db.query(
+          `SELECT sw.worker_id, sw.created_at
+           FROM saved_workers sw
+           WHERE sw.user_id = $1
+           ORDER BY sw.created_at DESC`,
+          [uid],
+        ),
+        db.query(
+          `SELECT id, type, metadata, created_at
+           FROM notifications WHERE user_id = $1
+           ORDER BY created_at DESC`,
+          [uid],
+        ),
+        db.query(
+          `SELECT id, paid_at, created_at
+           FROM payment_intents WHERE user_id = $1
+           ORDER BY created_at DESC`,
+          [uid],
+        ),
+      ])
+
+    await logAudit(uid, 'pdpl_export', {
+      ip: c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+    })
+
+    return c.json({
+      success: true,
+      data: {
+        exportedAt:     new Date().toISOString(),
+        profile:        profile.rows[0] ?? null,
+        orders:         orders.rows,
+        reviews:        reviews.rows,
+        messages:       messages.rows,
+        disputes:       disputes.rows,
+        savedWorkers:   savedWorkers.rows,
+        notifications:  notifications.rows,
+        paymentIntents: paymentIntents.rows,
+      },
+    })
+  } catch {
+    return c.json({ error: 'Request failed' }, 500)
+  }
+})
+
+// Non-terminal order statuses — any of these blocks account deletion
+const ACTIVE_ORDER_STATUSES = [
+  'pending_acceptances', 'awaiting_payment', 'searching_worker',
+  'pending_worker_acceptance', 'pending_payment', 'matched',
+  'worker_accepted', 'worker_on_the_way', 'in_progress',
+  'quote_submitted', 'quote_approved',
+] as const
+
+// POST /api/me/delete — soft-delete + anonymize.
+// Rows with settled payments are NEVER hard-deleted (financial/legal retention).
+router.post('/api/me/delete', async (c) => {
+  const session = await requireAuth(c)
+  if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
+
+  const uid = Number(session.sub)
+  await dbReady
+
+  try {
+    // ── Blocking checks ───────────────────────────────────────────────────────
+
+    const openOrder = (await db.query(
+      `SELECT id, status FROM orders WHERE user_id = $1
+       AND status = ANY($2::text[]) LIMIT 1`,
+      [uid, ACTIVE_ORDER_STATUSES],
+    )).rows[0] as { id: string; status: string } | undefined
+
+    if (openOrder) {
+      return c.json({
+        success: false,
+        error:  'Идэвхтэй захиалга байна. Данс устгахын өмнө бүх захиалгаа дуусгана уу.',
+        reason: 'open_order',
+      }, 409)
+    }
+
+    const openDispute = (await db.query(
+      `SELECT d.id FROM disputes d
+       JOIN orders o ON o.id = d.order_id
+       WHERE o.user_id = $1 AND d.status NOT IN ('resolved','rejected')
+       LIMIT 1`,
+      [uid],
+    )).rows[0] as { id: string } | undefined
+
+    if (openDispute) {
+      return c.json({
+        success: false,
+        error:  'Шийдвэрлэгдээгүй гомдол байна. Данс устгахын өмнө гомдлоо шийдвэрлүүлнэ үү.',
+        reason: 'open_dispute',
+      }, 409)
+    }
+
+    // A paid payment_intent that was not consumed by order creation means
+    // money is sitting in escrow — block until it resolves.
+    const openEscrow = (await db.query(
+      `SELECT id FROM payment_intents WHERE user_id = $1 AND paid_at IS NOT NULL LIMIT 1`,
+      [uid],
+    )).rows[0] as { id: string } | undefined
+
+    if (openEscrow) {
+      return c.json({
+        success: false,
+        error:  'Шийдвэрлэгдээгүй эскро төлбөр байна. Данс устгахын өмнө төлбөрийн асуудлаа шийдвэрлүүлнэ үү.',
+        reason: 'unsettled_escrow',
+      }, 409)
+    }
+
+    // ── Capture identifiers before nulling them ───────────────────────────────
+
+    const userRow = (await db.query(
+      'SELECT better_auth_id, phone, email FROM users WHERE id = $1',
+      [uid],
+    )).rows[0] as { better_auth_id: string | null; phone: string | null; email: string } | undefined
+
+    if (!userRow) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
+
+    // ── Erasure — PII nulled, financial rows retained ─────────────────────────
+
+    // Profile: null all PII; deleted_at marks soft-deletion
+    await db.query(
+      `UPDATE users SET
+         deleted_at          = NOW(),
+         name                = '[deleted]',
+         phone               = NULL,
+         email               = '',
+         avatar_url          = '',
+         firstname           = '',
+         lastname            = '',
+         registernumber      = '',
+         google_id           = NULL,
+         facebook_id         = NULL,
+         better_auth_id      = NULL,
+         failed_login_attempts = 0,
+         locked_until        = NULL
+       WHERE id = $1`,
+      [uid],
+    )
+
+    // Orders: anonymize address/notes; retain amounts, dates, statuses for escrow audit
+    await db.query(
+      `UPDATE orders SET address = '[deleted]', notes = NULL, survey_details = NULL WHERE user_id = $1`,
+      [uid],
+    )
+
+    // Messages the user sent: anonymize text
+    await db.query(`UPDATE messages SET text = '[deleted]' WHERE sender_id = $1`, [uid])
+
+    // Preference data: no financial value, hard-delete
+    await db.query('DELETE FROM saved_workers WHERE user_id = $1', [uid])
+
+    if (userRow.phone) {
+      await db.query('DELETE FROM otp_codes WHERE phone = $1', [userRow.phone])
+    }
+    if (userRow.email && userRow.email !== '') {
+      await db.query('DELETE FROM email_otp_codes WHERE email = $1', [userRow.email])
+    }
+
+    // Better Auth records: remove credential/OAuth links so re-login is impossible;
+    // anonymize the BA user row; invalidate all sessions
+    if (userRow.better_auth_id) {
+      await db.query('DELETE FROM session WHERE "userId" = $1', [userRow.better_auth_id])
+      await db.query('DELETE FROM account WHERE "userId" = $1', [userRow.better_auth_id])
+      await db.query(
+        `UPDATE "user" SET name = '[deleted]', email = CONCAT('[deleted-', id, ']@deleted'), image = NULL
+         WHERE id = $1`,
+        [userRow.better_auth_id],
+      )
+    }
+
+    await logAudit(uid, 'pdpl_erasure', {
+      reason:   'user_request',
+      retained: 'orders, transactions, reviews, messages retained for financial/legal audit (PDPL Art.16)',
+      ip:       c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+    })
+
+    return c.json({ success: true, data: { deletedAt: new Date().toISOString() } })
   } catch {
     return c.json({ error: 'Request failed' }, 500)
   }

@@ -158,7 +158,9 @@ export interface Order {
   paymentDeadline?: string          // ISO timestamp; set when status → awaiting_payment
   paymentStatus?: PaymentStatus
   beforePhotoUrl?: string
+  beforeThumbUrl?: string
   afterPhotoUrl?: string
+  afterThumbUrl?: string
   pricingModel?: PricingModel
   surveyDetails?: SurveyDetails
   createdAt: string
@@ -251,14 +253,20 @@ export interface BankingInfo {
   updatedAt: string
 }
 
-export type DisputeStatus = 'open' | 'resolved'
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'resolved_release'      // escrow → worker payout proceeds
+  | 'resolved_hold'         // escrow frozen; manual/off-platform handling required
+  | 'resolved_offplatform'  // resolution happened outside the payment rail
 
 export interface Dispute {
   id: string
   orderId: string
   issue: string
   status: DisputeStatus
-  compensationAmount?: number  // MNT
+  compensationAmount?: number  // MNT — recorded only, no programmatic transfer
+  resolutionNote?: string
   createdAt: string
   updatedAt: string
 }
@@ -312,7 +320,9 @@ export interface UpsertBankingBody {
 }
 
 export interface ResolveDisputeBody {
-  compensationAmount?: number
+  outcome: 'resolved_release' | 'resolved_hold' | 'resolved_offplatform'
+  note?: string
+  compensationAmount?: number  // recorded only — no programmatic transfer
 }
 
 // ── Admin ────────────────────────────────────────────────────────────────────
@@ -373,6 +383,7 @@ export interface AdminDispute {
   status: string
   totalAmount: number
   compensationAmount: number | null
+  resolutionNote: string | null
   createdAt: string
   beforePhotoUrl: string | null
   afterPhotoUrl: string | null

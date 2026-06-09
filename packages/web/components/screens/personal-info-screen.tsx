@@ -2,33 +2,44 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Phone, Mail, Calendar, MapPin, Check } from 'lucide-react'
+import { ArrowLeft, User, Phone, Mail, Calendar, MapPin, Check, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api-fetch'
 import { useSession } from '@/context/session-context'
+import { authClient } from '@/lib/auth-client'
+import { QRCodeSVG } from 'qrcode.react'
 
 type MeData = {
   name: string; email: string; phone: string
   phoneVerified: boolean; emailVerified: boolean; isGoogleOAuth: boolean
+  twoFactorEnabled: boolean
 }
+
+type TwoFactorStep = 'idle' | 'password' | 'qr' | 'disabling'
 
 export function PersonalInfoScreen() {
   const router = useRouter()
   const session = useSession()
-  const [name,          setName]          = useState(session?.name ?? '')
-  const [email,         setEmail]         = useState('')
-  const [localPhone,    setLocalPhone]    = useState('')
-  const [birthDate,     setBirthDate]     = useState('1990-01-15')
-  const [address,       setAddress]       = useState('Улаанбаатар, Сүхбаатар дүүрэг')
-  const [saving,        setSaving]        = useState(false)
-  const [error,         setError]         = useState('')
-  const [phoneVerified, setPhoneVerified] = useState(false)
-  const [emailVerified, setEmailVerified] = useState(false)
-  const [isGoogleOAuth, setIsGoogleOAuth] = useState(false)
-  const [sendingOtp,    setSendingOtp]    = useState<'phone' | 'email' | null>(null)
+  const [name,              setName]              = useState(session?.name ?? '')
+  const [email,             setEmail]             = useState('')
+  const [localPhone,        setLocalPhone]        = useState('')
+  const [birthDate,         setBirthDate]         = useState('1990-01-15')
+  const [address,           setAddress]           = useState('Улаанбаатар, Сүхбаатар дүүрэг')
+  const [saving,            setSaving]            = useState(false)
+  const [error,             setError]             = useState('')
+  const [phoneVerified,     setPhoneVerified]     = useState(false)
+  const [emailVerified,     setEmailVerified]     = useState(false)
+  const [isGoogleOAuth,     setIsGoogleOAuth]     = useState(false)
+  const [sendingOtp,        setSendingOtp]        = useState<'phone' | 'email' | null>(null)
+  const [twoFactorEnabled,  setTwoFactorEnabled]  = useState(false)
+  const [tfStep,            setTfStep]            = useState<TwoFactorStep>('idle')
+  const [tfPassword,        setTfPassword]        = useState('')
+  const [tfTotpUri,         setTfTotpUri]         = useState('')
+  const [tfVerifyCode,      setTfVerifyCode]      = useState('')
+  const [tfLoading,         setTfLoading]         = useState(false)
 
   useEffect(() => {
     apiFetch('/api/me')
@@ -41,6 +52,7 @@ export function PersonalInfoScreen() {
           setPhoneVerified(json.data.phoneVerified)
           setEmailVerified(json.data.emailVerified)
           setIsGoogleOAuth(json.data.isGoogleOAuth)
+          setTwoFactorEnabled(json.data.twoFactorEnabled)
         }
       })
       .catch(() => {})
@@ -111,6 +123,57 @@ export function PersonalInfoScreen() {
       toast.error('Алдаа гарлаа')
     } finally {
       setSendingOtp(null)
+    }
+  }
+
+  const handleEnable2FA = async () => {
+    if (!tfPassword) return
+    setTfLoading(true)
+    try {
+      const res = await authClient.twoFactor.enable({ password: tfPassword })
+      if (res.error) { toast.error('Нууц үг буруу байна'); return }
+      setTfTotpUri(res.data?.totpURI ?? '')
+      setTfPassword('')
+      setTfVerifyCode('')
+      setTfStep('qr')
+    } catch {
+      toast.error('Алдаа гарлаа')
+    } finally {
+      setTfLoading(false)
+    }
+  }
+
+  const handleVerify2FACode = async () => {
+    if (tfVerifyCode.length !== 6) return
+    setTfLoading(true)
+    try {
+      const res = await authClient.twoFactor.verifyTotp({ code: tfVerifyCode })
+      if (res.error) { toast.error('Код буруу байна. Дахин оролдоно уу.'); return }
+      setTwoFactorEnabled(true)
+      setTfStep('idle')
+      setTfTotpUri('')
+      toast.success('2FA амжилттай идэвхжүүллээ')
+    } catch {
+      toast.error('Алдаа гарлаа')
+    } finally {
+      setTfLoading(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    if (!tfPassword) return
+    setTfLoading(true)
+    try {
+      const res = await authClient.twoFactor.disable({ password: tfPassword })
+      if (res.error) { toast.error('Нууц үг буруу байна'); return }
+      setTwoFactorEnabled(false)
+      setTfStep('idle')
+      setTfPassword('')
+      toast.success('2FA идэвхгүй болголоо')
+    } catch {
+      toast.error('Алдаа гарлаа')
+    } finally {
+      setTfLoading(false)
     }
   }
 
@@ -247,6 +310,132 @@ export function PersonalInfoScreen() {
               className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
             />
           </div>
+        </div>
+
+        {/* 2FA */}
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {twoFactorEnabled
+                ? <ShieldCheck className="h-5 w-5 text-success" />
+                : <ShieldOff className="h-5 w-5 text-muted-foreground" />}
+              <div>
+                <p className="text-sm font-semibold text-foreground">Хоёр хүчин зүйлийн баталгаажуулалт</p>
+                <p className="text-xs text-muted-foreground">
+                  {twoFactorEnabled ? 'Идэвхтэй' : 'Идэвхгүй'}
+                </p>
+              </div>
+            </div>
+            {tfStep === 'idle' && (
+              <button
+                onClick={() => setTfStep(twoFactorEnabled ? 'disabling' : 'password')}
+                className="text-xs font-semibold text-primary active:scale-95 transition-all"
+              >
+                {twoFactorEnabled ? 'Идэвхгүй болгох' : 'Идэвхжүүлэх'}
+              </button>
+            )}
+          </div>
+
+          {tfStep === 'password' && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Нууц үгээ оруулна уу</p>
+              <Input
+                type="password"
+                value={tfPassword}
+                onChange={(e) => setTfPassword(e.target.value)}
+                placeholder="Нууц үг"
+                className="h-10 rounded-xl border-border bg-background text-sm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { void handleEnable2FA() }}
+                  disabled={tfLoading || !tfPassword}
+                  size="sm"
+                  className="flex-1 rounded-xl"
+                >
+                  {tfLoading ? 'Уншиж байна…' : 'Үргэлжлүүлэх'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setTfStep('idle'); setTfPassword('') }}
+                  className="rounded-xl"
+                >
+                  Буцах
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {tfStep === 'qr' && tfTotpUri && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Authenticator апп-аа нээж QR кодыг уншина уу
+              </p>
+              <div className="flex justify-center rounded-xl bg-white p-3">
+                <QRCodeSVG value={tfTotpUri} size={180} />
+              </div>
+              <p className="text-xs text-muted-foreground">Апп дээрх 6 оронт кодыг оруулна уу</p>
+              <Input
+                value={tfVerifyCode}
+                onChange={(e) => setTfVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="h-10 rounded-xl border-border bg-background text-center text-lg tracking-widest"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { void handleVerify2FACode() }}
+                  disabled={tfLoading || tfVerifyCode.length !== 6}
+                  size="sm"
+                  className="flex-1 rounded-xl"
+                >
+                  {tfLoading ? 'Шалгаж байна…' : 'Баталгаажуулах'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setTfStep('idle'); setTfTotpUri(''); setTfVerifyCode('') }}
+                  className="rounded-xl"
+                >
+                  Буцах
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {tfStep === 'disabling' && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">2FA идэвхгүй болгохын тулд нууц үгээ оруулна уу</p>
+              <Input
+                type="password"
+                value={tfPassword}
+                onChange={(e) => setTfPassword(e.target.value)}
+                placeholder="Нууц үг"
+                className="h-10 rounded-xl border-border bg-background text-sm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { void handleDisable2FA() }}
+                  disabled={tfLoading || !tfPassword}
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1 rounded-xl"
+                >
+                  {tfLoading ? 'Уншиж байна…' : 'Идэвхгүй болгох'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setTfStep('idle'); setTfPassword('') }}
+                  className="rounded-xl"
+                >
+                  Буцах
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* DAN Badge */}

@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db, dbReady } from '../db'
-import { requireAdmin, hashPassword, createAdminToken, setAdminCookie, clearAdminCookie } from '../auth'
+import { requireAdmin, hashPassword, createAdminToken, setAdminCookie, clearAdminCookie, auth } from '../auth'
 import { getSettings } from '../lib/settings'
+import { logAudit } from '../lib/audit'
 import type {
   AdminStats, AdminRecentOrder, AdminPendingWorker,
   AdminDispute, AdminBankingWorker,
@@ -16,6 +17,30 @@ const [ADMIN_USERNAME, ADMIN_PASSWORD] = (() => {
 })()
 
 const router = new Hono()
+
+// BA-session admins must have 2FA enrolled before accessing any admin routes.
+// Custom HMAC-cookie admins (sub === 'admin') are exempt — they use a separate login flow.
+// Login/logout are also exempt since they're unauthenticated entry points.
+const EXEMPT_PATHS = new Set(['/api/admin/login', '/api/admin/logout', '/api/admin/me'])
+
+router.use('/api/admin/*', async (c, next) => {
+  if (EXEMPT_PATHS.has(c.req.path)) return next()
+
+  const baSession = await auth.api.getSession({ headers: c.req.raw.headers })
+  if (!baSession?.user) return next() // no BA session — custom-cookie admin or unauthed, skip
+
+  await dbReady
+  const row = (await db.query(
+    `SELECT "twoFactorEnabled" FROM "user" WHERE id = $1`,
+    [baSession.user.id],
+  )).rows[0] as { twoFactorEnabled: boolean } | undefined
+
+  if (!row?.twoFactorEnabled) {
+    return c.json({ success: false, error: '2FA идэвхжүүлэх шаардлагатай' }, 403)
+  }
+
+  return next()
+})
 
 const adminLoginSchema = z.object({
   username: z.string().min(1),
@@ -67,7 +92,7 @@ router.get('/api/admin/stats', async (c) => {
     db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status IN ('completed','rated') AND created_at::date = CURRENT_DATE`),
     db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status IN ('completed','rated')`),
     db.query(`SELECT COUNT(*) as count FROM workers WHERE is_active = true AND rejected_at IS NULL`),
-    db.query(`SELECT COUNT(*) as count FROM disputes WHERE status = 'open'`),
+    db.query(`SELECT COUNT(*) as count FROM disputes WHERE status IN ('open', 'under_review')`),
     db.query(`SELECT COUNT(*) as count FROM workers WHERE is_active = false AND rejected_at IS NULL`),
     db.query(`
       SELECT o.id, u1.name as customer_name, u2.name as worker_name,
@@ -157,7 +182,9 @@ router.get('/api/admin/workers', async (c) => {
   const [rowsResult, countResult] = await Promise.all([
     db.query(`
       SELECT w.id, u.name, u.phone, COALESCE(st.name_mn, '') AS specialty, w.price_per_hour,
-             w.rating, w.review_count, w.is_active, w.is_available,
+             w.rating_sum, w.review_count,
+             w.review_count >= 5 AND w.rating_sum::float / NULLIF(w.review_count, 0) < 3.0 AS low_rating_flag,
+             w.is_active, w.is_available,
              w.rejected_at, w.created_at,
              bi.verified as banking_verified,
              u.dan_verified, w.police_file
@@ -646,12 +673,12 @@ router.get('/api/admin/disputes', async (c) => {
   type Row = {
     id: string; order_id: string; customer_name: string; worker_name: string | null
     service: string; issue: string; status: string; total_amount: number
-    compensation_amount: number | null; created_at: string
+    compensation_amount: number | null; resolution_note: string | null; created_at: string
     photo_urls: string[]; before_photo_url: string | null; after_photo_url: string | null
   }
 
   const rows = (await db.query(`
-    SELECT d.id, d.order_id, d.issue, d.status, d.compensation_amount, d.created_at,
+    SELECT d.id, d.order_id, d.issue, d.status, d.compensation_amount, d.resolution_note, d.created_at,
            d.photo_urls,
            u1.name as customer_name, u2.name as worker_name,
            o.service, o.total_amount, o.before_photo_url, o.after_photo_url
@@ -673,6 +700,7 @@ router.get('/api/admin/disputes', async (c) => {
     status:             r.status,
     totalAmount:        r.total_amount,
     compensationAmount: r.compensation_amount,
+    resolutionNote:     r.resolution_note,
     createdAt:          r.created_at,
     beforePhotoUrl:     r.before_photo_url,
     afterPhotoUrl:      r.after_photo_url,
@@ -682,11 +710,47 @@ router.get('/api/admin/disputes', async (c) => {
   return c.json({ success: true, data })
 })
 
-const resolveDisputeSchema = z.object({
-  compensationAmount: z.number().int().min(0).optional(),
+// PATCH /api/admin/disputes/:id/review — open → under_review
+router.patch('/api/admin/disputes/:id/review', async (c) => {
+  const session = await requireAdmin(c)
+  if (!session) return c.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, 403)
+
+  const id = c.req.param('id')
+
+  await dbReady
+  const result = await db.query(`
+    UPDATE disputes
+    SET    status = 'under_review',
+           reviewed_by = $1,
+           updated_at = NOW()
+    WHERE  id = $2 AND status = 'open'
+    RETURNING order_id
+  `, [session.sub, id])
+
+  if (!result.rowCount) {
+    return c.json({ success: false, error: 'Гомдол олдсонгүй эсвэл аль хэдийн хянагдаж байна' }, 404)
+  }
+
+  await logAudit(session.sub, 'dispute.review', {
+    disputeId: id,
+    orderId:   String(result.rows[0].order_id),
+  })
+
+  return c.json({ success: true, data: undefined })
 })
 
-// PATCH /api/admin/disputes/:id/resolve
+const resolveDisputeSchema = z.object({
+  outcome: z.enum(['resolved_release', 'resolved_hold', 'resolved_offplatform']),
+  note:               z.string().max(2000).optional(),
+  compensationAmount: z.number().int().min(0).optional(),
+}).refine(
+  (d) => d.outcome !== 'resolved_offplatform' || (d.note && d.note.length > 0),
+  { message: 'resolved_offplatform requires a note documenting what happened off-platform', path: ['note'] },
+)
+
+// PATCH /api/admin/disputes/:id/resolve — under_review → terminal state
+// No QPay refund/void is attempted from any branch. Escrow disposition is
+// enforced by blocking worker pendingPayout for any status != resolved_release.
 router.patch('/api/admin/disputes/:id/resolve', async (c) => {
   const session = await requireAdmin(c)
   if (!session) return c.json({ success: false, error: 'Зөвхөн админ хандах боломжтой' }, 403)
@@ -697,23 +761,38 @@ router.patch('/api/admin/disputes/:id/resolve', async (c) => {
   }
 
   const parsed = resolveDisputeSchema.safeParse(body)
-  if (!parsed.success) return c.json({ success: false, error: 'Буруу өгөгдөл' }, 400)
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Буруу өгөгдөл' }, 400)
+  }
 
   const id = c.req.param('id')
-  const { compensationAmount } = parsed.data
+  const { outcome, note, compensationAmount } = parsed.data
 
   await dbReady
   const result = await db.query(`
     UPDATE disputes
-    SET    status = 'resolved',
-           compensation_amount = $1,
+    SET    status = $1,
+           resolution_note = $2,
+           compensation_amount = $3,
+           reviewed_by = $4,
            updated_at = NOW()
-    WHERE  id = $2 AND status = 'open'
-  `, [compensationAmount ?? null, id])
+    WHERE  id = $5 AND status = 'under_review'
+    RETURNING order_id
+  `, [outcome, note ?? null, compensationAmount ?? null, session.sub, id])
 
   if (!result.rowCount) {
-    return c.json({ success: false, error: 'Гомдол олдсонгүй эсвэл аль хэдийн шийдэгдсэн' }, 404)
+    return c.json(
+      { success: false, error: 'Гомдол олдсонгүй эсвэл "хянагдаж байгаа" төлөвт биш байна' },
+      404,
+    )
   }
+
+  await logAudit(session.sub, 'dispute.resolve', {
+    disputeId:          id,
+    orderId:            String(result.rows[0].order_id),
+    outcome,
+    compensationAmount: compensationAmount ?? null,
+  })
 
   return c.json({ success: true, data: undefined })
 })

@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth'
+import { twoFactor } from 'better-auth/plugins'
 import { scryptSync, randomBytes, createHmac, timingSafeEqual } from 'crypto'
 import { getCookie } from 'hono/cookie'
 import { db, dbReady } from './db'
@@ -30,7 +31,7 @@ const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
 
 const isProd = process.env.NODE_ENV === 'production'
 
-export const auth = betterAuth({
+export const authConfig = {
   database: db,
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
@@ -63,6 +64,7 @@ export const auth = betterAuth({
       }),
     },
   },
+  plugins: [twoFactor({ issuer: 'HomeServices' })],
   databaseHooks: {
     user: {
       create: {
@@ -92,7 +94,9 @@ export const auth = betterAuth({
       },
     },
   },
-})
+}
+
+export const auth = betterAuth(authConfig)
 
 export async function requireAuth(c: Context): Promise<SessionPayload | null> {
   const session = await auth.api.getSession({ headers: c.req.raw.headers })

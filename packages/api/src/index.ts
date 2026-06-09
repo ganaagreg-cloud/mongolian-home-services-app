@@ -1,10 +1,12 @@
 import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { pinoLogger } from 'hono-pino'
-import { rateLimiter } from 'hono-rate-limiter'
 import { db, dbReady } from './db'
-import { auth } from './auth'
+import { makeRateLimiter } from './lib/rate-limit'
+import { auth, authConfig } from './auth'
+import { runBaPluginMigrations } from './lib/ba-migrate'
+import { logAudit } from './lib/audit'
 import authRouter       from './routes/auth'
 import meRouter         from './routes/me'
 import ordersRouter     from './routes/orders'
@@ -53,25 +55,51 @@ app.get('/api/health', async (c) => {
 
 app.get('/health', (c) => c.json({ ok: true }))
 
-// Per-route rate limiters (in-memory, per IP)
-app.use('/api/payments/*', rateLimiter({
-  windowMs: 60_000,
-  limit: 20,
-  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
-}))
-app.use('/api/auth/dan', rateLimiter({
-  windowMs: 60_000,
-  limit: 10,
-  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
-}))
-app.use('/api/sos', rateLimiter({
-  windowMs: 60_000,
-  limit: 60,
-  keyGenerator: (c) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
-}))
+// Per-route rate limiters — sliding window, in-memory, keyed by IP+path
+const authRateOk    = makeRateLimiter(60_000,  5)   // login + OTP endpoints
+const invoiceRateOk = makeRateLimiter(60_000, 10)   // payment invoice creation
+
+const clientIp = (c: Context): string =>
+  c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+
+// /api/auth/* POST — covers sign-in, forgot-password, verify-otp, phone-lookup
+app.use('/api/auth/*', async (c, next) => {
+  if (c.req.method === 'POST' && !authRateOk(`${clientIp(c)}:${c.req.path}`)) {
+    return c.json({ error: 'Request failed' }, 429)
+  }
+  return next()
+})
+
+// /api/payments/create-invoice — invoice creation is a financial write
+app.use('/api/payments/create-invoice', async (c, next) => {
+  if (!invoiceRateOk(`${clientIp(c)}:${c.req.path}`)) {
+    return c.json({ error: 'Request failed' }, 429)
+  }
+  return next()
+})
+
+// /api/sos is intentionally EXEMPT from rate limiting — never block emergency calls
 
 // Custom auth routes first (before Better Auth wildcard)
 app.route('/', authRouter)
+
+// Audit 2FA enable/disable events — runs after BA processes the request.
+// We capture the session before and look up the app user ID after, so the
+// audit record stores an integer FK into users rather than a BA string ID.
+app.use('/api/auth/two-factor/:action', async (c, next) => {
+  const action = c.req.param('action')
+  if (action !== 'enable' && action !== 'disable') return next()
+  const baSession = await auth.api.getSession({ headers: c.req.raw.headers })
+  await next()
+  if (c.res.ok && baSession?.user?.id) {
+    await dbReady
+    const row = (await db.query(
+      'SELECT id FROM users WHERE better_auth_id = $1',
+      [baSession.user.id],
+    )).rows[0] as { id: number } | undefined
+    if (row) await logAudit(row.id, `twoFactor.${action}`, {}).catch(() => {})
+  }
+})
 
 // Better Auth — handles all OAuth flows, session management, signout
 app.all('/api/auth/*', (c) => auth.handler(c.req.raw))
@@ -99,6 +127,7 @@ async function runExpiryJob() {
 
 const PORT = Number(process.env.PORT ?? 4000)
 dbReady
+  .then(() => runBaPluginMigrations(authConfig, db))
   .then(() => {
     serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`))
     setInterval(() => void runExpiryJob(), 60_000)

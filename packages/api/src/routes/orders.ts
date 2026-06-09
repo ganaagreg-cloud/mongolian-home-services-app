@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import sharp from 'sharp'
 import { db, dbReady } from '../db'
 import { requireAuth } from '../auth'
-import { uploadFile, InvalidImageError } from '../lib/storage'
+import { adapter, InvalidImageError } from '../lib/storage'
 import { getSettings } from '../lib/settings'
 import { notify } from '../lib/notifications'
 import type {
@@ -19,7 +20,8 @@ type OrderRow = {
   rooms: number | null; area_sqm: number | null
   property_type: string | null; notes: string | null
   matching_strategy: string | null; payment_deadline: string | null; payment_status: string
-  before_photo_url: string | null; after_photo_url: string | null
+  before_photo_url: string | null; before_thumb_url: string | null
+  after_photo_url:  string | null; after_thumb_url:  string | null
   pricing_model: string | null; survey_details: SurveyDetails | null
   created_at: string; updated_at: string
 }
@@ -45,7 +47,9 @@ function toOrder(row: OrderRow): Order {
     paymentDeadline:  row.payment_deadline ?? undefined,
     paymentStatus:    row.payment_status as PaymentStatus,
     beforePhotoUrl:   row.before_photo_url ?? undefined,
+    beforeThumbUrl:   row.before_thumb_url ?? undefined,
     afterPhotoUrl:    row.after_photo_url ?? undefined,
+    afterThumbUrl:    row.after_thumb_url ?? undefined,
     pricingModel:     (row.pricing_model as PricingModel | null) ?? undefined,
     surveyDetails:    row.survey_details ?? undefined,
     createdAt:        row.created_at,
@@ -60,7 +64,7 @@ const SELECT_COLS = `
   COALESCE(st.name_mn, '') AS service, o.status, o.address, o.scheduled_date,
   o.hours, o.total_amount, o.urgent, o.rooms, o.area_sqm,
   o.property_type, o.notes, o.matching_strategy, o.payment_deadline, o.payment_status,
-  o.before_photo_url, o.after_photo_url,
+  o.before_photo_url, o.before_thumb_url, o.after_photo_url, o.after_thumb_url,
   st.pricing_model, o.survey_details,
   o.created_at, o.updated_at`
 
@@ -150,26 +154,26 @@ router.get('/api/orders', async (c) => {
 })
 
 const surveyDetailsSchema = z.object({
-  fromAddress: z.string().min(1),
-  toAddress:   z.string().min(1),
+  fromAddress: z.string().min(1).max(500),
+  toAddress:   z.string().min(1).max(500),
   fromFloor:   z.number().int().min(0),
   toFloor:     z.number().int().min(0),
   hasLift:     z.boolean(),
-  volumeNote:  z.string(),
+  volumeNote:  z.string().max(2000),
 })
 
 const createSchema = z.object({
   invoiceId:        z.string().min(1).optional(),
   serviceTypeId:    z.number().int().positive(),
-  address:          z.string().min(1),
-  scheduledDate:    z.string().min(1),
+  address:          z.string().min(1).max(500),
+  scheduledDate:    z.string().min(1).max(50),
   hours:            z.number().int().min(1).max(24),
   totalAmount:      z.number().int().min(0).optional(), // ignored — server recomputes
   urgent:           z.boolean().optional(),
   rooms:            z.number().int().min(1).max(20).optional(),
   areaSqm:          z.number().int().min(1).optional(),
   propertyType:     z.enum(['house', 'apartment', 'office']).optional(),
-  notes:            z.string().optional(),
+  notes:            z.string().max(2000).optional(),
   matchingStrategy: z.enum(['instant', 'scheduled']).optional().default('scheduled'),
   surveyDetails:    surveyDetailsSchema.optional(),
 })
@@ -464,7 +468,7 @@ router.post('/api/orders/:id/match', async (c) => {
 // POST /api/orders/:id/quote — assigned worker submits a repair quote
 const quoteSchema = z.object({
   amount:      z.number().int().positive(),
-  description: z.string().trim().min(1).refine(
+  description: z.string().trim().min(1).max(2000).refine(
     (v) => !/<[^>]+>/.test(v),
     { message: 'Тайлбарт HTML тэмдэгт хориглоно' },
   ),
@@ -1088,26 +1092,50 @@ router.post('/api/orders/:id/upload', async (c) => {
     return c.json({ success: false, error: 'Зургийн хэмжээ 5MB-аас хэтрэхгүй байх ёстой' }, 400)
   }
 
-  const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg'
-  const key = `orders/${orderId}/${type}-${Date.now()}.${ext}`
-  let publicUrl: string
+  const rawBytes = Buffer.from(await blob.arrayBuffer())
+
+  // Compress, strip EXIF (incl. GPS), and produce two WebP variants.
+  // .rotate() auto-orients from EXIF Orientation tag; absence of .withMetadata()
+  // ensures all metadata is stripped from the output.
+  let fullBuf: Buffer, thumbBuf: Buffer
   try {
-    const bytes = Buffer.from(await blob.arrayBuffer())
-    publicUrl = await uploadFile(key, bytes, blob.type)
-  } catch (e) {
-    if (e instanceof InvalidImageError) {
-      return c.json({ success: false, error: 'Зурагны агуулга зөвшөөрөгдсөн формат биш байна' }, 400)
-    }
+    const pipeline = sharp(rawBytes).rotate()
+    ;[fullBuf, thumbBuf] = await Promise.all([
+      pipeline.clone()
+        .resize(1920, 1080, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer(),
+      pipeline.clone()
+        .resize(400, 300, { fit: 'cover', position: 'centre' })
+        .webp({ quality: 75 })
+        .toBuffer(),
+    ])
+  } catch {
+    return c.json({ success: false, error: 'Зурагны агуулга зөвшөөрөгдсөн формат биш байна' }, 400)
+  }
+
+  const ts       = Date.now()
+  const fullKey  = `orders/${orderId}/${type}-${ts}.webp`
+  const thumbKey = `orders/${orderId}/${type}-${ts}-thumb.webp`
+
+  let fullUrl: string, thumbUrl: string
+  try {
+    ;[fullUrl, thumbUrl] = await Promise.all([
+      adapter.put(fullKey,  fullBuf,  'image/webp'),
+      adapter.put(thumbKey, thumbBuf, 'image/webp'),
+    ])
+  } catch {
     return c.json({ success: false, error: 'Зураг хадгалахад алдаа гарлаа' }, 500)
   }
 
-  const col = type === 'before' ? 'before_photo_url' : 'after_photo_url'
+  const fullCol  = type === 'before' ? 'before_photo_url' : 'after_photo_url'
+  const thumbCol = type === 'before' ? 'before_thumb_url' : 'after_thumb_url'
   await db.query(
-    `UPDATE orders SET ${col} = $1, updated_at = NOW() WHERE id = $2`,
-    [publicUrl, orderId],
+    `UPDATE orders SET ${fullCol} = $1, ${thumbCol} = $2, updated_at = NOW() WHERE id = $3`,
+    [fullUrl, thumbUrl, orderId],
   )
 
-  return c.json({ success: true, data: { url: publicUrl } })
+  return c.json({ success: true, data: { url: fullUrl, thumbUrl } })
 })
 
 const FREE_STATUSES = new Set([
@@ -1193,7 +1221,7 @@ router.post('/api/orders/:id/cancel', async (c) => {
 
 const reviewSchema = z.object({
   rating:  z.number().int().min(1).max(5),
-  comment: z.string().optional(),
+  comment: z.string().max(2000).optional(),
 })
 
 // POST /api/orders/:id/review
@@ -1241,14 +1269,9 @@ router.post('/api/orders/:id/review', async (c) => {
       [orderId, order.worker_id, rating, comment ?? null],
     )
 
-    const stats = (await client.query(
-      'SELECT AVG(rating) as avg, COUNT(*) as cnt FROM reviews WHERE worker_id = $1',
-      [order.worker_id],
-    )).rows[0] as { avg: number; cnt: number }
-
     await client.query(
-      'UPDATE workers SET rating = $1, review_count = $2 WHERE id = $3',
-      [Math.round(stats.avg * 10) / 10, stats.cnt, order.worker_id],
+      'UPDATE workers SET rating_sum = rating_sum + $1, review_count = review_count + 1 WHERE id = $2',
+      [rating, order.worker_id],
     )
 
     await client.query(
