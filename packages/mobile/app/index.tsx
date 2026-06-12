@@ -1,15 +1,22 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native'
 
-import { cn, type UserRole } from '@homeservices/shared';
+import { authClient } from '@/lib/auth-client'
 
-const role: UserRole = 'user';
+export default function Home() {
+  const { data: session } = authClient.useSession()
 
-export default function Index() {
   return (
-    <View className={cn('flex-1 items-center justify-center', 'bg-white')}>
-      <Text className="text-lg font-semibold text-emerald-600">
-        @homeservices/shared resolved — role: {role}
+    <View className="flex-1 items-center justify-center gap-6 bg-white px-6">
+      <Text className="text-xl font-bold text-gray-900">
+        Сайн байна уу, {session?.user.name ?? ''}
       </Text>
+      <Text className="text-sm text-gray-500">{session?.user.email ?? ''}</Text>
+      <Pressable
+        className="rounded-xl bg-gray-900 px-8 py-3 active:opacity-80"
+        onPress={() => void authClient.signOut()}
+      >
+        <Text className="text-base font-semibold text-white">Гарах</Text>
+      </Pressable>
     </View>
-  );
+  )
 }

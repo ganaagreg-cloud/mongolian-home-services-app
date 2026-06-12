@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { twoFactor } from 'better-auth/plugins'
+import { expo } from '@better-auth/expo'
 import { scryptSync, randomBytes, createHmac, timingSafeEqual } from 'crypto'
 import { getCookie } from 'hono/cookie'
 import { db, dbReady } from './db'
@@ -28,6 +29,8 @@ const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean)
+  // Expo mobile app deep-link scheme (OAuth + auth redirects)
+  .concat('homeservices://')
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -64,7 +67,7 @@ export const authConfig = {
       }),
     },
   },
-  plugins: [twoFactor({ issuer: 'HomeServices' })],
+  plugins: [twoFactor({ issuer: 'HomeServices' }), expo()],
   databaseHooks: {
     user: {
       create: {
