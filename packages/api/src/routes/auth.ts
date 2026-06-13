@@ -357,18 +357,25 @@ router.post('/api/auth/reset-pin', async (c) => {
 
     if (!user) return c.json({ success: false, error: 'Хэрэглэгч олдсонгүй' }, 404)
 
+    // Sign-in authenticates against the Better Auth credential account — a reset
+    // that cannot reach it must fail loudly, not report success and lock the user out.
+    if (!user.better_auth_id) {
+      return c.json({ success: false, error: 'Энэ бүртгэлийн нууц үг сэргээх боломжгүй' }, 409)
+    }
+
+    // Matching Better Auth's scrypt format so signIn.email works after reset
+    const baHash = await hashForBetterAuth(body.pin)
+    const updated = await db.query(
+      `UPDATE account SET password = $1 WHERE "userId" = $2 AND "providerId" = 'credential'`,
+      [baHash, user.better_auth_id],
+    )
+    if (!updated.rowCount) {
+      return c.json({ success: false, error: 'Энэ бүртгэлийн нууц үг сэргээх боломжгүй' }, 409)
+    }
+
     // bcryptjs hash stored in our users table (as specified)
     const bcryptHash = await bcrypt.hash(body.pin, 12)
     await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [bcryptHash, user.id])
-
-    // Matching Better Auth's scrypt format so signIn.email still works after reset
-    if (user.better_auth_id) {
-      const baHash = await hashForBetterAuth(body.pin)
-      await db.query(
-        `UPDATE account SET password = $1 WHERE user_id = $2 AND provider_id = 'credential'`,
-        [baHash, user.better_auth_id],
-      )
-    }
 
     return c.json({ success: true })
   } catch (e) {

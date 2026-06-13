@@ -436,4 +436,7 @@ export const TABLES: string[] = [
   `ALTER TABLE workers ADD COLUMN IF NOT EXISTS rating_sum BIGINT NOT NULL DEFAULT 0`,
   // Backfill from existing float rating × review_count (rounded to nearest integer)
   `UPDATE workers SET rating_sum = ROUND(rating * review_count)::BIGINT WHERE rating_sum = 0 AND review_count > 0`,
+
+  // Native push: Expo push token for the device the user last registered from
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token TEXT`,
 ]

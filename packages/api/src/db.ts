@@ -14,9 +14,11 @@ async function init(): Promise<void> {
   for (const sql of TABLES) {
     await pool.query(sql)
   }
-  if (process.env.NODE_ENV !== 'production') {
-    await seed(pool)
-  }
+  // seed() is idempotent master data + admin account (gated on ADMIN_PW_HASH).
+  // All fake/dev rows were removed, so it is safe to run in production — and
+  // production NEEDS it: service_types, districts, pricing, and the admin login
+  // only exist because of this. Runs on every boot via ON CONFLICT.
+  await seed(pool)
 }
 
 export const db = pool

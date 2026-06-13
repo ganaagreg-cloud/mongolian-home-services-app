@@ -42,6 +42,24 @@ export function renderNotification(input: NotificationInput): { title: string; b
   }
 }
 
+const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send'
+
+// Fire-and-forget call to Expo's push service. Never throws — callers in
+// notify() already wrap this in their own try/catch, but a second layer
+// here keeps a malformed token from ever surfacing.
+async function sendExpoPush(
+  token: string,
+  title: string,
+  body: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await fetch(EXPO_PUSH_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ to: token, title, body, data, sound: 'default' }),
+  })
+}
+
 // notify() is best-effort: catches all errors, never throws into the caller.
 // Do NOT call inside a payment/escrow DB transaction.
 // Do NOT call from /api/sos.
@@ -58,5 +76,23 @@ export async function notify<T extends NotificationType>(
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     console.error(`[notify] failed type=${type}`, { message })
+  }
+
+  // Native push — best-effort, separate failure domain from the DB insert above.
+  try {
+    const row = (await db.query<{ expo_push_token: string | null }>(
+      'SELECT expo_push_token FROM users WHERE id = $1',
+      [Number(userId)],
+    )).rows[0]
+    if (!row?.expo_push_token) return
+
+    const input = { type, metadata } as unknown as NotificationInput
+    const { title, body } = renderNotification(input)
+    const orderId = input.type === 'admin_broadcast' ? undefined : input.metadata.orderId
+
+    await sendExpoPush(row.expo_push_token, title, body, { type: input.type, orderId })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    console.error(`[notify] push failed type=${type}`, { message })
   }
 }

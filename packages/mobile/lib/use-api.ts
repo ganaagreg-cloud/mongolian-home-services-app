@@ -4,7 +4,7 @@ import type { ApiResponse } from '@homeservices/shared'
 
 import { apiFetch } from './api-fetch'
 
-export function useApi<T>(path: string) {
+export function useApi<T>(path: string, intervalMs?: number) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,7 +28,10 @@ export function useApi<T>(path: string) {
 
   useEffect(() => {
     void refetch()
-  }, [refetch])
+    if (!intervalMs) return
+    const interval = setInterval(() => void refetch(), intervalMs)
+    return () => clearInterval(interval)
+  }, [refetch, intervalMs])
 
   return { data, loading, error, refetch }
 }

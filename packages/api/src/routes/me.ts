@@ -16,6 +16,7 @@ const patchMeSchema = z.object({
   phone:                 z.string().regex(/^[89]\d{7}$/, 'Монгол дугаар (8 оронт) оруулна уу').optional(),
   password:              z.string().min(8, 'Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой').max(128).optional(),
   markNotificationsRead: z.boolean().optional(),
+  expoPushToken:         z.string().min(1).max(200).optional(),
 }).refine(
   (d) => Object.values(d).some((v) => v !== undefined),
   { message: 'Хамгийн багадаа нэг талбар шаардлагатай' },
@@ -110,7 +111,7 @@ router.patch('/api/me', async (c) => {
   const session = await requireAuth(c)
   if (!session) return c.json({ success: false, error: 'Нэвтрэх шаардлагатай' }, 401)
 
-  const { name, email, avatar_url, phone: rawPhone, password, markNotificationsRead } = parsed.data
+  const { name, email, avatar_url, phone: rawPhone, password, markNotificationsRead, expoPushToken } = parsed.data
 
   let normalizedPhone: string | undefined
   if (rawPhone !== undefined) {
@@ -149,6 +150,7 @@ router.patch('/api/me', async (c) => {
   if (email !== undefined)           { sets.push(`email = $${idx++}`);               vals.push(email) }
   if (avatar_url !== undefined)      { sets.push(`avatar_url = $${idx++}`);          vals.push(avatar_url) }
   if (normalizedPhone !== undefined) { sets.push(`phone = $${idx++}`);               vals.push(normalizedPhone) }
+  if (expoPushToken !== undefined)   { sets.push(`expo_push_token = $${idx++}`);     vals.push(expoPushToken) }
   if (markNotificationsRead === true){ sets.push('notifications_read_at = NOW()') }
   vals.push(session.sub)
 

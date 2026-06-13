@@ -33,7 +33,25 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#208AEF"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Яаралтай SOS дуудлагад таны байршлыг илгээхэд ашиглана."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Ажлын өмнөх/дараах зураг авахад камер ашиглана."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

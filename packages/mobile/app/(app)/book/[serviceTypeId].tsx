@@ -9,11 +9,24 @@ import {
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
-import { calculatePrice, DEFAULT_PLATFORM_SETTINGS, type PropertyType } from '@homeservices/shared'
+import {
+  calculatePrice,
+  DEFAULT_PLATFORM_SETTINGS,
+  type ApiResponse,
+  type PropertyType,
+} from '@homeservices/shared'
 
+import { apiFetch } from '@/lib/api-fetch'
 import { formatMnt } from '@/lib/format'
 import { useApi } from '@/lib/use-api'
 import type { ServiceTypeRow } from '@/lib/types'
+
+type Strategy = 'instant' | 'scheduled'
+
+const STRATEGIES: { value: Strategy; label: string; hint: string }[] = [
+  { value: 'instant',   label: 'Шууд захиалах',  hint: 'Төлбөр төлөөд ажилтан автоматаар олдоно' },
+  { value: 'scheduled', label: 'Саналаар сонгох', hint: 'Ажилтнуудын саналаас сонгож дараа нь төлнө' },
+]
 
 const HOURS = [1, 2, 3, 4, 5, 6, 8]
 const TIME_SLOTS = ['09:00', '11:00', '13:00', '15:00', '17:00']
@@ -47,6 +60,9 @@ export default function BookService() {
   const [quantity, setQuantity] = useState('')
   const [hours, setHours] = useState(2)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
+  const [strategy, setStrategy] = useState<Strategy>('instant')
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const days = useMemo(() => nextDays(7), [])
 
@@ -170,6 +186,22 @@ export default function BookService() {
         </>
       ) : null}
 
+      <Text className="text-sm font-semibold text-gray-900">Захиалгын төрөл</Text>
+      <View className="gap-2">
+        {STRATEGIES.map((s) => (
+          <Pressable
+            key={s.value}
+            className={`rounded-xl border px-4 py-3 ${strategy === s.value ? 'border-gray-900 bg-gray-50' : 'border-gray-300'}`}
+            onPress={() => setStrategy(s.value)}
+          >
+            <Text className={`text-sm ${strategy === s.value ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+              {s.label}
+            </Text>
+            <Text className="text-xs text-gray-500">{s.hint}</Text>
+          </Pressable>
+        ))}
+      </View>
+
       {breakdown ? (
         <View className="mt-2 gap-2 rounded-xl border border-gray-200 p-4">
           <View className="flex-row justify-between">
@@ -183,24 +215,65 @@ export default function BookService() {
         </View>
       ) : null}
 
+      {submitError ? <Text className="text-sm text-red-600">{submitError}</Text> : null}
+
       <Pressable
-        className={`items-center rounded-xl px-4 py-3 ${canContinue ? 'bg-gray-900 active:opacity-80' : 'bg-gray-300'}`}
-        disabled={!canContinue}
-        onPress={() =>
-          router.push({
-            pathname: '/book/payment',
-            params: {
-              serviceTypeId: String(service.id),
-              address: address.trim(),
-              scheduledDate: `${date} ${time}`,
-              hours: String(hours),
-              ...(needsQuantity ? { areaSqm: String(qty) } : {}),
-              ...(propertyType ? { propertyType } : {}),
-            },
-          })
-        }
+        className={`items-center rounded-xl px-4 py-3 ${canContinue && !submitting ? 'bg-gray-900 active:opacity-80' : 'bg-gray-300'}`}
+        disabled={!canContinue || submitting}
+        onPress={() => {
+          if (strategy === 'instant') {
+            router.push({
+              pathname: '/book/payment',
+              params: {
+                serviceTypeId: String(service.id),
+                address: address.trim(),
+                scheduledDate: `${date} ${time}`,
+                hours: String(hours),
+                ...(needsQuantity ? { areaSqm: String(qty) } : {}),
+                ...(propertyType ? { propertyType } : {}),
+              },
+            })
+            return
+          }
+          // Scheduled bid order — posted without upfront payment, paid after picking a worker
+          setSubmitError('')
+          setSubmitting(true)
+          void (async () => {
+            try {
+              const res = await apiFetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  serviceTypeId: service.id,
+                  address: address.trim(),
+                  scheduledDate: `${date} ${time}`,
+                  hours,
+                  ...(needsQuantity ? { areaSqm: qty } : {}),
+                  ...(propertyType ? { propertyType } : {}),
+                  matchingStrategy: 'scheduled',
+                }),
+              })
+              const body = (await res.json()) as ApiResponse<{ id: string }>
+              if (body.success) {
+                router.replace({ pathname: '/orders/[id]/board', params: { id: body.data.id } })
+              } else {
+                setSubmitError(body.error)
+              }
+            } catch {
+              setSubmitError('Сүлжээний алдаа гарлаа')
+            } finally {
+              setSubmitting(false)
+            }
+          })()
+        }}
       >
-        <Text className="text-base font-semibold text-white">Төлбөр рүү</Text>
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-base font-semibold text-white">
+            {strategy === 'instant' ? 'Төлбөр рүү' : 'Захиалга нийтлэх'}
+          </Text>
+        )}
       </Pressable>
     </ScrollView>
   )

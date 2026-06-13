@@ -87,6 +87,10 @@ export default function SignIn() {
 
         {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
 
+        <Link href="/forgot-password" className="self-end text-sm text-gray-500">
+          Нууц үгээ мартсан уу?
+        </Link>
+
         <Pressable
           className={`items-center rounded-xl px-4 py-3 ${canSubmit ? 'bg-gray-900 active:opacity-80' : 'bg-gray-300'}`}
           disabled={!canSubmit}
