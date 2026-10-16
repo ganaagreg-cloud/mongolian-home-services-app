@@ -18,6 +18,13 @@ services:
         sync: false
       - key: BETTER_AUTH_URL
         sync: false
+      # Required at boot — the API throws on startup if any of these are missing
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

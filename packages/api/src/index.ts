@@ -132,7 +132,10 @@ dbReady
     serve({ fetch: app.fetch, port: PORT }, () => console.log(`[api] listening on :${PORT}`))
     setInterval(() => void runExpiryJob(), 60_000)
   })
-  .catch(() => process.exit(1))
+  .catch((err) => {
+    console.error('[api] startup failed:', err)
+    process.exit(1)
+  })
 
 // Type-only export — safe for `import type { AppType } from '@homeservices/api'`
 // in Next.js; TypeScript erases this at build time, no Node.js code is bundled.
