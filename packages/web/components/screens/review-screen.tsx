@@ -57,14 +57,14 @@ export function ReviewScreen({ orderId }: ReviewScreenProps) {
           <Button
             onClick={() => router.push('/orders/new')}
             variant="outline"
-            className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+            className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-card pressable"
           >
             <RotateCcw className="mr-2 h-5 w-5" />
             Дахин захиалах
           </Button>
           <Button
             onClick={() => router.push('/home')}
-            className="h-14 flex-1 rounded-2xl bg-primary font-semibold shadow-md active:scale-95 transition-all"
+            className="h-14 flex-1 rounded-2xl bg-primary font-semibold shadow-md pressable"
           >
             <Home className="mr-2 h-5 w-5" />
             Нүүр хуудас
@@ -87,12 +87,12 @@ export function ReviewScreen({ orderId }: ReviewScreenProps) {
         <h2 className="font-semibold text-foreground">Өмнө / Дараа</h2>
         <div className="mt-3 flex gap-3">
           <div className="flex-1">
-            <div className="aspect-square rounded-2xl bg-card shadow-sm flex items-center justify-center">
+            <div className="aspect-square rounded-2xl bg-card shadow-card flex items-center justify-center">
               <span className="text-sm text-muted-foreground">Өмнө</span>
             </div>
           </div>
           <div className="flex-1">
-            <div className="aspect-square rounded-2xl bg-card shadow-sm flex items-center justify-center">
+            <div className="aspect-square rounded-2xl bg-card shadow-card flex items-center justify-center">
               <span className="text-sm text-muted-foreground">Дараа</span>
             </div>
           </div>
@@ -109,12 +109,12 @@ export function ReviewScreen({ orderId }: ReviewScreenProps) {
               onClick={() => setRating(star)}
               onMouseEnter={() => setHoveredRating(star)}
               onMouseLeave={() => setHoveredRating(0)}
-              className="p-1 transition-transform hover:scale-110 active:scale-95"
+              className="p-1 transition-transform hover:scale-110 pressable"
             >
               <Star
                 className={`h-10 w-10 ${
                   star <= (hoveredRating || rating)
-                    ? 'fill-accent text-accent'
+                    ? 'fill-highlight text-highlight'
                     : 'text-muted-foreground'
                 }`}
               />
@@ -141,7 +141,7 @@ export function ReviewScreen({ orderId }: ReviewScreenProps) {
           placeholder="Сэтгэгдэлээ бичнэ үү..."
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          className="mt-3 min-h-[120px] rounded-2xl border-border bg-card shadow-sm resize-none"
+          className="mt-3 min-h-[120px] rounded-2xl border-border bg-card shadow-card resize-none"
         />
       </div>
 
@@ -155,7 +155,7 @@ export function ReviewScreen({ orderId }: ReviewScreenProps) {
         <Button
           onClick={() => { void handleSubmit() }}
           disabled={rating === 0 || isSubmitting}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md disabled:opacity-50 active:scale-95 transition-all"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md disabled:opacity-50 pressable"
         >
           {isSubmitting ? 'Илгээж байна...' : 'Үнэлгээ илгээх'}
         </Button>

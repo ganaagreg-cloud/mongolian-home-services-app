@@ -123,7 +123,7 @@ export function OtpVerifyScreen({ phone, onBack, onVerified, otpContext }: OtpVe
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -149,7 +149,7 @@ export function OtpVerifyScreen({ phone, onBack, onVerified, otpContext }: OtpVe
               <InputOTPSlot
                 key={i}
                 index={i}
-                className="h-14 w-12 rounded-2xl border-border bg-card text-xl font-bold shadow-sm first:rounded-2xl last:rounded-2xl"
+                className="h-14 w-12 rounded-2xl border-border bg-card text-xl font-bold shadow-card first:rounded-2xl last:rounded-2xl"
               />
             ))}
           </InputOTPGroup>
@@ -168,7 +168,7 @@ export function OtpVerifyScreen({ phone, onBack, onVerified, otpContext }: OtpVe
           <button
             onClick={() => { void handleResend() }}
             disabled={resending}
-            className="text-sm font-semibold text-primary active:scale-95 transition-all disabled:opacity-50"
+            className="text-sm font-semibold text-primary pressable disabled:opacity-50"
           >
             {resending ? 'Илгээж байна...' : 'Дахин илгээх'}
           </button>
@@ -179,7 +179,7 @@ export function OtpVerifyScreen({ phone, onBack, onVerified, otpContext }: OtpVe
         <Button
           onClick={() => { void handleVerify() }}
           disabled={code.length !== 6 || loading}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {loading ? 'Шалгаж байна...' : 'Баталгаажуулах'}
         </Button>

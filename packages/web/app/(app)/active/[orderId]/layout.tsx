@@ -11,7 +11,7 @@ export default async function ActiveLayout({
   return (
     <>
       {children}
-      <SosButton orderId={orderId} bottomClass="bottom-24" />
+      <SosButton orderId={orderId} placement="top" />
     </>
   )
 }

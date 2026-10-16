@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import { cookies } from 'next/headers'
 import { SessionProvider, type SessionData } from '@/context/session-context'
 import { AppBottomNav } from '@/components/app-bottom-nav'
-import { ModeToggle } from '@/components/mode-toggle'
 import { WorkerModeHintToast } from '@/components/worker-mode-hint-toast'
 import { DevPanel } from '@/components/dev-panel'
 
@@ -39,7 +38,6 @@ export default async function AppLayout({
       <main className="mx-auto max-w-[390px] min-h-screen bg-background">
         {children}
       </main>
-      <ModeToggle />
       <AppBottomNav />
       <DevPanel />
     </SessionProvider>

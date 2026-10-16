@@ -14,11 +14,11 @@ export default function Loading() {
       </div>
       {/* Summary cards */}
       <div className="mx-6 mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-card p-4 shadow-sm space-y-2">
+        <div className="rounded-2xl bg-card p-4 shadow-card space-y-2">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-7 w-24" />
         </div>
-        <div className="rounded-2xl bg-card p-4 shadow-sm space-y-2">
+        <div className="rounded-2xl bg-card p-4 shadow-card space-y-2">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-7 w-24" />
         </div>
@@ -27,7 +27,7 @@ export default function Loading() {
       <div className="mx-6 mt-6 space-y-3">
         <Skeleton className="h-5 w-32" />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+          <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
             <Skeleton className="h-10 w-10 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-32" />

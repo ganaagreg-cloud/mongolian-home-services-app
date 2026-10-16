@@ -38,52 +38,37 @@ if [ -z "$FILE_CONTENT" ]; then
   exit 0
 fi
 
-PROMPT="You are a UI token enforcer for a Mongolian home services mobile app. Read this TSX file and check it against these rules extracted from the project's CLAUDE.md:
+PROMPT="You are a UI token enforcer for a Mongolian home services mobile app. Read this TSX file and check it against these rules from .claude/skills/production-ui-design/SKILL.md (design system v2: teal + saffron):
 
-BORDER RADIUS RULES:
-- Cards, panels, banners: rounded-2xl (NEVER rounded-lg or rounded-xl)
-- Primary buttons, inputs: rounded-2xl (NEVER rounded-lg)
-- Icon square containers: rounded-xl (OK)
-- Icon circular buttons: rounded-full (OK)
-- Filter chips, badges: rounded-full (OK)
+COLOR RULES:
+- Every action/CTA/selection/active state uses bg-primary / text-primary (brand teal). Booking CTAs are NOT saffron.
+- Saffron (highlight) only for stars (fill-highlight text-highlight), count badges, eyebrow labels. Saffron TEXT must be text-highlight-strong.
+- NEVER use accent as a brand color (bg-accent/text-accent are shadcn hover surfaces only).
+- NEVER raw hex or gray-*/slate-* classes on structural elements; use bg-card, bg-background, text-foreground, text-muted-foreground, border-border.
+- Service visuals use serviceTone()/serviceIcon() from lib/service-tone; people avatars use personTone().
 
-SPACING RULES:
-- Horizontal gutter: px-6 on every section
-- Full-width card wrappers: mx-6
-- Top of page safe-area: pt-12
-- Between major sections: mt-6
-- Page with fixed bottom nav: pb-24
-- Page with fixed bottom CTA button: pb-32
+SHAPE RULES:
+- Hero cards rounded-3xl; cards rounded-2xl or rounded-[22px]; buttons/inputs rounded-2xl; chips/badges/icon buttons rounded-full.
+- NEVER rounded-lg or rounded-md on cards/buttons/inputs.
 
-HEIGHT RULES:
-- Primary CTA buttons: h-14
-- Search inputs, phone inputs: h-12
-- Icon circle/square buttons: h-10 w-10
+ELEVATION RULES:
+- Resting cards/inputs/icon buttons: shadow-card. Floating UI: shadow-float. Teal CTAs and teal hero cards: shadow-brand.
+- NEVER shadow-sm, shadow-md, shadow-lg, shadow-xl or drop-shadow-* in new code.
 
-SHADOW RULES:
-- Cards/inputs/buttons rest state: shadow-sm
-- Active selection, elevated buttons: shadow-md
-- Gradient hero cards: shadow-lg
-- NEVER: shadow-xl, drop-shadow-*
+MOTION RULES:
+- Every tappable element (button, link styled as button) MUST have the pressable class.
+- NEVER active:scale-95 or transition-all for press feedback.
 
-INTERACTIVE STATES:
-- Every tappable element (button, clickable div) MUST have: active:scale-95 transition-all
-
-COLOR TOKEN RULES:
-- NEVER use raw gray-*, slate-* classes on structural elements (cards, borders, text labels)
-- Use semantic tokens: bg-card, text-foreground, text-muted-foreground, border-border
-- Icon containers: bg-primary/10 text-primary
-- Booking CTAs: bg-accent (orange)
-- Active/selected states: bg-primary (blue)
+LAYOUT RULES:
+- Drill-down screens (not /home, /orders, /profile or worker tab roots) MUST have a back button.
+- Fixed bottom CTAs sit at bottom-0 with safe-area padding; never offset upward to clear a tab bar.
+- Primary CTA buttons h-14; icon buttons h-10 w-10.
 
 ICON RULES:
-- All icons from lucide-react (NEVER emoji, NEVER inline SVG)
-- Inline/nav: h-5 w-5
-- Star rating: h-3.5 w-3.5 fill-accent text-accent
+- lucide-react icons only (BrandMark/GerGlyph is the only allowed inline SVG). NEVER emoji.
 
 GROUPED LIST RULE:
-- List items in the same group go inside ONE rounded-2xl bg-card overflow-hidden container with border-b border-border dividers
-- NEVER individual cards per list item in the same group
+- Items of the same group go inside ONE rounded-2xl bg-card overflow-hidden container with border-b border-border dividers.
 
 FILE CONTENT:
 \`\`\`tsx

@@ -81,10 +81,10 @@ function AreaForm({ service, onChange, submitted }: BookingFieldsProps) {
               <button
                 key={type}
                 onClick={() => handlePropertyType(type)}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-4 transition-all active:scale-95 ${
+                className={`flex w-full items-center gap-4 rounded-2xl border p-4 pressable ${
                   propertyType === type
                     ? 'border-primary bg-primary/5 shadow-md'
-                    : 'border-border bg-card shadow-sm'
+                    : 'border-border bg-card shadow-card'
                 }`}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -116,7 +116,7 @@ function AreaForm({ service, onChange, submitted }: BookingFieldsProps) {
             placeholder="60"
             value={areaSqm}
             onChange={(e) => handleArea(e.target.value)}
-            className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-14 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-14 text-sm text-foreground shadow-card placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
             {service.unit_label}
@@ -195,7 +195,7 @@ function InspectionForm({ service, onChange, submitted }: BookingFieldsProps) {
           {[0, 1, 2].map((i) => (
             <button
               key={i}
-              className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card transition-all active:scale-95 hover:border-primary/50"
+              className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card pressable hover:border-primary/50"
             >
               <Camera className="h-6 w-6 text-muted-foreground" />
               <span className="mt-1 text-xs text-muted-foreground">Зураг нэмэх</span>
@@ -212,10 +212,10 @@ function InspectionForm({ service, onChange, submitted }: BookingFieldsProps) {
             <button
               key={d.full}
               onClick={() => handleDay(i)}
-              className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors active:scale-95 ${
+              className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors pressable ${
                 selectedDay === i
                   ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
+                  : 'bg-card text-foreground shadow-card'
               }`}
             >
               <span className="text-xs font-medium opacity-80">{d.day}</span>
@@ -233,10 +233,10 @@ function InspectionForm({ service, onChange, submitted }: BookingFieldsProps) {
             <button
               key={time}
               onClick={() => handleTime(time)}
-              className={`rounded-2xl py-3 text-sm font-medium transition-colors active:scale-95 ${
+              className={`rounded-2xl py-3 text-sm font-medium transition-colors pressable ${
                 selectedTime === time
                   ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
+                  : 'bg-card text-foreground shadow-card'
               }`}
             >
               {time}
@@ -265,7 +265,7 @@ function InspectionForm({ service, onChange, submitted }: BookingFieldsProps) {
 
 function UnitForm(_props: BookingFieldsProps) {
   return (
-    <div className="mt-6 mx-6 flex flex-col items-center justify-center rounded-2xl bg-card py-10 shadow-sm">
+    <div className="mt-6 mx-6 flex flex-col items-center justify-center rounded-2xl bg-card py-10 shadow-card">
       <p className="text-lg font-semibold text-foreground">Тун удахгүй</p>
       <p className="mt-1 text-sm text-muted-foreground">Энэ үйлчилгээний маягт бэлдэж байна</p>
     </div>
@@ -347,7 +347,7 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
           placeholder="Нүүж байгаа хаяг"
           value={fromAddress}
           onChange={(e) => upFrom(e.target.value)}
-          className="mt-3 h-12 rounded-2xl border-border bg-card shadow-sm"
+          className="mt-3 h-12 rounded-2xl border-border bg-card shadow-card"
         />
         {showFromError && <p className="mt-1 text-sm text-destructive">Эхлэх хаягаа оруулна уу</p>}
       </div>
@@ -359,7 +359,7 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
           placeholder="Нүүх хаяг"
           value={toAddress}
           onChange={(e) => upTo(e.target.value)}
-          className="mt-3 h-12 rounded-2xl border-border bg-card shadow-sm"
+          className="mt-3 h-12 rounded-2xl border-border bg-card shadow-card"
         />
         {showToError && <p className="mt-1 text-sm text-destructive">Хүрэх хаягаа оруулна уу</p>}
       </div>
@@ -377,7 +377,7 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
               placeholder="1"
               value={fromFloor}
               onChange={(e) => upFf(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm text-foreground shadow-card placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div>
@@ -389,14 +389,14 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
               placeholder="1"
               value={toFloor}
               onChange={(e) => upTf(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm text-foreground shadow-card placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
       </div>
 
       {/* Lift toggle */}
-      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -409,11 +409,11 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
           </div>
           <button
             onClick={() => upLift(!hasLift)}
-            className={`relative h-6 w-11 rounded-full transition-colors duration-200 active:scale-95 ${
+            className={`relative h-6 w-11 rounded-full transition-colors duration-200 pressable ${
               hasLift ? 'bg-primary' : 'bg-muted'
             }`}
           >
-            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-transform duration-200 ${
               hasLift ? 'translate-x-5' : 'translate-x-0.5'
             }`} />
           </button>
@@ -441,7 +441,7 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
           {[0, 1, 2, 3, 4].map((i) => (
             <button
               key={i}
-              className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card transition-all active:scale-95 hover:border-primary/50"
+              className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card pressable hover:border-primary/50"
             >
               <Camera className="h-6 w-6 text-muted-foreground" />
               <span className="mt-1 text-xs text-muted-foreground">Зураг нэмэх</span>
@@ -458,10 +458,10 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
             <button
               key={d.full}
               onClick={() => upDay(i)}
-              className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors active:scale-95 ${
+              className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors pressable ${
                 selectedDay === i
                   ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
+                  : 'bg-card text-foreground shadow-card'
               }`}
             >
               <span className="text-xs font-medium opacity-80">{d.day}</span>
@@ -479,10 +479,10 @@ function SurveyForm({ onChange, submitted }: BookingFieldsProps) {
             <button
               key={time}
               onClick={() => upTime(time)}
-              className={`rounded-2xl py-3 text-sm font-medium transition-colors active:scale-95 ${
+              className={`rounded-2xl py-3 text-sm font-medium transition-colors pressable ${
                 selectedTime === time
                   ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
+                  : 'bg-card text-foreground shadow-card'
               }`}
             >
               {time}

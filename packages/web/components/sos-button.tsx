@@ -8,11 +8,13 @@ interface SosButtonProps {
   orderId?: string
   // Tailwind bottom-* class — lift above a fixed footer when needed (e.g. 'bottom-28')
   bottomClass?: string
+  // 'top' pins a compact pill to the header's right edge so it never covers bottom actions
+  placement?: 'bottom' | 'top'
 }
 
 type Phase = 'idle' | 'confirming' | 'sending' | 'active' | 'failed'
 
-export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps) {
+export function SosButton({ orderId, bottomClass = 'bottom-6', placement = 'bottom' }: SosButtonProps) {
   const [phase, setPhase]     = useState<Phase>('idle')
   const [coords, setCoords]   = useState<{ lat: number; lng: number } | null>(null)
   const [alertId, setAlertId] = useState<number | null>(null)
@@ -58,11 +60,22 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
   return (
     <>
       {/* Floating FAB — constrained within the 390px container */}
-      {phase === 'idle' && (
+      {phase === 'idle' && placement === 'top' && (
+        <div className="pointer-events-none fixed left-1/2 top-12 z-40 flex w-full max-w-[390px] -translate-x-1/2 justify-end pr-6">
+          <button
+            onClick={() => setPhase('confirming')}
+            className="pressable pointer-events-auto flex h-10 items-center gap-1.5 rounded-full bg-destructive px-4 text-sm font-extrabold tracking-wide text-white shadow-float"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            SOS
+          </button>
+        </div>
+      )}
+      {phase === 'idle' && placement === 'bottom' && (
         <div className={`fixed ${bottomClass} left-1/2 -translate-x-1/2 z-40 w-full max-w-[390px] flex justify-end pr-4 pointer-events-none`}>
           <button
             onClick={() => setPhase('confirming')}
-            className="pointer-events-auto flex h-16 w-16 flex-col items-center justify-center rounded-full bg-destructive shadow-lg active:scale-95 transition-all"
+            className="pointer-events-auto flex h-16 w-16 flex-col items-center justify-center rounded-full bg-destructive shadow-lg pressable"
           >
             <AlertTriangle className="h-5 w-5 text-white" />
             <span className="text-[11px] font-bold text-white leading-none mt-0.5">SOS</span>
@@ -84,13 +97,13 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
             </p>
             <button
               onClick={() => { void handleConfirm() }}
-              className="mt-6 h-14 w-full rounded-2xl bg-destructive text-base font-bold text-white shadow-md active:scale-95 transition-all"
+              className="mt-6 h-14 w-full rounded-2xl bg-destructive text-base font-bold text-white shadow-md pressable"
             >
               Тийм, тусламж дуу
             </button>
             <button
               onClick={() => setPhase('idle')}
-              className="mt-3 h-14 w-full rounded-2xl bg-card text-base font-semibold text-foreground shadow-sm active:scale-95 transition-all"
+              className="mt-3 h-14 w-full rounded-2xl bg-card text-base font-semibold text-foreground shadow-card pressable"
             >
               Болих
             </button>
@@ -136,7 +149,7 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
           {/* Dismiss — upper-right corner */}
           <button
             onClick={handleDismiss}
-            className="absolute right-6 top-12 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 active:scale-95 transition-all"
+            className="absolute right-6 top-12 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 pressable"
           >
             <X className="h-5 w-5 text-white" />
           </button>
@@ -156,13 +169,13 @@ export function SosButton({ orderId, bottomClass = 'bottom-6' }: SosButtonProps)
             </p>
             <a
               href="tel:102"
-              className="mt-6 flex h-14 w-full items-center justify-center rounded-2xl bg-destructive text-base font-bold text-white shadow-md active:scale-95 transition-all"
+              className="mt-6 flex h-14 w-full items-center justify-center rounded-2xl bg-destructive text-base font-bold text-white shadow-md pressable"
             >
               102 руу шууд залгах
             </a>
             <button
               onClick={handleDismiss}
-              className="mt-3 h-14 w-full rounded-2xl bg-card text-base font-semibold text-foreground shadow-sm active:scale-95 transition-all"
+              className="mt-3 h-14 w-full rounded-2xl bg-card text-base font-semibold text-foreground shadow-card pressable"
             >
               Хаах
             </button>

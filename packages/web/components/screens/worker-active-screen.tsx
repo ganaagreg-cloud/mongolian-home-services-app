@@ -126,7 +126,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
         <div className="px-6 pt-12">
           <h1 className="text-xl font-bold text-foreground">Идэвхтэй ажил</h1>
         </div>
-        <div className="mt-6 mx-6 flex flex-col items-center justify-center rounded-2xl bg-card py-16 shadow-sm">
+        <div className="mt-6 mx-6 flex flex-col items-center justify-center rounded-2xl bg-card py-16 shadow-card">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
             <AlertCircle className="h-10 w-10 text-muted-foreground" />
           </div>
@@ -164,7 +164,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
       </div>
 
       {/* Order info */}
-      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-24" />
@@ -183,7 +183,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
                     href={`https://maps.google.com/maps?q=${encodeURIComponent(order.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+                    className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary pressable"
                   >
                     <MapPin className="h-4 w-4 shrink-0" />
                     <span className="flex-1">Чиглэл авах</span>
@@ -213,7 +213,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
             <Button
               onClick={() => { void updateStatus('worker_on_the_way') }}
               disabled={updating}
-              className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+              className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
             >
               {updating ? 'Шинэчилж байна...' : 'Замдаа явж байна'}
             </Button>
@@ -223,7 +223,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
               <Button
                 onClick={() => { void updateStatus('in_progress') }}
                 disabled={updating || !hasBefore}
-                className="mt-3 h-11 w-full rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 active:scale-95 transition-all disabled:opacity-50"
+                className="mt-3 h-11 w-full rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 pressable disabled:opacity-50"
               >
                 {updating ? 'Шинэчилж байна...' : 'Ажил эхлэх'}
               </Button>
@@ -242,7 +242,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
         <>
           {/* Inspection: problem description */}
           {order.pricingModel === 'inspection' && order.notes && (
-            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
               <h2 className="font-semibold text-foreground">Асуудлын тайлбар</h2>
               <p className="mt-2 text-sm text-foreground">{order.notes}</p>
             </div>
@@ -250,7 +250,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
 
           {/* Survey: moving details */}
           {order.pricingModel === 'survey' && order.surveyDetails && (
-            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
               <h2 className="font-semibold text-foreground">Нүүлгэлтийн мэдээлэл</h2>
               <div className="mt-3 space-y-3">
                 <div className="flex items-start gap-3">
@@ -317,7 +317,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
             <Button
               onClick={() => setShowQuoteModal(true)}
               disabled={showQuoteModal}
-              className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+              className="mt-3 h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
             >
               Үнийн санал илгээх
             </Button>
@@ -352,7 +352,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
             )}
           </div>
           {hasBefore ? (
-            <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={order.beforePhotoUrl}
@@ -376,7 +376,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
               <button
                 onClick={() => beforeInputRef.current?.click()}
                 disabled={uploadingType === 'before'}
-                className="flex h-36 w-full items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 transition-all active:scale-95 disabled:opacity-60"
+                className="flex h-36 w-full items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 pressable disabled:opacity-60"
               >
                 {uploadingType === 'before' ? (
                   <p className="text-sm text-primary">Байршуулж байна...</p>
@@ -402,7 +402,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
             )}
           </div>
           {hasAfter ? (
-            <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={order.afterPhotoUrl}
@@ -426,7 +426,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
               <button
                 onClick={() => afterInputRef.current?.click()}
                 disabled={uploadingType === 'after'}
-                className="flex h-36 w-full items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 transition-all active:scale-95 disabled:opacity-60"
+                className="flex h-36 w-full items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 pressable disabled:opacity-60"
               >
                 {uploadingType === 'after' ? (
                   <p className="text-sm text-primary">Байршуулж байна...</p>
@@ -447,7 +447,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
         <Button
           onClick={() => router.push('/chat')}
           variant="outline"
-          className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+          className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-card pressable"
         >
           <MessageCircle className="mr-2 h-5 w-5" />
           Захиалагчтай чатлах
@@ -477,7 +477,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
           <Button
             onClick={() => { void updateStatus('completed') }}
             disabled={!hasAfter || updating}
-            className="h-14 w-full rounded-2xl bg-success font-semibold text-white shadow-md disabled:opacity-50 hover:bg-success/90 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl bg-success font-semibold text-white shadow-md disabled:opacity-50 hover:bg-success/90 pressable"
           >
             {updating ? 'Шинэчилж байна...' : 'Ажил дуусгах'}
           </Button>
@@ -569,7 +569,7 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
                   placeholder="75000"
                   value={quoteAmount}
                   onChange={(e) => setQuoteAmount(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-10 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="h-12 w-full rounded-2xl border border-border bg-card pl-4 pr-10 text-sm text-foreground shadow-card placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
                   ₮
@@ -604,14 +604,14 @@ export function WorkerActiveScreen({ orderId }: WorkerActiveScreenProps) {
                 variant="outline"
                 onClick={closeQuoteModal}
                 disabled={quoteSending}
-                className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+                className="h-14 flex-1 rounded-2xl border-border bg-card font-semibold shadow-card pressable"
               >
                 Болих
               </Button>
               <Button
                 onClick={() => { void submitQuote() }}
                 disabled={quoteSending}
-                className="h-14 flex-1 rounded-2xl bg-accent font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
+                className="h-14 flex-1 rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 disabled:opacity-50 pressable"
               >
                 {quoteSending ? 'Илгээж байна...' : 'Илгээх'}
               </Button>

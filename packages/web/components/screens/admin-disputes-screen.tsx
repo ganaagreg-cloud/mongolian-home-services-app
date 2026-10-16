@@ -58,7 +58,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
         <div className="flex items-center gap-4 px-6 pt-12">
           <button
             onClick={() => { setSelected(null); setCompensationAmount(''); setResolveError(null) }}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
           >
             <ArrowLeft className="h-5 w-5 text-foreground" />
           </button>
@@ -66,14 +66,14 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
         </div>
 
         {/* Dispute Info */}
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Захиалагч</p>
               <p className="font-semibold text-foreground">{selected.customerName}</p>
             </div>
             <Badge className={selected.status === 'open'
-              ? 'bg-accent/10 text-accent border-0'
+              ? 'bg-highlight/10 text-highlight-strong border-0'
               : 'bg-success/10 text-success border-0'}
             >
               {selected.status === 'open' ? 'Шийдэгдэж байна' : 'Дууссан'}
@@ -111,10 +111,10 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
         <div className="mt-4 mx-6">
           <h2 className="font-semibold text-foreground">Өмнө / Дараа зураг</h2>
           <div className="mt-2 flex gap-3">
-            <div className="flex-1 aspect-square rounded-2xl bg-card shadow-sm flex items-center justify-center">
+            <div className="flex-1 aspect-square rounded-2xl bg-card shadow-card flex items-center justify-center">
               <span className="text-sm text-muted-foreground">Өмнө</span>
             </div>
-            <div className="flex-1 aspect-square rounded-2xl bg-card shadow-sm flex items-center justify-center">
+            <div className="flex-1 aspect-square rounded-2xl bg-card shadow-card flex items-center justify-center">
               <span className="text-sm text-muted-foreground">Дараа</span>
             </div>
           </div>
@@ -131,7 +131,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
                 placeholder="0"
                 value={compensationAmount}
                 onChange={(e) => setCompensationAmount(e.target.value)}
-                className="h-12 rounded-2xl border-border bg-card pl-8 text-lg shadow-sm"
+                className="h-12 rounded-2xl border-border bg-card pl-8 text-lg shadow-card"
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -151,7 +151,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
             <Button
               onClick={() => { void handleResolve() }}
               disabled={isResolving}
-              className="h-14 w-full rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50 active:scale-95 transition-all"
+              className="h-14 w-full rounded-2xl bg-primary font-semibold shadow-md disabled:opacity-50 pressable"
             >
               {isResolving ? 'Хадгалж байна...' : 'Хохирол барагдуулах'}
             </Button>
@@ -167,7 +167,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -177,8 +177,8 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
       {/* Stats */}
       {!isLoading && (
         <div className="mt-6 mx-6 flex gap-3">
-          <div className="flex-1 rounded-2xl bg-accent/10 p-4 text-center">
-            <p className="text-2xl font-bold text-accent">{pendingCount}</p>
+          <div className="flex-1 rounded-2xl bg-highlight/10 p-4 text-center">
+            <p className="text-2xl font-bold text-highlight-strong">{pendingCount}</p>
             <p className="text-xs text-muted-foreground">Шийдэгдэж байна</p>
           </div>
           <div className="flex-1 rounded-2xl bg-success/10 p-4 text-center">
@@ -194,7 +194,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
         {isLoading ? (
           <div className="mt-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -204,7 +204,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
             ))}
           </div>
         ) : (disputes?.length ?? 0) === 0 ? (
-          <div className="mt-8 rounded-2xl bg-card p-8 shadow-sm text-center">
+          <div className="mt-8 rounded-2xl bg-card p-8 shadow-card text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mx-auto">
               <Check className="h-8 w-8 text-success" />
             </div>
@@ -216,13 +216,13 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
               <button
                 key={dispute.id}
                 onClick={() => setSelected(dispute)}
-                className="flex w-full items-start gap-4 rounded-2xl bg-card p-4 shadow-sm text-left active:scale-95 transition-all"
+                className="flex w-full items-start gap-4 rounded-2xl bg-card p-4 shadow-card text-left pressable"
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                  dispute.status === 'open' ? 'bg-accent/10' : 'bg-success/10'
+                  dispute.status === 'open' ? 'bg-highlight/10' : 'bg-success/10'
                 }`}>
                   {dispute.status === 'open' ? (
-                    <Clock className="h-5 w-5 text-accent" />
+                    <Clock className="h-5 w-5 text-highlight-strong" />
                   ) : (
                     <Check className="h-5 w-5 text-success" />
                   )}
@@ -231,7 +231,7 @@ export function AdminDisputesScreen({ onBack }: AdminDisputesScreenProps) {
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold text-foreground truncate">{dispute.customerName}</p>
                     <Badge className={dispute.status === 'open'
-                      ? 'shrink-0 bg-accent/10 text-accent border-0'
+                      ? 'shrink-0 bg-highlight/10 text-highlight-strong border-0'
                       : 'shrink-0 bg-success/10 text-success border-0'}
                     >
                       {dispute.status === 'open' ? 'Шийдэгдэж байна' : 'Дууссан'}

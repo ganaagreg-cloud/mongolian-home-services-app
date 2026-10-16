@@ -94,7 +94,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onGoLogin}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -112,7 +112,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
                 placeholder="Нэр"
                 value={firstName}
                 onChange={(e) => { setError(''); setFirstName(e.target.value) }}
-                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-card text-foreground"
               />
             </div>
           </div>
@@ -124,7 +124,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
                 placeholder="Овог"
                 value={lastName}
                 onChange={(e) => { setError(''); setLastName(e.target.value) }}
-                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                className="h-12 rounded-2xl border-border bg-card pl-9 shadow-card text-foreground"
               />
             </div>
           </div>
@@ -140,7 +140,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
               placeholder="example@gmail.com"
               value={email}
               onChange={(e) => { setError(''); setEmail(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-9 shadow-card text-foreground"
             />
           </div>
         </div>
@@ -149,7 +149,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
           <div className="flex gap-2">
-            <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-sm">
+            <div className="flex h-12 shrink-0 items-center justify-center rounded-2xl bg-card px-4 shadow-card">
               <span className="text-sm font-medium text-foreground">+976</span>
             </div>
             <div className="relative flex-1">
@@ -159,7 +159,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
                 placeholder="99001234"
                 value={phone}
                 onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-                className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-sm text-foreground"
+                className="h-12 w-full rounded-2xl border-border bg-card pl-9 shadow-card text-foreground"
               />
             </div>
           </div>
@@ -175,12 +175,12 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
               placeholder="••••••••"
               value={password}
               onChange={(e) => { setError(''); setPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-card text-foreground"
             />
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pressable"
             >
               {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -197,12 +197,12 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => { setError(''); setConfirmPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-card text-foreground"
             />
             <button
               type="button"
               onClick={() => setShowConfirm((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pressable"
             >
               {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -234,7 +234,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
         <span className="text-sm text-muted-foreground">Бүртгэлтэй юу? </span>
         <button
           onClick={onGoLogin}
-          className="text-sm font-semibold text-primary active:scale-95 transition-all"
+          className="text-sm font-semibold text-primary pressable"
         >
           Нэвтрэх
         </button>
@@ -245,7 +245,7 @@ export function RegisterScreen({ onGoLogin }: RegisterScreenProps) {
         <Button
           onClick={() => { void handleSubmit() }}
           disabled={!canSubmit}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {loading ? 'Бүртгэж байна...' : 'Бүртгүүлэх'}
         </Button>

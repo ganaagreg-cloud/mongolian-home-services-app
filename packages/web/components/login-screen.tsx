@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { Home, Phone, Eye, EyeOff, Lock } from 'lucide-react'
+import { useState, type CSSProperties } from 'react'
+import { Phone, Eye, EyeOff, Lock } from 'lucide-react'
+import { BrandMark } from '@/components/brand-mark'
 import { authClient } from '@/lib/auth-client'
 import { apiFetch } from '@/lib/api-fetch'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,7 @@ const GoogleIcon = () => (
 )
 
 const FacebookIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
   </svg>
 )
@@ -91,47 +92,55 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
   return (
     <div className="flex min-h-screen flex-col bg-background px-6">
       {/* Logo */}
-      <div className="flex flex-col items-center pt-16">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-lg">
-          <Home className="h-10 w-10 text-primary-foreground" />
+      <div className="stagger-item pt-16">
+        <div className="flex items-center gap-2.5">
+          <BrandMark />
+          <span className="text-lg font-extrabold tracking-tight text-foreground">HomeService</span>
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-foreground">HomeService</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Гэрийн Үйлчилгээ</p>
+        <h1 className="mt-10 text-[34px] font-extrabold leading-[1.1] tracking-tight text-foreground">
+          Гэрээ найдвартай гарт даатга.
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+          ДАН-аар баталгаажсан мэргэжилтнүүд, ил тод үнэ, найдвартай төлбөр.
+        </p>
       </div>
 
       {/* Phone + password form */}
-      <div className="mt-10 space-y-4">
+      <div className="stagger-item mt-8 space-y-4" style={{ '--i': 1 } as CSSProperties}>
         {/* Phone */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Утасны дугаар</p>
+          <label htmlFor="login-phone" className="text-sm font-semibold text-foreground/80">Утасны дугаар</label>
           <div className="relative">
             <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="login-phone"
               inputMode="numeric"
               placeholder="99001234"
               value={phone}
               onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-14 rounded-2xl border-border bg-card pl-11 text-base shadow-card text-foreground"
             />
           </div>
         </div>
 
         {/* Password */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Нууц үг</p>
+          <label htmlFor="login-password" className="text-sm font-semibold text-foreground/80">Нууц үг</label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="login-password"
               type={showPw ? 'text' : 'password'}
               placeholder="••••••••"
               value={password}
               onChange={(e) => { setError(''); setPassword(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              className="h-14 rounded-2xl border-border bg-card pl-11 pr-11 text-base shadow-card text-foreground"
             />
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              aria-label={showPw ? 'Нууц үг нуух' : 'Нууц үг харах'}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pressable"
             >
               {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -143,7 +152,7 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
         <Button
           onClick={() => { void handlePhoneLogin() }}
           disabled={!!loading}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-brand hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {loading === 'phone' ? 'Нэвтрэж байна...' : 'Нэвтрэх'}
         </Button>
@@ -152,7 +161,7 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
           <div className="text-center">
             <button
               onClick={onForgotPassword}
-              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+              className="text-sm font-semibold text-primary pressable"
             >
               Нэвтрэх нэр мартсан уу?
             </button>
@@ -171,18 +180,17 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
       </div>
 
       {/* Social buttons */}
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Button
           onClick={handleGoogle}
           disabled={!!loading}
-          className="h-14 w-full rounded-2xl border border-border bg-background text-base font-semibold text-foreground shadow-sm hover:bg-card active:scale-95 transition-all disabled:opacity-50"
+          aria-label="Google-ээр нэвтрэх"
+          className="h-[52px] w-full rounded-2xl border border-border bg-card text-[15px] font-bold text-foreground shadow-card hover:bg-card pressable disabled:opacity-50"
         >
-          {loading === 'google' ? (
-            'Нэвтрэж байна...'
-          ) : (
-            <span className="flex items-center gap-3">
+          {loading === 'google' ? '...' : (
+            <span className="flex items-center gap-2.5">
               <GoogleIcon />
-              Google-ээр нэвтрэх
+              Google
             </span>
           )}
         </Button>
@@ -190,15 +198,13 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
         <Button
           onClick={handleFacebook}
           disabled={!!loading}
-          style={{ backgroundColor: '#1877F2' }}
-          className="h-14 w-full rounded-2xl text-base font-semibold text-white shadow-md hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+          aria-label="Facebook-ээр нэвтрэх"
+          className="h-[52px] w-full rounded-2xl border border-border bg-card text-[15px] font-bold text-foreground shadow-card hover:bg-card pressable disabled:opacity-50"
         >
-          {loading === 'facebook' ? (
-            'Нэвтрэж байна...'
-          ) : (
-            <span className="flex items-center gap-3">
+          {loading === 'facebook' ? '...' : (
+            <span className="flex items-center gap-2.5">
               <FacebookIcon />
-              Facebook-ээр нэвтрэх
+              Facebook
             </span>
           )}
         </Button>
@@ -209,7 +215,7 @@ export function LoginScreen({ onGoRegister, onForgotPassword }: LoginScreenProps
         <span className="text-sm text-muted-foreground">Бүртгэлгүй юу? </span>
         <button
           onClick={onGoRegister}
-          className="text-sm font-semibold text-primary active:scale-95 transition-all"
+          className="text-sm font-semibold text-primary pressable"
         >
           Бүртгүүлэх
         </button>

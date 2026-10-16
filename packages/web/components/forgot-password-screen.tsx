@@ -48,7 +48,7 @@ export function ForgotPasswordScreen({ onBack, onOtpSent }: ForgotPasswordScreen
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -71,7 +71,7 @@ export function ForgotPasswordScreen({ onBack, onOtpSent }: ForgotPasswordScreen
               placeholder="99001234"
               value={phone}
               onChange={(e) => { setError(''); setPhone(e.target.value.replace(/\D/g, '').slice(0, 8)) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-card text-foreground"
             />
           </div>
         </div>
@@ -83,7 +83,7 @@ export function ForgotPasswordScreen({ onBack, onOtpSent }: ForgotPasswordScreen
         <Button
           onClick={() => { void handleSubmit() }}
           disabled={!canSubmit}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {loading ? 'Илгээж байна...' : 'OTP код илгээх'}
         </Button>

@@ -76,7 +76,7 @@ export function ChatScreen({ orderId }: ChatScreenProps) {
       <div className="flex items-center gap-4 border-b border-border px-6 pt-12 pb-4">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -106,7 +106,7 @@ export function ChatScreen({ orderId }: ChatScreenProps) {
             <p className="text-sm text-destructive">Мессеж ачаалахад алдаа гарлаа</p>
             <button
               onClick={() => { void mutate() }}
-              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+              className="text-sm font-semibold text-primary pressable"
             >
               Дахин оролдох
             </button>
@@ -128,7 +128,7 @@ export function ChatScreen({ orderId }: ChatScreenProps) {
                 </Avatar>
               )}
               <div
-                className={`max-w-[72%] rounded-2xl px-4 py-2.5 shadow-sm ${
+                className={`max-w-[72%] rounded-2xl px-4 py-2.5 shadow-card ${
                   isMe
                     ? 'rounded-br-sm bg-primary text-primary-foreground'
                     : 'rounded-bl-sm bg-card text-foreground'
@@ -159,7 +159,7 @@ export function ChatScreen({ orderId }: ChatScreenProps) {
           <button
             onClick={() => { void send() }}
             disabled={!draft.trim() || sending}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary shadow-md transition-all active:scale-95 disabled:opacity-40"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary shadow-md pressable disabled:opacity-40"
           >
             <Send className="h-5 w-5 text-primary-foreground" />
           </button>

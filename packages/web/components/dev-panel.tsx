@@ -170,7 +170,7 @@ function Panel() {
       <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 w-full max-w-[390px] flex justify-end pr-4 pointer-events-none">
         <button
           onClick={() => setOpen(true)}
-          className="pointer-events-auto rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-mono text-white shadow-lg opacity-75 hover:opacity-100 active:scale-95 transition-all"
+          className="pointer-events-auto rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-mono text-white shadow-lg opacity-75 hover:opacity-100 pressable"
         >
           🧪 Dev panel
         </button>
@@ -192,10 +192,10 @@ function Panel() {
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-bold">🧪 Dev — Payment Flow</span>
           <div className="flex gap-2">
-            <button onClick={reset} className="rounded bg-neutral-700 px-2 py-1 hover:bg-neutral-600 active:scale-95 transition-all">
+            <button onClick={reset} className="rounded bg-neutral-700 px-2 py-1 hover:bg-neutral-600 pressable">
               Reset
             </button>
-            <button onClick={() => setOpen(false)} className="rounded bg-neutral-700 px-2 py-1 hover:bg-neutral-600 active:scale-95 transition-all">
+            <button onClick={() => setOpen(false)} className="rounded bg-neutral-700 px-2 py-1 hover:bg-neutral-600 pressable">
               ✕
             </button>
           </div>

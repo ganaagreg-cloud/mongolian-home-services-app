@@ -15,8 +15,8 @@ interface AdminDashboardScreenProps {
 
 const orderStatusConfig: Record<string, { label: string; className: string }> = {
   completed: { label: 'Дууссан',          className: 'bg-success/10 text-success border-0' },
-  working:   { label: 'Явагдаж байна',    className: 'bg-accent/10 text-accent border-0' },
-  arriving:  { label: 'Ирж байна',        className: 'bg-accent/10 text-accent border-0' },
+  working:   { label: 'Явагдаж байна',    className: 'bg-highlight/10 text-highlight-strong border-0' },
+  arriving:  { label: 'Ирж байна',        className: 'bg-highlight/10 text-highlight-strong border-0' },
   accepted:  { label: 'Зөвшөөрсөн',      className: 'bg-primary/10 text-primary border-0' },
   pending:   { label: 'Хүлээгдэж байна', className: 'bg-primary/10 text-primary border-0' },
   cancelled: { label: 'Цуцлагдсан',      className: 'bg-destructive/10 text-destructive border-0' },
@@ -44,7 +44,7 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
         <div className="grid grid-cols-2 gap-3">
           {isLoading ? (
             [1, 2, 3, 4].map((i) => (
-              <div key={i} className="rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-10 w-10 rounded-xl" />
                 <Skeleton className="mt-3 h-7 w-12" />
                 <Skeleton className="mt-1 h-3 w-24" />
@@ -55,35 +55,35 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
               <p className="text-sm text-destructive">Статистик ачаалахад алдаа гарлаа</p>
               <button
                 onClick={() => { void mutateStats() }}
-                className="text-sm font-semibold text-primary active:scale-95 transition-all"
+                className="text-sm font-semibold text-primary pressable"
               >
                 Дахин оролдох
               </button>
             </div>
           ) : (
             <>
-              <div className="rounded-2xl bg-card p-4 shadow-sm">
+              <div className="rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                   <ClipboardList className="h-5 w-5 text-primary" />
                 </div>
                 <p className="mt-3 text-2xl font-bold text-foreground">{stats?.todayOrders ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Өнөөдрийн захиалга</p>
               </div>
-              <div className="rounded-2xl bg-card p-4 shadow-sm">
+              <div className="rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10">
                   <DollarSign className="h-5 w-5 text-success" />
                 </div>
                 <p className="mt-3 text-2xl font-bold text-foreground">{formatRevenue(stats?.totalRevenue ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Нийт орлого</p>
               </div>
-              <div className="rounded-2xl bg-card p-4 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
-                  <Users className="h-5 w-5 text-accent" />
+              <div className="rounded-2xl bg-card p-4 shadow-card">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-highlight/10">
+                  <Users className="h-5 w-5 text-highlight-strong" />
                 </div>
                 <p className="mt-3 text-2xl font-bold text-foreground">{stats?.activeWorkers ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Идэвхтэй ажилтан</p>
               </div>
-              <div className="rounded-2xl bg-card p-4 shadow-sm">
+              <div className="rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10">
                   <AlertTriangle className="h-5 w-5 text-destructive" />
                 </div>
@@ -99,7 +99,7 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
       <div className="mt-6 px-6 space-y-3">
         <button
           onClick={onViewVerifications}
-          className="flex w-full items-center justify-between rounded-2xl bg-primary/10 p-4 active:scale-95 transition-all"
+          className="flex w-full items-center justify-between rounded-2xl bg-primary/10 p-4 pressable"
         >
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-primary" />
@@ -110,7 +110,7 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
 
         <button
           onClick={onViewDisputes}
-          className="flex w-full items-center justify-between rounded-2xl bg-destructive/10 p-4 active:scale-95 transition-all"
+          className="flex w-full items-center justify-between rounded-2xl bg-destructive/10 p-4 pressable"
         >
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -124,10 +124,10 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
 
         <button
           onClick={onViewBanking}
-          className="flex w-full items-center justify-between rounded-2xl bg-accent/10 p-4 active:scale-95 transition-all"
+          className="flex w-full items-center justify-between rounded-2xl bg-highlight/10 p-4 pressable"
         >
           <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-accent" />
+            <Building2 className="h-5 w-5 text-highlight-strong" />
             <span className="font-medium text-foreground">Банкны мэдээлэл баталгаажуулалт</span>
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -140,7 +140,7 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
         {isLoading ? (
           <div className="mt-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-4 flex-1" />
@@ -150,7 +150,7 @@ export function AdminDashboardScreen({ onViewVerifications, onViewDisputes, onVi
         ) : (stats?.recentOrders?.length ?? 0) === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">Захиалга байхгүй байна</p>
         ) : (
-          <div className="mt-4 rounded-2xl bg-card shadow-sm overflow-hidden">
+          <div className="mt-4 rounded-2xl bg-card shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[500px]">
                 <thead>

@@ -4,8 +4,8 @@
   "description": "Монголын гэрийн үйлчилгээний платформ - аюулгүй, хурдан, найдвартай",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1E40AF",
-  "theme_color": "#1E40AF",
+  "background_color": "#F3F5F2",
+  "theme_color": "#0B7A6A",
   "orientation": "portrait-primary",
   "lang": "mn",
   "icons": [

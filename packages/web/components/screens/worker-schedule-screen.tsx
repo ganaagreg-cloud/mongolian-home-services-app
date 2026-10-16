@@ -75,13 +75,13 @@ function ScheduleBlock({ entry }: { entry: ScheduleEntry }) {
 
   return (
     <div
-      className="absolute left-1 right-1 overflow-hidden rounded-xl shadow-sm"
+      className="absolute left-1 right-1 overflow-hidden rounded-xl shadow-card"
       style={{ top, height: Math.max(totalPx, 20) }}
     >
       {/* Job duration — solid */}
       <div
         className={cn('absolute inset-x-0 top-0 overflow-hidden px-2 py-1',
-          isBooked ? 'bg-primary' : 'bg-accent')}
+          isBooked ? 'bg-primary' : 'bg-highlight')}
         style={{ height: Math.max(jobPx, totalPx - bufPx) }}
       >
         {jobPx >= 28 && (
@@ -109,12 +109,12 @@ function ScheduleBlock({ entry }: { entry: ScheduleEntry }) {
             'absolute inset-x-0 flex items-center justify-center border-t',
             isBooked
               ? 'border-primary/30 bg-primary/15'
-              : 'border-accent/30 bg-accent/15',
+              : 'border-highlight/30 bg-highlight/15',
           )}
           style={{ top: Math.max(jobPx, totalPx - bufPx), height: bufPx }}
         >
           {bufPx >= 18 && (
-            <span className={cn('text-[9px] font-medium', isBooked ? 'text-primary' : 'text-accent')}>
+            <span className={cn('text-[9px] font-medium', isBooked ? 'text-primary' : 'text-highlight-strong')}>
               +60мин буфер
             </span>
           )}
@@ -187,11 +187,11 @@ export function WorkerScheduleScreen() {
       <div className="flex items-center justify-between px-6 pt-12">
         <h1 className="text-xl font-bold text-foreground">Хуваарь</h1>
         {/* Week navigator */}
-        <div className="flex h-9 items-center gap-1 rounded-full bg-card px-2 shadow-sm">
+        <div className="flex h-9 items-center gap-1 rounded-full bg-card px-2 shadow-card">
           <button
             aria-label="Өмнөх долоо хоног"
             onClick={() => setWeekStart((w) => addDays(w, -7))}
-            className="flex h-6 w-6 items-center justify-center rounded-full transition-all active:scale-95 hover:bg-muted"
+            className="flex h-6 w-6 items-center justify-center rounded-full pressable hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4 text-foreground" />
           </button>
@@ -201,7 +201,7 @@ export function WorkerScheduleScreen() {
           <button
             aria-label="Дараагийн долоо хоног"
             onClick={() => setWeekStart((w) => addDays(w, 7))}
-            className="flex h-6 w-6 items-center justify-center rounded-full transition-all active:scale-95 hover:bg-muted"
+            className="flex h-6 w-6 items-center justify-center rounded-full pressable hover:bg-muted"
           >
             <ChevronRight className="h-4 w-4 text-foreground" />
           </button>
@@ -219,8 +219,8 @@ export function WorkerScheduleScreen() {
               key={i}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                'flex flex-1 flex-col items-center rounded-2xl py-2 transition-all active:scale-95',
-                isSelected ? 'bg-primary shadow-md' : 'bg-card shadow-sm',
+                'flex flex-1 flex-col items-center rounded-2xl py-2 pressable',
+                isSelected ? 'bg-primary shadow-md' : 'bg-card shadow-card',
               )}
             >
               <span className={cn(
@@ -241,7 +241,7 @@ export function WorkerScheduleScreen() {
               <span className={cn(
                 'mt-0.5 h-1.5 w-1.5 rounded-full',
                 hasDot
-                  ? isSelected ? 'bg-primary-foreground' : 'bg-accent'
+                  ? isSelected ? 'bg-primary-foreground' : 'bg-highlight'
                   : 'invisible',
               )} />
             </button>
@@ -256,7 +256,7 @@ export function WorkerScheduleScreen() {
           <span className="text-xs text-muted-foreground">Баталгаажсан</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-accent" />
+          <span className="h-2.5 w-2.5 rounded-sm bg-highlight" />
           <span className="text-xs text-muted-foreground">Төлбөр хүлээж байна</span>
         </div>
         <div className="flex items-center gap-1.5">

@@ -29,7 +29,7 @@ export function SavedWorkersScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -39,7 +39,7 @@ export function SavedWorkersScreen() {
       {isLoading ? (
         <div className="mt-6 space-y-3 px-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+            <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
               <Skeleton className="h-14 w-14 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-28" />
@@ -50,7 +50,7 @@ export function SavedWorkersScreen() {
         </div>
       ) : !workers || workers.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center py-16">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-sm">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-card">
             <Search className="h-10 w-10 text-muted-foreground" />
           </div>
           <p className="mt-4 text-lg font-semibold text-foreground">Хадгалсан ажилтан байхгүй</p>
@@ -59,7 +59,7 @@ export function SavedWorkersScreen() {
       ) : (
         <div className="mt-6 space-y-3 px-6">
           {workers.map((worker) => (
-            <div key={worker.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-sm">
+            <div key={worker.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-card">
               <div className="flex items-start gap-3">
                 <Avatar className="h-14 w-14 shrink-0">
                   <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -78,15 +78,15 @@ export function SavedWorkersScreen() {
                     </div>
                     <button
                       onClick={() => { void handleRemove(worker.id) }}
-                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 transition-colors active:scale-95"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full hover:bg-destructive/10 transition-colors pressable"
                     >
-                      <Heart className="h-4 w-4 fill-accent text-accent" />
+                      <Heart className="h-4 w-4 fill-highlight text-highlight" />
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">{worker.specialty}</p>
                   <div className="mt-1 flex items-center gap-2">
                     <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                      <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                       <span className="text-sm font-medium text-foreground">{worker.rating.toFixed(1)}</span>
                       <span className="text-xs text-muted-foreground">({worker.reviewCount})</span>
                     </div>

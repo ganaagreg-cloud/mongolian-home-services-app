@@ -143,7 +143,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -169,7 +169,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
             <p className="mt-0.5 text-sm text-muted-foreground">{workerData?.specialty ?? '—'}</p>
             <div className="mt-2 flex items-center gap-3">
               <div className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                 <span className="text-sm font-semibold text-foreground">{workerData?.rating ?? '—'}</span>
               </div>
               <span className="text-sm font-semibold text-primary">
@@ -182,7 +182,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
 
       {/* Job details */}
       {order && (
-        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <h2 className="font-semibold text-foreground">Ажлын дэлгэрэнгүй</h2>
           <div className="mt-3 space-y-2.5 text-sm">
             <div className="flex justify-between">
@@ -213,7 +213,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
 
       {/* Price summary */}
       {order && (
-        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <h2 className="font-semibold text-foreground">Үнийн хураангуй</h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
@@ -225,7 +225,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
             {order.urgent && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Яаралтай (+20%)</span>
-                <span className="font-medium text-accent">
+                <span className="font-medium text-highlight-strong">
                   +₮{Math.round(pricePerHour * order.hours * 0.2).toLocaleString()}
                 </span>
               </div>
@@ -249,10 +249,10 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
         <div className={`mt-4 mx-6 flex items-center gap-3 rounded-2xl p-3 ${
           secondsLeft <= 60
             ? 'border border-destructive/30 bg-destructive/5'
-            : 'border border-accent/30 bg-accent/5'
+            : 'border border-highlight/30 bg-highlight/5'
         }`}>
-          <AlertCircle className={`h-4 w-4 shrink-0 ${secondsLeft <= 60 ? 'text-destructive' : 'text-accent'}`} />
-          <p className={`text-sm font-medium ${secondsLeft <= 60 ? 'text-destructive' : 'text-accent'}`}>
+          <AlertCircle className={`h-4 w-4 shrink-0 ${secondsLeft <= 60 ? 'text-destructive' : 'text-highlight-strong'}`} />
+          <p className={`text-sm font-medium ${secondsLeft <= 60 ? 'text-destructive' : 'text-highlight-strong'}`}>
             {secondsLeft > 0
               ? `Төлбөр хийх хугацаа: ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
               : 'Хугацаа дууслаа…'}
@@ -277,7 +277,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
       <div className="mt-6 mx-6">
         <p className="mb-3 text-sm font-medium text-muted-foreground">QPay-аар банкаа сонгон төлөх</p>
         {!invoice && !invoiceError && (
-          <div className="rounded-2xl bg-card p-4 text-center text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-2xl bg-card p-4 text-center text-sm text-muted-foreground shadow-card">
             Төлбөрийн мэдээлэл бэлдэж байна…
           </div>
         )}
@@ -287,7 +287,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
               <button
                 key={bank.link}
                 onClick={() => { console.log('[DEV] Bank deeplink:', bank.link) }}
-                className="h-14 w-full rounded-2xl border border-border bg-card text-base font-medium text-foreground shadow-sm active:scale-95 transition-all"
+                className="h-14 w-full rounded-2xl border border-border bg-card text-base font-medium text-foreground shadow-card pressable"
               >
                 {bank.name}
               </button>
@@ -301,7 +301,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
           <p className="text-center text-sm text-destructive">{invoiceError}</p>
           <button
             onClick={() => router.push(`/orders/${orderId}/applicants`)}
-            className="mt-3 w-full text-center text-sm font-medium text-primary active:scale-95 transition-all"
+            className="mt-3 w-full text-center text-sm font-medium text-primary pressable"
           >
             ← Ажилтнуудын жагсаалт руу буцах
           </button>
@@ -315,7 +315,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
             <button
               onClick={() => { void handleDevSim() }}
               disabled={!invoice}
-              className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
+              className="w-full rounded-2xl border border-highlight/30 bg-highlight/10 px-4 py-3 text-center text-sm font-medium text-highlight-strong pressable disabled:opacity-40"
             >
               [Dev] Simulate QPay Success
             </button>
@@ -324,7 +324,7 @@ export function BidConfirmScreen({ orderId, workerId }: BidConfirmScreenProps) {
             )}
           </>
         ) : (
-          <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-card">
             Төлбөр хүлээгдэж байна…
           </div>
         )}

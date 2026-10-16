@@ -57,7 +57,7 @@ export function WorkerEarningsScreen() {
 
       {/* Summary Cards */}
       <div className="mx-6 mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-card p-4 shadow-sm">
+        <div className="rounded-2xl bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Энэ сарын орлого</p>
           {isLoading ? (
             <Skeleton className="mt-1 h-7 w-24" />
@@ -67,12 +67,12 @@ export function WorkerEarningsScreen() {
             </p>
           )}
         </div>
-        <div className="rounded-2xl bg-card p-4 shadow-sm">
+        <div className="rounded-2xl bg-card p-4 shadow-card">
           <p className="text-xs text-muted-foreground">Хүлээгдэж буй</p>
           {isLoading ? (
             <Skeleton className="mt-1 h-7 w-24" />
           ) : (
-            <p className="mt-1 text-xl font-bold text-accent">
+            <p className="mt-1 text-xl font-bold text-highlight-strong">
               ₮{(data?.pendingPayout ?? 0).toLocaleString()}
             </p>
           )}
@@ -86,7 +86,7 @@ export function WorkerEarningsScreen() {
         {isLoading && (
           <div className="mt-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -103,7 +103,7 @@ export function WorkerEarningsScreen() {
             <p className="text-sm text-destructive">Орлогын мэдээлэл ачаалахад алдаа гарлаа</p>
             <button
               onClick={() => { void mutate() }}
-              className="text-sm font-semibold text-primary active:scale-95 transition-all"
+              className="text-sm font-semibold text-primary pressable"
             >
               Дахин оролдох
             </button>
@@ -125,15 +125,15 @@ export function WorkerEarningsScreen() {
             {data.transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm"
+                className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-card"
               >
                 <div className="flex items-center gap-3">
                   <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                    tx.type === 'earning' ? 'bg-success/10' : 'bg-accent/10'
+                    tx.type === 'earning' ? 'bg-success/10' : 'bg-highlight/10'
                   }`}>
                     {tx.type === 'earning'
                       ? <ArrowDownLeft className="h-5 w-5 text-success" />
-                      : <ArrowUpRight  className="h-5 w-5 text-accent" />}
+                      : <ArrowUpRight  className="h-5 w-5 text-highlight-strong" />}
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{tx.service}</p>
@@ -156,7 +156,7 @@ export function WorkerEarningsScreen() {
         <Button
           onClick={() => router.push('/worker-profile')}
           variant="outline"
-          className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+          className="h-14 w-full rounded-2xl border-border bg-card font-semibold shadow-card pressable"
         >
           <CreditCard className="mr-2 h-5 w-5" />
           Банкны дансны мэдээлэл

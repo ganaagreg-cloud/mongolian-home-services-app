@@ -7,7 +7,10 @@ import { cn } from '@/lib/utils'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
-export function ModeToggle() {
+// Inline segmented switch, placed in the header of the mode's root screen
+// (/home and /jobs). It used to float above the tab bar, where it covered
+// page content and fixed CTAs.
+export function ModeToggle({ className }: { className?: string }) {
   const session = useSession()
   const pathname = usePathname()
   const router = useRouter()
@@ -43,23 +46,32 @@ export function ModeToggle() {
   }
 
   return (
-    <div className="fixed bottom-20 left-1/2 z-40 w-48 -translate-x-1/2">
-      <div className="flex rounded-2xl bg-card p-1 shadow-md">
-        {(['user', 'worker'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => { void handleSwitch(m) }}
-            className={cn(
-              'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-95',
-              currentMode === m
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {m === 'user' ? 'Хэрэглэгч' : 'Ажилтан'}
-          </button>
-        ))}
-      </div>
+    <div
+      role="radiogroup"
+      aria-label="Горим"
+      className={cn('relative grid grid-cols-2 rounded-full bg-card p-1 shadow-card', className)}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-primary shadow-brand transition-transform duration-300 ease-[var(--ease-out-soft)]',
+          currentMode === 'worker' && 'translate-x-full',
+        )}
+      />
+      {(['user', 'worker'] as const).map((m) => (
+        <button
+          key={m}
+          role="radio"
+          aria-checked={currentMode === m}
+          onClick={() => { void handleSwitch(m) }}
+          className={cn(
+            'relative z-10 h-8 rounded-full px-3 text-[13px] font-bold transition-colors duration-300',
+            currentMode === m ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {m === 'user' ? 'Хэрэглэгч' : 'Ажилтан'}
+        </button>
+      ))}
     </div>
   )
 }

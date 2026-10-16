@@ -143,8 +143,8 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
   if (isSubmitted) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-accent/10">
-          <Clock className="h-12 w-12 text-accent" />
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-highlight/10">
+          <Clock className="h-12 w-12 text-highlight-strong" />
         </div>
         <h1 className="mt-6 text-2xl font-bold text-foreground">Хүлээгдэж байна</h1>
         <p className="mt-2 text-center text-muted-foreground">
@@ -166,7 +166,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -184,7 +184,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                     ? 'bg-success text-white'
                     : step === currentStep
                     ? 'bg-primary text-white'
-                    : 'bg-card text-muted-foreground shadow-sm'
+                    : 'bg-card text-muted-foreground shadow-card'
                 }`}
               >
                 {step < currentStep ? <Check className="h-4 w-4" /> : step}
@@ -209,7 +209,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
         {/* Step 1 — DAN */}
         {currentStep === 1 && (
-          <div className="rounded-2xl bg-card p-6 shadow-sm">
+          <div className="rounded-2xl bg-card p-6 shadow-card">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
@@ -263,7 +263,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
         {/* Step 2 — Police clearance */}
         {currentStep === 2 && (
-          <div className="rounded-2xl bg-card p-6 shadow-sm">
+          <div className="rounded-2xl bg-card p-6 shadow-card">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
               <FileText className="h-8 w-8 text-primary" />
             </div>
@@ -296,7 +296,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
 
         {/* Step 3 — IMEI */}
         {currentStep === 3 && (
-          <div className="rounded-2xl bg-card p-6 shadow-sm">
+          <div className="rounded-2xl bg-card p-6 shadow-card">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
               <Smartphone className="h-8 w-8 text-primary" />
             </div>
@@ -308,7 +308,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               placeholder="IMEI дугаар"
               value={imei}
               onChange={(e) => setImei(e.target.value.replace(/\D/g, '').slice(0, 15))}
-              className="mt-4 h-12 rounded-2xl border-border bg-background text-center text-lg font-mono shadow-sm"
+              className="mt-4 h-12 rounded-2xl border-border bg-background text-center text-lg font-mono shadow-card"
             />
             <p className="mt-2 text-center text-xs text-muted-foreground">{imei.length}/15 тэмдэгт</p>
           </div>
@@ -317,7 +317,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         {/* Step 4 — Specialty + price */}
         {currentStep === 4 && (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
+            <div className="rounded-2xl bg-card p-6 shadow-card text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
                 <Briefcase className="h-8 w-8 text-primary" />
               </div>
@@ -327,7 +327,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               </p>
             </div>
 
-            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card">
               {/* Specialty */}
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Мэргэжил</p>
@@ -354,7 +354,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   inputMode="numeric"
                   value={pricePerHour}
                   onChange={(e) => setPricePerHour(e.target.value.replace(/\D/g, ''))}
-                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-card"
                 />
                 {pricePerHour && !priceValid && (
                   <p className="mt-1 text-xs text-destructive">
@@ -375,7 +375,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
         {currentStep === 5 && (
           <div className="space-y-4">
             {/* Icon + title */}
-            <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
+            <div className="rounded-2xl bg-card p-6 shadow-card text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto">
                 <CreditCard className="h-8 w-8 text-primary" />
               </div>
@@ -393,7 +393,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
               </p>
             </div>
 
-            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card">
               {/* Bank name */}
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Банкны нэр</p>
@@ -425,7 +425,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 20))}
                   onBlur={() => touch('accountNumber')}
-                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-card"
                 />
                 {touched.accountNumber && fieldError('accountNumber', accountNumber) && (
                   <p className="mt-1 text-xs text-destructive">{fieldError('accountNumber', accountNumber)}</p>
@@ -440,7 +440,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                   value={accountHolderName}
                   onChange={(e) => setAccountHolderName(e.target.value.toUpperCase())}
                   onBlur={() => touch('accountHolderName')}
-                  className="h-12 rounded-2xl border-border bg-background shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background shadow-card"
                 />
                 {touched.accountHolderName && fieldError('accountHolderName', accountHolderName) && (
                   <p className="mt-1 text-xs text-destructive">{fieldError('accountHolderName', accountHolderName)}</p>
@@ -458,7 +458,7 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                     setIban(raw)
                   }}
                   onBlur={() => touch('iban')}
-                  className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-card"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">{iban.length}/22 тэмдэгт</p>
                 {touched.iban && fieldError('iban', iban) && (
@@ -477,10 +477,10 @@ export function WorkerRegisterScreen({ onBack, onComplete }: WorkerRegisterScree
                     <button
                       key={type.value}
                       onClick={() => setAccountType(type.value)}
-                      className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors active:scale-95 ${
+                      className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors pressable ${
                         accountType === type.value
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-background text-foreground shadow-sm'
+                          : 'bg-background text-foreground shadow-card'
                       }`}
                     >
                       {type.label}
