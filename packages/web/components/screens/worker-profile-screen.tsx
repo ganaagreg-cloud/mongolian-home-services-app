@@ -252,7 +252,7 @@ export function WorkerProfileScreen() {
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold text-foreground">{displayName}</p>
           <p className="text-sm text-muted-foreground">
-            Утас нэмааг?й
+            Утас нэмээгүй
           </p>
           <div className="mt-1 flex items-center gap-2">
             <div className="flex items-center gap-1">

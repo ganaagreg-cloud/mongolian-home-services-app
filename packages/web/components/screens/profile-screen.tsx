@@ -45,7 +45,7 @@ export function ProfileScreen() {
         <div className="flex-1">
           <p className="text-lg font-semibold text-foreground">{userName}</p>
           <p className="text-sm text-muted-foreground">
-            Утас нэмааг?й
+            Утас нэмээгүй
           </p>
         </div>
       </div>
