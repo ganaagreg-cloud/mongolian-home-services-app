@@ -7,7 +7,7 @@ export default function Loading() {
         <Skeleton className="h-6 w-24" />
       </div>
       {/* Profile card */}
-      <div className="mx-6 mt-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mx-6 mt-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
         <Skeleton className="h-16 w-16 rounded-full" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-5 w-32" />
@@ -27,7 +27,7 @@ export default function Loading() {
       {/* Banking section */}
       <Skeleton className="mx-6 mt-6 h-32 rounded-2xl" />
       {/* Menu */}
-      <div className="mx-6 mt-6 overflow-hidden rounded-2xl bg-card shadow-sm">
+      <div className="mx-6 mt-6 overflow-hidden rounded-2xl bg-card shadow-card">
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex items-center gap-4 border-b border-border px-4 py-4 last:border-0">
             <Skeleton className="h-10 w-10 rounded-xl" />

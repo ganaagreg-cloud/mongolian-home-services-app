@@ -51,7 +51,7 @@ export default function Verify2FAPage() {
             placeholder="000000"
             inputMode="numeric"
             autoComplete="one-time-code"
-            className="h-14 rounded-2xl border-border bg-card text-center text-2xl tracking-widest shadow-sm"
+            className="h-14 rounded-2xl border-border bg-card text-center text-2xl tracking-widest shadow-card"
             autoFocus
           />
 
@@ -62,7 +62,7 @@ export default function Verify2FAPage() {
           <Button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
           >
             {loading ? 'Шалгаж байна…' : 'Баталгаажуулах'}
           </Button>

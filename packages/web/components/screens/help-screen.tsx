@@ -55,7 +55,7 @@ export function HelpScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -69,10 +69,10 @@ export function HelpScreen() {
           {faqs.map((faq) => {
             const isOpen = openId === faq.id
             return (
-              <div key={faq.id} className="overflow-hidden rounded-2xl bg-card shadow-sm">
+              <div key={faq.id} className="overflow-hidden rounded-2xl bg-card shadow-card">
                 <button
                   onClick={() => toggle(faq.id)}
-                  className="flex w-full items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/50 active:scale-95"
+                  className="flex w-full items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/50 pressable"
                 >
                   <span className="flex-1 text-left font-medium text-foreground">{faq.question}</span>
                   {isOpen ? (
@@ -95,8 +95,8 @@ export function HelpScreen() {
       {/* Contact */}
       <div className="mt-6 px-6">
         <h2 className="text-lg font-bold text-foreground">Бидэнтэй холбогдох</h2>
-        <div className="mt-3 rounded-2xl bg-card shadow-sm overflow-hidden">
-          <button className="flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 border-b border-border active:scale-95">
+        <div className="mt-3 rounded-2xl bg-card shadow-card overflow-hidden">
+          <button className="flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 border-b border-border pressable">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <MessageCircle className="h-5 w-5 text-primary" />
             </div>
@@ -105,7 +105,7 @@ export function HelpScreen() {
               <p className="text-xs text-muted-foreground">Даваа–Бямба, 09:00–18:00</p>
             </div>
           </button>
-          <button className="flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 active:scale-95">
+          <button className="flex w-full items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 pressable">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Phone className="h-5 w-5 text-primary" />
             </div>

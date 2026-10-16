@@ -108,7 +108,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -119,17 +119,17 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
       {(phase === 'searching') && (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-20">
           <div className="relative flex h-32 w-32 items-center justify-center">
-            <div className="absolute inset-0 animate-ping rounded-full bg-accent/20" />
-            <div className="absolute inset-4 animate-ping rounded-full bg-accent/30 [animation-delay:300ms]" />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-accent/10">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-accent/20 border-t-accent" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-highlight/20" />
+            <div className="absolute inset-4 animate-ping rounded-full bg-highlight/30 [animation-delay:300ms]" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-highlight/10">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-highlight/20 border-t-accent" />
             </div>
           </div>
           <p className="mt-8 text-xl font-bold text-foreground">Ажилтан хайж байна...</p>
           <p className="mt-2 text-center text-sm text-muted-foreground">
             Таны бүс нутгийн боломжтой ажилтнуудыг шалгаж байна
           </p>
-          <div className="mt-8 w-full rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-8 w-full rounded-2xl bg-card p-4 shadow-card">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
@@ -167,7 +167,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
           </div>
           <p className="mt-2 text-xs text-muted-foreground">{attemptNumber}/5 ажилтан шалгаж байна</p>
 
-          <div className="mt-6 w-full rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-6 w-full rounded-2xl bg-card p-4 shadow-card">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarFallback className="bg-primary/10 font-bold text-primary">
@@ -178,7 +178,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
                 <p className="truncate font-semibold text-foreground">{worker.name}</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <div className="flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                    <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                     <span className="text-sm font-medium text-foreground">{worker.rating}</span>
                   </div>
                   <span className="text-sm font-semibold text-primary">
@@ -221,7 +221,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
                 <p className="mt-0.5 text-sm text-muted-foreground">{worker.specialty}</p>
                 <div className="mt-2 flex items-center gap-3">
                   <div className="flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                    <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                     <span className="text-sm font-semibold text-foreground">{worker.rating}</span>
                   </div>
                   <span className="text-sm font-semibold text-primary">
@@ -231,8 +231,8 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-accent/10 p-3">
-              <Zap className="h-5 w-5 shrink-0 text-accent" />
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-highlight/10 p-3">
+              <Zap className="h-5 w-5 shrink-0 text-highlight-strong" />
               <div>
                 <p className="text-sm font-semibold text-foreground">Хүрэх хугацаа: ~{eta} минут</p>
                 <p className="text-xs text-muted-foreground">Одоогийн байршилд тулгуурласан тооцоо</p>
@@ -240,7 +240,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
             </div>
           </div>
 
-          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
             <p className="text-center text-xs text-muted-foreground">
               Баталгаажуулсны дараа та дараагийн дэлгэц дээр төлбөрийн мэдээллийг харна.
             </p>
@@ -251,7 +251,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
       {/* ── EXHAUSTED — 5 attempts failed ───────────────────── */}
       {phase === 'exhausted' && (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-sm">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-card">
             <svg className="h-10 w-10 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -273,14 +273,14 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
           <div className="mt-8 w-full space-y-3">
             <button
               onClick={() => router.push(`/orders/${orderId}/board`)}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
             >
               <CalendarDays className="h-5 w-5" />
               Цаг товлох
             </button>
             <button
               onClick={() => router.back()}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-base font-semibold text-foreground shadow-sm hover:bg-muted/50 active:scale-95 transition-all"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-base font-semibold text-foreground shadow-card hover:bg-muted/50 pressable"
             >
               Дахин хайх
             </button>
@@ -291,7 +291,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
       {/* ── ERROR fallback ───────────────────────────────────── */}
       {phase === 'none' && (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-20">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-sm">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-card shadow-card">
             <svg className="h-10 w-10 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -304,7 +304,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
           </p>
           <button
             onClick={() => router.push(`/orders/${orderId}/board`)}
-            className="mt-6 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+            className="mt-6 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
           >
             Цаг товлох руу шилжих
           </button>
@@ -316,7 +316,7 @@ export function SearchingWorkerScreen({ orderId }: SearchingWorkerScreenProps) {
         <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-8 pt-4">
           <Button
             onClick={() => router.push(`/orders/${orderId}/confirm`)}
-            className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
           >
             Баталгаажуулах
           </Button>

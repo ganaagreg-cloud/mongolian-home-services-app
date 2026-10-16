@@ -183,7 +183,7 @@ export function PersonalInfoScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -197,7 +197,7 @@ export function PersonalInfoScreen() {
             {name[0]}
           </AvatarFallback>
         </Avatar>
-        <button className="text-sm font-medium text-primary active:scale-95 transition-all">
+        <button className="text-sm font-medium text-primary pressable">
           Зураг солих
         </button>
       </div>
@@ -212,7 +212,7 @@ export function PersonalInfoScreen() {
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-card text-foreground"
             />
           </div>
         </div>
@@ -225,7 +225,7 @@ export function PersonalInfoScreen() {
             <Input
               value={localPhone}
               disabled
-              className="h-12 rounded-2xl border-border bg-muted pl-11 shadow-sm text-muted-foreground"
+              className="h-12 rounded-2xl border-border bg-muted pl-11 shadow-card text-muted-foreground"
             />
           </div>
           {phoneVerified ? (
@@ -239,7 +239,7 @@ export function PersonalInfoScreen() {
             <button
               onClick={() => { void handleVerifyPhone() }}
               disabled={sendingOtp === 'phone'}
-              className="text-xs font-semibold text-primary active:scale-95 transition-all disabled:opacity-50"
+              className="text-xs font-semibold text-primary pressable disabled:opacity-50"
             >
               {sendingOtp === 'phone' ? 'Илгээж байна...' : 'Баталгаажуулах →'}
             </button>
@@ -257,7 +257,7 @@ export function PersonalInfoScreen() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-card text-foreground"
             />
           </div>
           {isGoogleOAuth ? (
@@ -278,7 +278,7 @@ export function PersonalInfoScreen() {
             <button
               onClick={() => { void handleVerifyEmail() }}
               disabled={sendingOtp === 'email'}
-              className="text-xs font-semibold text-primary active:scale-95 transition-all disabled:opacity-50"
+              className="text-xs font-semibold text-primary pressable disabled:opacity-50"
             >
               {sendingOtp === 'email' ? 'Илгээж байна...' : 'Баталгаажуулах →'}
             </button>
@@ -294,7 +294,7 @@ export function PersonalInfoScreen() {
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
               type="date"
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-card text-foreground"
             />
           </div>
         </div>
@@ -307,13 +307,13 @@ export function PersonalInfoScreen() {
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 shadow-card text-foreground"
             />
           </div>
         </div>
 
         {/* 2FA */}
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {twoFactorEnabled
@@ -329,7 +329,7 @@ export function PersonalInfoScreen() {
             {tfStep === 'idle' && (
               <button
                 onClick={() => setTfStep(twoFactorEnabled ? 'disabling' : 'password')}
-                className="text-xs font-semibold text-primary active:scale-95 transition-all"
+                className="text-xs font-semibold text-primary pressable"
               >
                 {twoFactorEnabled ? 'Идэвхгүй болгох' : 'Идэвхжүүлэх'}
               </button>
@@ -439,7 +439,7 @@ export function PersonalInfoScreen() {
         </div>
 
         {/* DAN Badge */}
-        <div className="rounded-2xl bg-success/10 p-4 shadow-sm">
+        <div className="rounded-2xl bg-success/10 p-4 shadow-card">
           <p className="text-sm font-semibold text-success">ДАН баталгаажсан</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Таны мэдээлэл Монгол улсын үндэсний цахим системээр баталгаажсан байна
@@ -456,7 +456,7 @@ export function PersonalInfoScreen() {
         <Button
           onClick={() => { void handleSave() }}
           disabled={saving}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {saving ? 'Хадгалж байна…' : 'Хадгалах'}
         </Button>

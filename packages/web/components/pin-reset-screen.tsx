@@ -59,7 +59,7 @@ export function PinResetScreen({ resetToken, onBack, onSuccess }: PinResetScreen
         </p>
         <Button
           onClick={onSuccess}
-          className="mt-8 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+          className="mt-8 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
         >
           Нэвтрэх хуудас руу буцах
         </Button>
@@ -73,7 +73,7 @@ export function PinResetScreen({ resetToken, onBack, onSuccess }: PinResetScreen
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -97,12 +97,12 @@ export function PinResetScreen({ resetToken, onBack, onSuccess }: PinResetScreen
               placeholder="••••••••"
               value={pin}
               onChange={(e) => { setError(''); setPin(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-card text-foreground"
             />
             <button
               type="button"
               onClick={() => setShowPin((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pressable"
             >
               {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -122,12 +122,12 @@ export function PinResetScreen({ resetToken, onBack, onSuccess }: PinResetScreen
               placeholder="••••••••"
               value={confirm}
               onChange={(e) => { setError(''); setConfirm(e.target.value) }}
-              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-sm text-foreground"
+              className="h-12 rounded-2xl border-border bg-card pl-11 pr-11 shadow-card text-foreground"
             />
             <button
               type="button"
               onClick={() => setShowConf((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground active:scale-95 transition-all"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pressable"
             >
               {showConf ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -144,7 +144,7 @@ export function PinResetScreen({ resetToken, onBack, onSuccess }: PinResetScreen
         <Button
           onClick={() => { void handleReset() }}
           disabled={!canSubmit}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           {loading ? 'Хадгалж байна...' : 'Хадгалах'}
         </Button>

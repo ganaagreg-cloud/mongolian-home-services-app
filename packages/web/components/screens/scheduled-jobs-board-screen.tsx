@@ -65,7 +65,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -76,7 +76,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
         <button
           onClick={() => { void handleRefresh() }}
           disabled={refreshing}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <RefreshCw className={`h-5 w-5 text-primary ${refreshing ? 'animate-spin' : ''}`} />
         </button>
@@ -105,7 +105,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
           </div>
         </div>
       ) : (
-        <div className="mt-6 mx-6 h-28 rounded-2xl bg-card animate-pulse shadow-sm" />
+        <div className="mt-6 mx-6 h-28 rounded-2xl bg-card animate-pulse shadow-card" />
       )}
 
       {/* Acceptances section */}
@@ -123,7 +123,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
         {loadingAcceptances ? (
           <div className="mt-4 space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-14 w-14 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -133,7 +133,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
             ))}
           </div>
         ) : acceptances.length === 0 ? (
-          <div className="mt-4 flex flex-col items-center justify-center rounded-2xl bg-card py-12 shadow-sm">
+          <div className="mt-4 flex flex-col items-center justify-center rounded-2xl bg-card py-12 shadow-card">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <div className="h-3 w-3 animate-pulse rounded-full bg-muted-foreground" />
             </div>
@@ -148,7 +148,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
         ) : (
           <div className="mt-4 space-y-3">
             {acceptances.map((a) => (
-              <div key={a.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-sm">
+              <div key={a.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-14 w-14 shrink-0">
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -165,7 +165,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
                     <p className="text-xs text-muted-foreground">{a.workerSpecialty}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                        <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                         <span className="text-sm font-medium text-foreground">{a.workerRating}</span>
                         <span className="text-xs text-muted-foreground">({a.workerReviewCount})</span>
                       </div>
@@ -177,7 +177,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
                 </div>
                 <Button
                   onClick={() => router.push(`/orders/${orderId}/confirm-scheduled/${a.workerId}`)}
-                  className="mt-3 h-11 w-full rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all"
+                  className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
                 >
                   Сонгох
                 </Button>
@@ -187,7 +187,7 @@ export function ScheduledJobsBoardScreen({ orderId }: ScheduledJobsBoardScreenPr
         )}
       </div>
 
-      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
         <p className="text-center text-xs text-muted-foreground">
           Ажилтныг сонгосны дараа та төлбөрийн дэлгэц рүү шилжинэ. Төлбөр амжилттай болсны дараа л захиалга батлагдана.
         </p>

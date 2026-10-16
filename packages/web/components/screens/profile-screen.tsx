@@ -35,7 +35,7 @@ export function ProfileScreen() {
       </div>
 
       {/* Profile Card */}
-      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
         <Avatar className="h-16 w-16">
           <AvatarImage src="" />
           <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
@@ -45,13 +45,13 @@ export function ProfileScreen() {
         <div className="flex-1">
           <p className="text-lg font-semibold text-foreground">{userName}</p>
           <p className="text-sm text-muted-foreground">
-            Утас нэмааг?й
+            Утас нэмээгүй
           </p>
         </div>
       </div>
 
       {/* Menu Items */}
-      <div className="mt-6 mx-6 rounded-2xl bg-card shadow-sm overflow-hidden">
+      <div className="mt-6 mx-6 rounded-2xl bg-card shadow-card overflow-hidden">
         {menuItems.map((item, index) => {
           const Icon = item.icon
           return (
@@ -78,7 +78,7 @@ export function ProfileScreen() {
           <Button
             onClick={() => router.push('/worker-register')}
             variant="outline"
-            className="h-14 w-full rounded-2xl border-accent text-accent font-semibold shadow-sm hover:bg-accent/10"
+            className="h-14 w-full rounded-2xl border-highlight text-highlight-strong font-semibold shadow-card hover:bg-highlight/10"
           >
             <Briefcase className="mr-2 h-5 w-5" />
             Ажилтнаар бүртгүүлэх

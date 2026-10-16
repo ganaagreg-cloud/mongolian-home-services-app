@@ -31,7 +31,7 @@ export class AppErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-2 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md active:scale-95 transition-all"
+              className="mt-2 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md pressable"
             >
               Дахин ачаалах
             </button>

@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import { MapPin, Clock, Check, X, Zap, CalendarDays, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ModeToggle } from '@/components/mode-toggle'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
 import type { Order } from '@/lib/types'
@@ -39,11 +40,11 @@ function InstantJobCard({
   const maskedAddress = job.address.split(',')[0] ?? job.address
 
   return (
-    <div className={`rounded-2xl bg-card p-4 shadow-sm transition-opacity ${expired ? 'opacity-50' : ''}`}>
+    <div className={`rounded-2xl bg-card p-4 shadow-card transition-opacity ${expired ? 'opacity-50' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
+            <span className="inline-block rounded-full bg-highlight/10 px-3 py-1 text-sm font-medium text-highlight-strong">
               {job.service}
             </span>
             {job.urgent && (
@@ -80,7 +81,7 @@ function InstantJobCard({
       {/* Countdown bar */}
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full rounded-full transition-all ${urgent ? 'bg-destructive' : 'bg-accent'}`}
+          className={`h-full rounded-full transition-all ${urgent ? 'bg-destructive' : 'bg-highlight'}`}
           style={{ width: `${Math.max(0, (countdown / 60) * 100)}%` }}
         />
       </div>
@@ -90,7 +91,7 @@ function InstantJobCard({
           onClick={onDecline}
           disabled={expired}
           variant="outline"
-          className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm active:scale-95 transition-all"
+          className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-card pressable"
         >
           <X className="mr-2 h-4 w-4" />
           Татгалзах
@@ -98,7 +99,7 @@ function InstantJobCard({
         <Button
           onClick={onAccept}
           disabled={expired}
-          className="h-12 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 active:scale-95 transition-all disabled:opacity-50"
+          className="h-12 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 pressable disabled:opacity-50"
         >
           <Check className="mr-2 h-4 w-4" />
           Авах
@@ -123,7 +124,7 @@ function ScheduledJobCard({
     : '—'
 
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-sm">
+    <div className="rounded-2xl bg-card p-4 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -140,7 +141,7 @@ function ScheduledJobCard({
                 href={`https://maps.google.com/maps?q=${encodeURIComponent(job.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-medium text-primary active:scale-95 transition-all"
+                className="mt-2 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm font-medium text-primary pressable"
               >
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span className="flex-1">Чиглэл авах</span>
@@ -170,7 +171,7 @@ function ScheduledJobCard({
         ) : (
           <Button
             onClick={onAccept}
-            className="h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+            className="h-11 w-full rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
           >
             Сонирхож байна
           </Button>
@@ -246,6 +247,7 @@ export function WorkerJobsScreen() {
 
       {/* Header */}
       <div className="px-6 pt-12">
+        <ModeToggle className="mb-4 w-fit" />
         <h1 className="text-xl font-bold text-foreground">Ажлын самбар</h1>
       </div>
 
@@ -253,8 +255,8 @@ export function WorkerJobsScreen() {
           {/* ── INSTANT SECTION ──────────────────────────── */}
           <div className="mt-6 px-6">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10">
-                <Zap className="h-4 w-4 text-accent" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-highlight/10">
+                <Zap className="h-4 w-4 text-highlight-strong" />
               </div>
               <h2 className="font-semibold text-foreground">Яг одоо хүсэлтүүд</h2>
             </div>
@@ -263,7 +265,7 @@ export function WorkerJobsScreen() {
             {loadingInstant ? (
               <div className="mt-3 space-y-3">
                 {[1].map((i) => (
-                  <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+                  <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-24" />
@@ -273,7 +275,7 @@ export function WorkerJobsScreen() {
                 ))}
               </div>
             ) : !hasInstant ? (
-              <div className="mt-3 rounded-2xl bg-card p-6 shadow-sm text-center">
+              <div className="mt-3 rounded-2xl bg-card p-6 shadow-card text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mx-auto">
                   <div className="h-2 w-2 animate-pulse rounded-full bg-muted-foreground" />
                 </div>
@@ -309,7 +311,7 @@ export function WorkerJobsScreen() {
             {loadingScheduled ? (
               <div className="mt-3 space-y-3">
                 {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+                  <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-24" />
@@ -319,7 +321,7 @@ export function WorkerJobsScreen() {
                 ))}
               </div>
             ) : !hasScheduled ? (
-              <div className="mt-3 rounded-2xl bg-card p-6 shadow-sm text-center">
+              <div className="mt-3 rounded-2xl bg-card p-6 shadow-card text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mx-auto">
                   <CalendarDays className="h-6 w-6 text-muted-foreground" />
                 </div>
@@ -341,9 +343,9 @@ export function WorkerJobsScreen() {
           </div>
 
           {/* Rating reminder */}
-          <div className="mt-6 mx-6 flex items-start gap-3 rounded-2xl bg-card p-4 shadow-sm">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-              <Star className="h-5 w-5 text-accent" />
+          <div className="mt-6 mx-6 flex items-start gap-3 rounded-2xl bg-card p-4 shadow-card">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-highlight/10">
+              <Star className="h-5 w-5 text-highlight-strong" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Үнэлгээгээ нэмэгдүүлэх</p>

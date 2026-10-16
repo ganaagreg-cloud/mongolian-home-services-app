@@ -57,7 +57,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
         <div className="flex items-center gap-4 px-6 pt-12">
           <button
             onClick={() => { setSelected(null); setActionError(null) }}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
           >
             <ArrowLeft className="h-5 w-5 text-foreground" />
           </button>
@@ -65,7 +65,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
         </div>
 
         {/* Worker Info */}
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
@@ -85,7 +85,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
         {/* Banking Details */}
         <div className="mt-4 mx-6">
           <h2 className="font-semibold text-foreground">Данс мэдээлэл</h2>
-          <div className="mt-2 rounded-2xl bg-card shadow-sm overflow-hidden">
+          <div className="mt-2 rounded-2xl bg-card shadow-card overflow-hidden">
             {[
               { label: 'Банк',           value: selected.bankName },
               { label: 'Данс',           value: selected.accountNumber },
@@ -118,7 +118,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
               onClick={() => { void act('reject') }}
               variant="outline"
               disabled={isActing}
-              className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10 active:scale-95 transition-all"
+              className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10 pressable"
             >
               <X className="mr-2 h-5 w-5" />
               Татгалзах
@@ -126,7 +126,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
             <Button
               onClick={() => { void act('approve') }}
               disabled={isActing}
-              className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 disabled:opacity-50 active:scale-95 transition-all"
+              className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 disabled:opacity-50 pressable"
             >
               <Check className="mr-2 h-5 w-5" />
               {isActing ? 'Хадгалж байна...' : 'Зөвшөөрөх'}
@@ -143,7 +143,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -155,7 +155,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-14 w-14 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -166,7 +166,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
             ))}
           </div>
         ) : (workers?.length ?? 0) === 0 ? (
-          <div className="mt-8 rounded-2xl bg-card p-8 shadow-sm text-center">
+          <div className="mt-8 rounded-2xl bg-card p-8 shadow-card text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mx-auto">
               <Check className="h-8 w-8 text-success" />
             </div>
@@ -181,7 +181,7 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
                 <button
                   key={worker.id}
                   onClick={() => setSelected(worker)}
-                  className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-sm text-left active:scale-95 transition-all"
+                  className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-card text-left pressable"
                 >
                   <Avatar className="h-14 w-14 shrink-0">
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -193,8 +193,8 @@ export function AdminBankingScreen({ onBack }: AdminBankingScreenProps) {
                     <p className="text-sm text-muted-foreground">{worker.phone}</p>
                     <p className="text-xs text-muted-foreground">{worker.bankName} · {worker.accountNumber}</p>
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-                    <Building2 className="h-5 w-5 text-accent" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-highlight/10">
+                    <Building2 className="h-5 w-5 text-highlight-strong" />
                   </div>
                 </button>
               ))}

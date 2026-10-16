@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { MessageCircle, Check, MapPin, Star, AlertTriangle, FileText, CheckCircle2, XCircle } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Check, MapPin, Star, AlertTriangle, FileText, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -143,17 +143,26 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background pb-8">
       {/* Header */}
-      <div className="px-6 pt-12">
-        <h1 className="text-xl font-bold text-foreground">Идэвхтэй захиалга</h1>
-        {isLoading ? (
-          <Skeleton className="mt-1 h-4 w-32" />
-        ) : (
-          <p className="text-sm text-muted-foreground">{order?.service ?? '—'}</p>
-        )}
+      <div className="flex items-center gap-4 px-6 pt-12">
+        <button
+          onClick={() => router.push('/orders')}
+          aria-label="Буцах"
+          className="pressable flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card shadow-card"
+        >
+          <ArrowLeft className="h-5 w-5 text-foreground" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Идэвхтэй захиалга</h1>
+          {isLoading ? (
+            <Skeleton className="mt-1 h-4 w-32" />
+          ) : (
+            <p className="text-sm text-muted-foreground">{order?.service ?? '—'}</p>
+          )}
+        </div>
       </div>
 
       {/* Worker Card */}
-      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
         {isLoading ? (
           <>
             <Skeleton className="h-16 w-16 rounded-full" />
@@ -174,8 +183,8 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
               <p className="text-sm text-muted-foreground">Платформ чатаар холбоо барина уу</p>
             </div>
             <button
-              onClick={() => router.push('/chat')}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 active:scale-95 transition-all"
+              onClick={() => router.push(`/chat/${orderId ?? order?.id ?? ''}`)}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 pressable"
             >
               <MessageCircle className="h-5 w-5 text-primary" />
             </button>
@@ -184,7 +193,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
       </div>
 
       {/* Address */}
-      <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
         <p className="text-sm text-muted-foreground">Хаяг</p>
         {isLoading ? (
           <Skeleton className="mt-1 h-4 w-48" />
@@ -196,7 +205,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
                 href={`https://maps.google.com/maps?q=${encodeURIComponent(order.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+                className="mt-3 flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary pressable"
               >
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span className="flex-1">Чиглэл авах</span>
@@ -208,7 +217,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
 
       {/* Progress Timeline — hidden during inspection quote flow */}
       {showTimeline && (
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-6 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-6 shadow-card">
           <h2 className="font-semibold text-foreground">Явц</h2>
           <div className="mt-4 space-y-4">
             {STATUS_STEPS.map((label, index) => {
@@ -266,7 +275,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
       {/* Quote panel — user reviews worker's submitted quote */}
       {!isLoading && order?.status === 'quote_submitted' && (
         <div className="mt-6 mx-6">
-          <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <div className="rounded-2xl bg-card p-4 shadow-card">
             <h2 className="font-semibold text-foreground">Засварын үнийн санал</h2>
             {quoteData ? (
               <>
@@ -284,7 +293,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
                     onClick={() => setShowRejectDialog(true)}
                     disabled={responding}
                     variant="outline"
-                    className="h-11 flex-1 rounded-2xl border-destructive/30 font-semibold text-destructive hover:bg-destructive/10 active:scale-95 transition-all disabled:opacity-50"
+                    className="h-11 flex-1 rounded-2xl border-destructive/30 font-semibold text-destructive hover:bg-destructive/10 pressable disabled:opacity-50"
                   >
                     <XCircle className="mr-1.5 h-4 w-4" />
                     Татгалзах
@@ -292,7 +301,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
                   <Button
                     onClick={() => { void handleRespond('approve') }}
                     disabled={responding}
-                    className="h-11 flex-1 rounded-2xl bg-accent font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-50"
+                    className="h-11 flex-1 rounded-2xl bg-primary font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
                   >
                     <CheckCircle2 className="mr-1.5 h-4 w-4" />
                     {responding ? 'Хүлээнэ үү...' : 'Зөвшөөрөх'}
@@ -331,7 +340,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
 
       {/* Quote rejected — terminal state */}
       {!isLoading && order?.status === 'quote_rejected' && (
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
               <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -348,7 +357,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
 
       {/* Before / After photos */}
       {(order?.beforePhotoUrl ?? order?.afterPhotoUrl) && (
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <h2 className="font-semibold text-foreground">Ажлын зураг</h2>
           <div className={`mt-3 grid gap-3 ${order?.beforePhotoUrl && order?.afterPhotoUrl ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {order?.beforePhotoUrl && (
@@ -376,9 +385,9 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
       {/* Chat Button */}
       <div className="mt-4 mx-6">
         <Button
-          onClick={() => router.push('/chat')}
+          onClick={() => router.push(`/chat/${orderId ?? order?.id ?? ''}`)}
           variant="outline"
-          className="h-14 w-full rounded-2xl border-border bg-card text-base font-semibold shadow-sm active:scale-95 transition-all"
+          className="h-14 w-full rounded-2xl border-border bg-card text-base font-semibold shadow-card pressable"
         >
           <MessageCircle className="mr-2 h-5 w-5" />
           Чат бичих
@@ -390,7 +399,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
         <div className="mt-3 mx-6">
           <Button
             onClick={() => router.push(`/review/${orderId ?? order?.id ?? ''}`)}
-            className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-white shadow-md hover:bg-accent/90 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable"
           >
             <Star className="mr-2 h-5 w-5" />
             Үнэлгээ өгөх
@@ -404,7 +413,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
           <Button
             onClick={() => setShowCancelDialog(true)}
             variant="outline"
-            className="h-14 w-full rounded-2xl border-destructive/30 text-destructive text-base font-semibold hover:bg-destructive/10 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl border-destructive/30 text-destructive text-base font-semibold hover:bg-destructive/10 pressable"
           >
             Захиалга цуцлах
           </Button>
@@ -472,7 +481,7 @@ export function ActiveBookingScreen({ orderId }: ActiveBookingScreenProps) {
               </p>
             )}
             {cancelInfo.refundAmount > 0 && (
-              <div className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 shadow-sm">
+              <div className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 shadow-card">
                 <span className="text-sm text-muted-foreground">Буцааж авах дүн</span>
                 <span className="font-bold text-primary">₮{cancelInfo.refundAmount.toLocaleString()}</span>
               </div>

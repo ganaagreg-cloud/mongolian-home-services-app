@@ -75,7 +75,7 @@ export function PrivacyScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -85,7 +85,7 @@ export function PrivacyScreen() {
       {/* Privacy Settings */}
       <div className="mt-6 px-6">
         <h2 className="text-lg font-bold text-foreground">Нууцлалын тохиргоо</h2>
-        <div className="mt-3 rounded-2xl bg-card shadow-sm overflow-hidden">
+        <div className="mt-3 rounded-2xl bg-card shadow-card overflow-hidden">
           {toggleItems.map((item, index) => {
             const Icon = item.icon
             return (
@@ -104,12 +104,12 @@ export function PrivacyScreen() {
                 </div>
                 <button
                   onClick={() => toggle(item.key)}
-                  className={`relative shrink-0 h-6 w-11 rounded-full transition-colors duration-200 active:scale-95 ${
+                  className={`relative shrink-0 h-6 w-11 rounded-full transition-colors duration-200 pressable ${
                     settings[item.key] ? 'bg-primary' : 'bg-muted'
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-transform duration-200 ${
                       settings[item.key] ? 'translate-x-5' : 'translate-x-0.5'
                     }`}
                   />
@@ -123,12 +123,12 @@ export function PrivacyScreen() {
       {/* Policy Links */}
       <div className="mt-6 px-6">
         <h2 className="text-lg font-bold text-foreground">Баримт бичиг</h2>
-        <div className="mt-3 rounded-2xl bg-card shadow-sm overflow-hidden">
+        <div className="mt-3 rounded-2xl bg-card shadow-card overflow-hidden">
           {POLICY_BUTTONS.map(({ key, label }, index) => (
             <button
               key={key}
               onClick={() => setActivePolicy(key)}
-              className={`flex w-full items-center justify-between px-4 py-4 transition-colors hover:bg-muted/50 active:scale-95 ${
+              className={`flex w-full items-center justify-between px-4 py-4 transition-colors hover:bg-muted/50 pressable ${
                 index !== POLICY_BUTTONS.length - 1 ? 'border-b border-border' : ''
               }`}
             >
@@ -146,7 +146,7 @@ export function PrivacyScreen() {
           <div className="flex items-center gap-4 border-b border-border px-6 pb-4 pt-12 shrink-0">
             <button
               onClick={() => setActivePolicy(null)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
             >
               <ArrowLeft className="h-5 w-5 text-foreground" />
             </button>
@@ -166,7 +166,7 @@ export function PrivacyScreen() {
 
       {/* Danger Zone */}
       <div className="mt-6 px-6">
-        <div className="rounded-2xl bg-destructive/10 p-4 shadow-sm">
+        <div className="rounded-2xl bg-destructive/10 p-4 shadow-card">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10">
               <Trash2 className="h-5 w-5 text-destructive" />
@@ -176,7 +176,7 @@ export function PrivacyScreen() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Таны бүх өгөгдөл бүрмөсөн устгагдах бөгөөд буцаах боломжгүй
               </p>
-              <button className="mt-3 text-sm font-semibold text-destructive hover:underline active:scale-95 transition-all">
+              <button className="mt-3 text-sm font-semibold text-destructive hover:underline pressable">
                 Хүсэлт гаргах
               </button>
             </div>

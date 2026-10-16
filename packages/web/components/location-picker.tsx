@@ -105,10 +105,10 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-4 bg-background px-6 pb-4 pt-12 shadow-sm">
+      <div className="flex items-center gap-4 bg-background px-6 pb-4 pt-12 shadow-card">
         <button
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm active:scale-95 transition-all"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -123,7 +123,7 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
 
       {/* Bottom sheet */}
       <div className="bg-background px-6 pb-8 pt-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="flex min-h-[56px] items-start gap-3 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="flex min-h-[56px] items-start gap-3 rounded-2xl bg-card p-4 shadow-card">
           <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <p className="flex-1 text-sm leading-relaxed text-foreground">
             {loading
@@ -134,7 +134,7 @@ export function LocationPicker({ onSelect, onClose }: LocationPickerProps) {
         <Button
           onClick={() => { if (address && !loading) onSelect(address) }}
           disabled={!address || loading}
-          className="mt-4 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          className="mt-4 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-50"
         >
           <Check className="mr-2 h-5 w-5" />
           Байршил баталгаажуулах

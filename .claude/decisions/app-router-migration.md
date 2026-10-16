@@ -162,7 +162,8 @@ export default async function Page({ params }: { params: Promise<{ orderId: stri
 ## M2 pattern: route-aware Link nav + ModeToggle
 
 - `AppBottomNav` / `AppWorkerBottomNav`: `<Link href>` tabs, active state via `usePathname().startsWith(href)`.
-- `ModeToggle`: reads current mode from pathname, `PATCH /api/me/mode` to persist, toast+revert on failure. Rendered in both `(app)/layout.tsx` and `(worker)/layout.tsx`. `active_mode` written ONLY by ModeToggle.
+- `ModeToggle`: reads current mode from pathname, `PATCH /api/me/mode` to persist, toast+revert on failure. Rendered inline in the `/home` and `/jobs` headers (design v2; was a floating element in both layouts). `active_mode` written ONLY by ModeToggle.
+- Tab bars render only on exact tab-root paths (design v2) so fixed CTAs and the chat composer on drill-down screens are never covered.
 
 ---
 

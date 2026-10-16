@@ -18,8 +18,8 @@ export default function Loading() {
           </div>
         </div>
       </div>
-      <div className="mt-4 mx-6 h-32 rounded-2xl bg-card animate-pulse shadow-sm" />
-      <div className="mt-4 mx-6 h-24 rounded-2xl bg-card animate-pulse shadow-sm" />
+      <div className="mt-4 mx-6 h-32 rounded-2xl bg-card animate-pulse shadow-card" />
+      <div className="mt-4 mx-6 h-24 rounded-2xl bg-card animate-pulse shadow-card" />
     </div>
   )
 }

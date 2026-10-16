@@ -3,82 +3,121 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── HomeService design tokens ────────────────────────────────────────────────
+   Brand: deep teal (trust, clean) + saffron (stars, highlights only).
+   Ground is a warm off-white so white cards separate without heavy borders.
+   Category colors give each service its own identity (see SERVICE_TONE in
+   lib/service-tone.ts) — never use them for brand actions. */
 :root {
-  --background: #FFFFFF;
-  --foreground: #111827;
-  --card: #F8FAFC;
-  --card-foreground: #111827;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --background: #F3F5F2;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
   --popover: #FFFFFF;
-  --popover-foreground: #111827;
-  --primary: #1E40AF;
-  --primary-foreground: #ffffff;
-  --secondary: #F8FAFC;
-  --secondary-foreground: #111827;
-  --muted: #F8FAFC;
-  --muted-foreground: #6B7280;
-  --accent: #F97316;
-  --accent-foreground: #ffffff;
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: #1E40AF;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --popover-foreground: #0F172A;
+  --primary: #0B7A6A;
+  --primary-foreground: #FFFFFF;
+  --primary-strong: #075E52;
+  --primary-soft: #E2F3EF;
+  --secondary: #ECEFEA;
+  --secondary-foreground: #0F172A;
+  --muted: #ECEFEA;
+  --muted-foreground: #5B6475;
+  /* shadcn semantics: accent = subtle hover/focus surface */
+  --accent: #ECEFEA;
+  --accent-foreground: #0F172A;
+  /* brand saffron: stars, badges, small highlights — never large surfaces */
+  --highlight: #F2A93B;
+  --highlight-foreground: #3A2604;
+  --highlight-soft: #FDF1DC;
+  --highlight-strong: #8A5A08;
+  /* saffron for small text ON teal surfaces — 4.5:1 against --primary */
+  --highlight-on-primary: #FEEDCC;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --success: #0E8A5C;
+  --border: #E3E7E1;
+  --input: #E3E7E1;
+  --ring: #0B7A6A;
+
+  --tone-rose: #D63B66;     --tone-rose-soft: #FDE8EE;
+  --tone-blue: #2F6FDE;     --tone-blue-soft: #E4EEFD;
+  --tone-amber: #B86E0C;    --tone-amber-soft: #FEF1DA;
+  --tone-violet: #6D4AE6;   --tone-violet-soft: #EFEAFE;
+  --tone-teal: #0B7A6A;     --tone-teal-soft: #E2F3EF;
+  --tone-sky: #0E7490;      --tone-sky-soft: #DDF3F8;
+
+  --chart-1: #0B7A6A;
+  --chart-2: #2F6FDE;
+  --chart-3: #F2A93B;
+  --chart-4: #6D4AE6;
+  --chart-5: #D63B66;
   --radius: 1rem;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #1E40AF;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #F8FAFC;
-  --sidebar-accent-foreground: #111827;
-  --sidebar-border: #E5E7EB;
-  --sidebar-ring: #1E40AF;
-  --success: #16A34A;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #0B7A6A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #ECEFEA;
+  --sidebar-accent-foreground: #0F172A;
+  --sidebar-border: #E3E7E1;
+  --sidebar-ring: #0B7A6A;
 }
 
 .dark {
-  --background: #0F172A;
-  --foreground: #F8FAFC;
-  --card: #1E293B;
-  --card-foreground: #F8FAFC;
-  --popover: #1E293B;
-  --popover-foreground: #F8FAFC;
-  --primary: #3B82F6;
-  --primary-foreground: #ffffff;
-  --secondary: #1E293B;
-  --secondary-foreground: #F8FAFC;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --accent: #F97316;
-  --accent-foreground: #ffffff;
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: #334155;
-  --input: #334155;
-  --ring: #3B82F6;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #0F172A;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-primary: #3B82F6;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1E293B;
-  --sidebar-accent-foreground: #F8FAFC;
-  --sidebar-border: #334155;
-  --sidebar-ring: #3B82F6;
-  --success: #16A34A;
+  --background: #0C1412;
+  --foreground: #EEF2EF;
+  --card: #15201D;
+  --card-foreground: #EEF2EF;
+  --popover: #15201D;
+  --popover-foreground: #EEF2EF;
+  --primary: #2BB39C;
+  --primary-foreground: #04201B;
+  --primary-strong: #5FD0BC;
+  --primary-soft: #12332D;
+  --secondary: #1C2A26;
+  --secondary-foreground: #EEF2EF;
+  --muted: #1C2A26;
+  --muted-foreground: #9AA8A3;
+  --accent: #1C2A26;
+  --accent-foreground: #EEF2EF;
+  --highlight: #F2A93B;
+  --highlight-foreground: #2A1B02;
+  --highlight-soft: #3A2A10;
+  --highlight-strong: #F2B45A;
+  --highlight-on-primary: #FCE3B0;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #34C38F;
+  --border: #24332F;
+  --input: #24332F;
+  --ring: #2BB39C;
+
+  --tone-rose: #F47A9A;     --tone-rose-soft: #3A1A24;
+  --tone-blue: #7AA7F5;     --tone-blue-soft: #16233D;
+  --tone-amber: #F2B45A;    --tone-amber-soft: #36270F;
+  --tone-violet: #A68DF7;   --tone-violet-soft: #251C40;
+  --tone-teal: #2BB39C;     --tone-teal-soft: #12332D;
+  --tone-sky: #5CC6E0;      --tone-sky-soft: #0F2C34;
+
+  --chart-1: #2BB39C;
+  --chart-2: #7AA7F5;
+  --chart-3: #F2A93B;
+  --chart-4: #A68DF7;
+  --chart-5: #F47A9A;
+  --sidebar: #0C1412;
+  --sidebar-foreground: #EEF2EF;
+  --sidebar-primary: #2BB39C;
+  --sidebar-primary-foreground: #04201B;
+  --sidebar-accent: #1C2A26;
+  --sidebar-accent-foreground: #EEF2EF;
+  --sidebar-border: #24332F;
+  --sidebar-ring: #2BB39C;
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-manrope), 'Manrope', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -87,23 +126,42 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-highlight-strong: var(--highlight-strong);
+  --color-highlight-on-primary: var(--highlight-on-primary);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-tone-rose: var(--tone-rose);
+  --color-tone-rose-soft: var(--tone-rose-soft);
+  --color-tone-blue: var(--tone-blue);
+  --color-tone-blue-soft: var(--tone-blue-soft);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-amber-soft: var(--tone-amber-soft);
+  --color-tone-violet: var(--tone-violet);
+  --color-tone-violet-soft: var(--tone-violet-soft);
+  --color-tone-teal: var(--tone-teal);
+  --color-tone-teal-soft: var(--tone-teal-soft);
+  --color-tone-sky: var(--tone-sky);
+  --color-tone-sky-soft: var(--tone-sky-soft);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-success: var(--success);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -116,6 +174,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Elevation ladder — soft, layered, never muddy */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.05);
+  --shadow-float: 0 1px 2px rgb(15 23 42 / 0.06), 0 16px 36px rgb(15 23 42 / 0.14);
+  --shadow-brand: 0 10px 24px rgb(11 122 106 / 0.28);
+
 }
 
 @layer base {
@@ -124,5 +188,36 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Press feedback for anything tappable that opts in via .pressable */
+@utility pressable {
+  transition: transform 160ms var(--ease-out-soft), box-shadow 160ms var(--ease-out-soft), background-color 160ms ease;
+  &:active { transform: scale(0.97); }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrance: sections rise in order; set --i inline for the stagger index */
+@utility stagger-item {
+  animation: rise 0.5s var(--ease-out-soft) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

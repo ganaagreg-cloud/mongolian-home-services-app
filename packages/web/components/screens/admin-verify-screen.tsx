@@ -63,7 +63,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
               setRejectionReason('')
               setActionError(null)
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
           >
             <ArrowLeft className="h-5 w-5 text-foreground" />
           </button>
@@ -71,7 +71,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
         </div>
 
         {/* Worker Info */}
-        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
@@ -89,7 +89,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
         {/* Police Document */}
         <div className="mt-4 mx-6">
           <h2 className="font-semibold text-foreground">Ял шийтгэлгүй тодорхойлолт</h2>
-          <div className="mt-2 flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-2 flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
             <FileText className="h-8 w-8 text-primary" />
             <div className="flex-1">
               <p className="font-medium text-foreground">{selected.policeFile ?? 'Байхгүй'}</p>
@@ -106,7 +106,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
         {/* IMEI */}
         <div className="mt-4 mx-6">
           <h2 className="font-semibold text-foreground">IMEI дугаар</h2>
-          <div className="mt-2 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-2 rounded-2xl bg-card p-4 shadow-card">
             <p className="font-mono text-foreground">{selected.imei ?? '—'}</p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
               placeholder="Шалтгаанаа бичнэ үү..."
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              className="mt-2 min-h-[100px] rounded-2xl border-border bg-card shadow-sm resize-none"
+              className="mt-2 min-h-[100px] rounded-2xl border-border bg-card shadow-card resize-none"
             />
           </div>
         )}
@@ -144,7 +144,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
               <Button
                 onClick={() => { void act('reject') }}
                 disabled={!rejectionReason.trim() || isActing}
-                className="h-14 flex-1 rounded-2xl bg-destructive font-semibold text-white shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                className="h-14 flex-1 rounded-2xl bg-destructive font-semibold text-white shadow-md disabled:opacity-50 pressable"
               >
                 {isActing ? 'Илгээж байна...' : 'Илгээх'}
               </Button>
@@ -155,7 +155,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
                 onClick={() => setShowRejectInput(true)}
                 variant="outline"
                 disabled={isActing}
-                className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10 active:scale-95 transition-all"
+                className="h-14 flex-1 rounded-2xl border-destructive text-destructive font-semibold hover:bg-destructive/10 pressable"
               >
                 <X className="mr-2 h-5 w-5" />
                 Татгалзах
@@ -163,7 +163,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
               <Button
                 onClick={() => { void act('approve') }}
                 disabled={isActing}
-                className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 disabled:opacity-50 active:scale-95 transition-all"
+                className="h-14 flex-1 rounded-2xl bg-success font-semibold text-white shadow-md hover:bg-success/90 disabled:opacity-50 pressable"
               >
                 <Check className="mr-2 h-5 w-5" />
                 {isActing ? 'Хадгалж байна...' : 'Зөвшөөрөх'}
@@ -181,7 +181,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -193,7 +193,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-14 w-14 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -203,7 +203,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
             ))}
           </div>
         ) : (workers?.length ?? 0) === 0 ? (
-          <div className="mt-8 rounded-2xl bg-card p-8 shadow-sm text-center">
+          <div className="mt-8 rounded-2xl bg-card p-8 shadow-card text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mx-auto">
               <Check className="h-8 w-8 text-success" />
             </div>
@@ -218,7 +218,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
                 <button
                   key={worker.id}
                   onClick={() => setSelected(worker)}
-                  className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-sm text-left active:scale-95 transition-all"
+                  className="flex w-full items-center gap-4 rounded-2xl bg-card p-4 shadow-card text-left pressable"
                 >
                   <Avatar className="h-14 w-14">
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -230,7 +230,7 @@ export function AdminVerifyScreen({ onBack }: AdminVerifyScreenProps) {
                     <p className="text-sm text-muted-foreground">{worker.phone}</p>
                     <p className="text-xs text-muted-foreground">{worker.createdAt.split('T')[0]}</p>
                   </div>
-                  <Shield className="h-5 w-5 text-accent" />
+                  <Shield className="h-5 w-5 text-highlight-strong" />
                 </button>
               ))}
             </div>

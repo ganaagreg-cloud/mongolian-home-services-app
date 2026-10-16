@@ -17,7 +17,7 @@ export default function OfflinePage() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md transition-all active:scale-95 hover:bg-primary/90"
+          className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md pressable hover:bg-primary/90"
         >
           Дахин оролдох
         </button>

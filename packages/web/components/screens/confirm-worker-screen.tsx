@@ -79,7 +79,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -104,7 +104,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
             <p className="mt-0.5 text-sm text-muted-foreground">{workerData?.specialty ?? '—'}</p>
             <div className="mt-2 flex items-center gap-3">
               <div className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                 <span className="text-sm font-semibold text-foreground">{workerData?.rating ?? '—'}</span>
               </div>
               <span className="text-sm font-semibold text-primary">
@@ -117,7 +117,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
 
       {/* Price summary */}
       {order && (
-        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+        <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
           <h2 className="font-semibold text-foreground">Үнийн хураангуй</h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
@@ -127,7 +127,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
             {order.urgent && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Яаралтай нэмэгдэл (+20%)</span>
-                <span className="font-medium text-accent">
+                <span className="font-medium text-highlight-strong">
                   +₮{Math.round(pricePerHour * order.hours * 0.2).toLocaleString()}
                 </span>
               </div>
@@ -163,7 +163,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
       <div className="mt-6 mx-6">
         <p className="text-sm font-medium text-muted-foreground mb-3">QPay-аар банкаа сонгон төлөх</p>
         {!invoice && !invoiceError && (
-          <div className="rounded-2xl bg-card p-4 text-center text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-2xl bg-card p-4 text-center text-sm text-muted-foreground shadow-card">
             Төлбөрийн мэдээлэл бэлдэж байна...
           </div>
         )}
@@ -173,7 +173,7 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
               <button
                 key={bank.link}
                 onClick={() => { console.log('[DEV] Bank deeplink:', bank.link) }}
-                className="h-14 w-full rounded-2xl bg-card shadow-sm border border-border text-base font-medium text-foreground active:scale-95 transition-all"
+                className="h-14 w-full rounded-2xl bg-card shadow-card border border-border text-base font-medium text-foreground pressable"
               >
                 {bank.name}
               </button>
@@ -194,12 +194,12 @@ export function ConfirmWorkerScreen({ orderId }: ConfirmWorkerScreenProps) {
           <button
             onClick={() => { void handleDevSim() }}
             disabled={!invoice}
-            className="w-full rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-center text-sm font-medium text-accent transition-all active:scale-95 disabled:opacity-40"
+            className="w-full rounded-2xl border border-highlight/30 bg-highlight/10 px-4 py-3 text-center text-sm font-medium text-highlight-strong pressable disabled:opacity-40"
           >
             [Dev] Simulate Instant Success Tap
           </button>
         ) : (
-          <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-muted-foreground shadow-card">
             Төлбөр хүлээгдэж байна...
           </div>
         )}

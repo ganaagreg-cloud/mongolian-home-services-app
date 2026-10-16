@@ -64,7 +64,7 @@ export function NotificationsScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -75,7 +75,7 @@ export function NotificationsScreen() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="mt-2 h-3 w-64" />
                 <Skeleton className="mt-2 h-3 w-24" />
@@ -93,7 +93,7 @@ export function NotificationsScreen() {
         ) : (
           <div className="space-y-3">
             {allNotifications.map((notif) => (
-              <div key={notif.id} className="rounded-2xl bg-card p-4 shadow-sm">
+              <div key={notif.id} className="rounded-2xl bg-card p-4 shadow-card">
                 <p className="font-semibold text-foreground">{notif.title}</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">{notif.body}</p>
                 <p className="mt-1.5 text-xs text-muted-foreground">
@@ -110,7 +110,7 @@ export function NotificationsScreen() {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="w-full rounded-2xl bg-card py-3 text-sm font-semibold text-primary shadow-sm active:scale-95 transition-all disabled:opacity-50"
+                className="w-full rounded-2xl bg-card py-3 text-sm font-semibold text-primary shadow-card pressable disabled:opacity-50"
               >
                 {loadingMore ? 'Уншиж байна...' : 'Дэлгэрэнгүй'}
               </button>

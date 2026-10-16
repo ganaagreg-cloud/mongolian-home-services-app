@@ -58,7 +58,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -69,7 +69,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
         <button
           onClick={() => { void refreshApps() }}
           disabled={isValidating}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <RefreshCw className={`h-5 w-5 text-primary ${isValidating ? 'animate-spin' : ''}`} />
         </button>
@@ -98,17 +98,17 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
           </div>
         </div>
       ) : (
-        <div className="mt-6 mx-6 h-28 rounded-2xl bg-card animate-pulse shadow-sm" />
+        <div className="mt-6 mx-6 h-28 rounded-2xl bg-card animate-pulse shadow-card" />
       )}
 
       {/* Awaiting payment banner — shown if customer already selected but hasn't paid */}
       {isAwaitingPayment && order?.workerId && (
-        <div className="mt-4 mx-6 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-            <AlertCircle className="h-4 w-4 text-accent" />
+        <div className="mt-4 mx-6 flex items-start gap-3 rounded-2xl border border-highlight/30 bg-highlight/5 p-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-highlight/10">
+            <AlertCircle className="h-4 w-4 text-highlight-strong" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-accent">Ажилтан сонгогдсон</p>
+            <p className="text-sm font-semibold text-highlight-strong">Ажилтан сонгогдсон</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Төлбөрийг 30 минутын дотор хийнэ үү. Хугацаа дуусвал захиалга буцаад нийтлэгдэнэ.
             </p>
@@ -116,7 +116,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
           <Button
             size="sm"
             onClick={() => router.push(`/orders/${orderId}/applicants/${order.workerId}/confirm`)}
-            className="h-9 shrink-0 rounded-2xl bg-accent text-xs font-semibold shadow-md hover:bg-accent/90 active:scale-95 transition-all"
+            className="h-9 shrink-0 rounded-2xl bg-primary text-xs font-semibold shadow-md hover:bg-primary/90 pressable"
           >
             Төлбөр хийх
           </Button>
@@ -138,7 +138,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
         {appsLoading ? (
           <div className="mt-4 space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+              <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
                 <Skeleton className="h-14 w-14 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
@@ -148,7 +148,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
             ))}
           </div>
         ) : applications.length === 0 ? (
-          <div className="mt-4 flex flex-col items-center justify-center rounded-2xl bg-card py-12 shadow-sm">
+          <div className="mt-4 flex flex-col items-center justify-center rounded-2xl bg-card py-12 shadow-card">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <div className="h-3 w-3 animate-pulse rounded-full bg-muted-foreground" />
             </div>
@@ -163,7 +163,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
         ) : (
           <div className="mt-4 space-y-3">
             {applications.map((app) => (
-              <div key={app.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-sm">
+              <div key={app.id} className="overflow-hidden rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-14 w-14 shrink-0">
                     <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -180,7 +180,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
                     <p className="text-xs text-muted-foreground">{app.workerSpecialty}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                        <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
                         <span className="text-sm font-medium text-foreground">{app.workerRating}</span>
                         <span className="text-xs text-muted-foreground">({app.workerReviewCount})</span>
                       </div>
@@ -193,7 +193,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
                 <Button
                   onClick={() => router.push(`/orders/${orderId}/applicants/${app.workerId}/confirm`)}
                   disabled={isAwaitingPayment}
-                  className="mt-3 h-11 w-full rounded-2xl bg-accent text-sm font-semibold text-accent-foreground shadow-md hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-40"
+                  className="mt-3 h-11 w-full rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 pressable disabled:opacity-40"
                 >
                   Сонгох
                 </Button>
@@ -203,7 +203,7 @@ export function OrderApplicantsScreen({ orderId }: OrderApplicantsScreenProps) {
         )}
       </div>
 
-      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
         <p className="text-center text-xs text-muted-foreground">
           Ажилтныг сонгосны дараа та төлбөрийн дэлгэц рүү шилжинэ. Төлбөр амжилттай болсны дараа л захиалга батлагдана.
         </p>

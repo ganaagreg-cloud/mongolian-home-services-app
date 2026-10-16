@@ -243,7 +243,7 @@ export function WorkerProfileScreen() {
       </div>
 
       {/* Profile Card */}
-      <div className="mx-6 mt-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mx-6 mt-6 flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
         <Avatar className="h-16 w-16">
           <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
             {displayName[0]}
@@ -252,7 +252,7 @@ export function WorkerProfileScreen() {
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold text-foreground">{displayName}</p>
           <p className="text-sm text-muted-foreground">
-            Утас нэмааг?й
+            Утас нэмээгүй
           </p>
           <div className="mt-1 flex items-center gap-2">
             <div className="flex items-center gap-1">
@@ -260,7 +260,7 @@ export function WorkerProfileScreen() {
               <span className="text-xs font-medium text-success">ДАН</span>
             </div>
             <div className="flex items-center gap-1">
-              <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+              <Star className="h-3.5 w-3.5 fill-highlight text-highlight" />
               <span className="text-xs font-medium text-foreground">{displayRating}</span>
             </div>
           </div>
@@ -273,7 +273,7 @@ export function WorkerProfileScreen() {
           { label: 'Гүйцэтгэсэн', value: String(reviewCount) },
           { label: 'Үнэлгээ',     value: String(displayRating) },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl bg-card p-3 text-center shadow-sm">
+          <div key={stat.label} className="rounded-2xl bg-card p-3 text-center shadow-card">
             <p className="text-lg font-bold text-foreground">{stat.value}</p>
             <p className="text-xs text-muted-foreground">{stat.label}</p>
           </div>
@@ -287,7 +287,7 @@ export function WorkerProfileScreen() {
           {!isEditingProfile && (
             <button
               onClick={openProfileEdit}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm transition-colors hover:bg-card/80 active:scale-95"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-card transition-colors hover:bg-card/80 pressable"
             >
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -295,7 +295,7 @@ export function WorkerProfileScreen() {
         </div>
 
         {!isEditingProfile ? (
-          <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <div className="rounded-2xl bg-card p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -320,7 +320,7 @@ export function WorkerProfileScreen() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card">
               {/* Specialty select */}
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Мэргэжил</p>
@@ -347,7 +347,7 @@ export function WorkerProfileScreen() {
                   inputMode="numeric"
                   value={editPrice}
                   onChange={(e) => setEditPrice(e.target.value.replace(/\D/g, ''))}
-                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-card"
                 />
                 {editPrice && !editPriceValid && (
                   <p className="mt-1 text-xs text-destructive">₮1,000–₮500,000 хооронд байх ёстой</p>
@@ -359,7 +359,7 @@ export function WorkerProfileScreen() {
               <Button
                 onClick={() => setIsEditingProfile(false)}
                 variant="outline"
-                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm"
+                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-card"
               >
                 <X className="mr-2 h-4 w-4" />
                 Болих
@@ -387,7 +387,7 @@ export function WorkerProfileScreen() {
             </span>
           )}
         </div>
-        <div className="rounded-2xl bg-card p-4 shadow-sm">
+        <div className="rounded-2xl bg-card p-4 shadow-card">
           {serviceTypes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Ачааллаж байна...</p>
           ) : (
@@ -399,10 +399,10 @@ export function WorkerProfileScreen() {
                     <button
                       key={st.id}
                       onClick={() => toggleService(st.id)}
-                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors active:scale-95 ${
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors pressable ${
                         selected
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-background text-foreground shadow-sm'
+                          : 'bg-background text-foreground shadow-card'
                       }`}
                     >
                       {st.name_mn}
@@ -429,7 +429,7 @@ export function WorkerProfileScreen() {
       </div>
 
       {/* Availability Toggle */}
-      <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm">
+      <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl bg-card p-4 shadow-card">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isAvailable ? 'bg-success/10' : 'bg-muted'}`}>
             <Briefcase className={`h-5 w-5 ${isAvailable ? 'text-success' : 'text-muted-foreground'}`} />
@@ -441,7 +441,7 @@ export function WorkerProfileScreen() {
             </p>
           </div>
         </div>
-        <button onClick={toggleAvailability} className="transition-all active:scale-95">
+        <button onClick={toggleAvailability} className=" pressable">
           {isAvailable
             ? <ToggleRight className="h-8 w-8 text-success" />
             : <ToggleLeft  className="h-8 w-8 text-muted-foreground" />}
@@ -461,7 +461,7 @@ export function WorkerProfileScreen() {
           {!isEditingBank && !bankLoading && (
             <button
               onClick={openEdit}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm transition-colors hover:bg-card/80 active:scale-95"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-card transition-colors hover:bg-card/80 pressable"
             >
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -470,7 +470,7 @@ export function WorkerProfileScreen() {
 
         {/* Loading skeleton */}
         {bankLoading && (
-          <div className="rounded-2xl bg-card p-4 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-card p-4 shadow-card space-y-3">
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-40" />
@@ -479,7 +479,7 @@ export function WorkerProfileScreen() {
 
         {/* No banking info yet */}
         {!bankLoading && bankInfo === null && !isEditingBank && (
-          <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
+          <div className="rounded-2xl bg-card p-6 shadow-card text-center">
             <p className="text-sm text-muted-foreground">Банкны мэдээлэл оруулаагүй байна</p>
             <Button
               onClick={openEdit}
@@ -500,7 +500,7 @@ export function WorkerProfileScreen() {
               </p>
             </div>
 
-            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
+            <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card">
               {/* Bank name */}
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Банкны нэр</p>
@@ -530,7 +530,7 @@ export function WorkerProfileScreen() {
                   value={editAccount}
                   onChange={(e) => setEditAccount(e.target.value.replace(/\D/g, '').slice(0, 20))}
                   onBlur={() => touch('accountNumber')}
-                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono shadow-card"
                 />
                 {touched.accountNumber && fieldError('accountNumber', editAccount) && (
                   <p className="mt-1 text-xs text-destructive">{fieldError('accountNumber', editAccount)}</p>
@@ -545,7 +545,7 @@ export function WorkerProfileScreen() {
                   value={editHolder}
                   onChange={(e) => setEditHolder(e.target.value.toUpperCase())}
                   onBlur={() => touch('accountHolderName')}
-                  className="h-12 rounded-2xl border-border bg-background shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background shadow-card"
                 />
                 {touched.accountHolderName && fieldError('accountHolderName', editHolder) && (
                   <p className="mt-1 text-xs text-destructive">{fieldError('accountHolderName', editHolder)}</p>
@@ -560,7 +560,7 @@ export function WorkerProfileScreen() {
                   value={editIban}
                   onChange={(e) => setEditIban(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 22))}
                   onBlur={() => touch('iban')}
-                  className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-background font-mono tracking-wider shadow-card"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">{editIban.length}/22 тэмдэгт</p>
                 {touched.iban && fieldError('iban', editIban) && (
@@ -579,10 +579,10 @@ export function WorkerProfileScreen() {
                     <button
                       key={type.value}
                       onClick={() => setEditType(type.value)}
-                      className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors active:scale-95 ${
+                      className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-colors pressable ${
                         editType === type.value
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-background text-foreground shadow-sm'
+                          : 'bg-background text-foreground shadow-card'
                       }`}
                     >
                       {type.label}
@@ -597,7 +597,7 @@ export function WorkerProfileScreen() {
               <Button
                 onClick={cancelEdit}
                 variant="outline"
-                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-sm"
+                className="h-12 flex-1 rounded-2xl border-border bg-card font-semibold shadow-card"
               >
                 <X className="mr-2 h-4 w-4" />
                 Болих
@@ -616,16 +616,16 @@ export function WorkerProfileScreen() {
 
         {/* Display mode */}
         {!bankLoading && bankInfo && !isEditingBank && (
-          <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <div className="rounded-2xl bg-card p-4 shadow-card">
             {bankInfo.verified ? (
               <div className="mb-4 flex items-center gap-2 rounded-xl bg-success/10 px-3 py-2">
                 <BadgeCheck className="h-4 w-4 shrink-0 text-success" />
                 <p className="text-xs font-medium text-success">Баталгаажсан</p>
               </div>
             ) : (
-              <div className="mb-4 flex items-center gap-2 rounded-xl bg-accent/10 px-3 py-2">
-                <Clock className="h-4 w-4 shrink-0 text-accent" />
-                <p className="text-xs font-medium text-accent">Админ баталгаажуулахыг хүлээж байна</p>
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-highlight/10 px-3 py-2">
+                <Clock className="h-4 w-4 shrink-0 text-highlight-strong" />
+                <p className="text-xs font-medium text-highlight-strong">Админ баталгаажуулахыг хүлээж байна</p>
               </div>
             )}
             <div className="space-y-3">
@@ -659,7 +659,7 @@ export function WorkerProfileScreen() {
       </div>
 
       {/* Menu Items */}
-      <div className="mx-6 mt-6 overflow-hidden rounded-2xl bg-card shadow-sm">
+      <div className="mx-6 mt-6 overflow-hidden rounded-2xl bg-card shadow-card">
         {menuItems.map((item, index) => {
           const Icon = item.icon
           return (

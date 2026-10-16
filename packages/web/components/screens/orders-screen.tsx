@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Search, Camera, X, Users } from 'lucide-react'
+import { ArrowLeft, Clock, Camera, X, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,31 +18,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { fetcher } from '@/lib/fetcher'
 import { apiFetch } from '@/lib/api-fetch'
-import type { Order, OrderStatus } from '@/lib/types'
-
-const ACTIVE_STATUSES: OrderStatus[] = [
-  'searching_worker', 'pending_acceptances', 'awaiting_payment', 'pending_worker_acceptance', 'worker_assigned', 'worker_on_the_way', 'in_progress',
-]
-
-const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; bg: string; text: string }> = {
-  pending_acceptances:       { label: 'Санал хүлээж байна',                  icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
-  awaiting_payment:          { label: 'Төлбөр хийнэ үү',                     icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent'      },
-  searching_worker:          { label: 'Ажилтан хайж байна',                  icon: Search,       bg: 'bg-primary/10',     text: 'text-primary'     },
-  pending_worker_acceptance: { label: 'Ажилтан хариу өгөхийг хүлээж байна', icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
-  pending_payment:           { label: 'Төлбөр хүлээж байна',                 icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
-  worker_assigned:           { label: 'Ажилтан олдлоо',                      icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
-  worker_on_the_way:         { label: 'Ирж байна',                           icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
-  in_progress:               { label: 'Ажиллаж байна',                       icon: AlertCircle,  bg: 'bg-accent/10',      text: 'text-accent'      },
-  completed:                 { label: 'Дууссан',                             icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
-  rated:                     { label: 'Үнэлсэн',                             icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
-  cancelled_by_user:         { label: 'Цуцлагдсан',                          icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  cancelled_by_worker:       { label: 'Ажилтан цуцалсан',                    icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  no_workers_found:          { label: 'Ажилтан олдсонгүй',                   icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-  awaiting_quote:            { label: 'Үнийн санал хүлээж байна',            icon: Clock,        bg: 'bg-primary/10',     text: 'text-primary'     },
-  quote_submitted:           { label: 'Үнийн санал ирсэн',                   icon: Clock,        bg: 'bg-accent/10',      text: 'text-accent'      },
-  quote_approved:            { label: 'Үнийн санал зөвшөөрсөн',              icon: CheckCircle2, bg: 'bg-success/10',     text: 'text-success'     },
-  quote_rejected:            { label: 'Үнийн санал татгалзсан',              icon: XCircle,      bg: 'bg-destructive/10', text: 'text-destructive' },
-}
+import type { Order } from '@/lib/types'
+import { ACTIVE_STATUSES, statusConfig, orderHref } from '@/lib/order-status'
 
 const DISPUTE_REASONS = [
   { value: 'хохирол',         label: 'Хохирол учруулсан' },
@@ -72,24 +49,14 @@ function OrderCard({
   const canDispute = order.status === 'completed' && isWithin7Days(order.updatedAt)
   const dateLabel = order.scheduledDate.split('T')[0] ?? order.scheduledDate
 
-  const handleViewClick = () => {
-    if (isPendingAcceptances && isBidFlow) {
-      router.push(`/orders/${order.id}/applicants`)
-    } else if (isAwaitingPayment && order.workerId) {
-      router.push(`/orders/${order.id}/applicants/${order.workerId}/confirm`)
-    } else if (isPendingAcceptances) {
-      router.push(`/orders/${order.id}/board`)
-    } else {
-      router.push(`/active/${order.id}`)
-    }
-  }
+  const handleViewClick = () => router.push(orderHref(order))
 
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-sm">
+    <div className="rounded-2xl bg-card p-4 shadow-card">
       <div className="flex items-start gap-3">
         <Avatar className="h-12 w-12 shrink-0">
           <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
-            {(isPendingAcceptances && !isAwaitingPayment) ? order.service[0] : (order.workerName ?? order.service[0])}
+            {(isPendingAcceptances && !isAwaitingPayment) ? order.service[0] : (order.workerName ?? order.service)[0]}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
@@ -115,7 +82,7 @@ function OrderCard({
               onClick={() => onDispute(order)}
               size="sm"
               variant="outline"
-              className="h-9 rounded-2xl border-destructive/30 text-destructive text-xs font-medium active:scale-95 transition-all"
+              className="h-9 rounded-2xl border-destructive/30 text-destructive text-xs font-medium pressable"
             >
               Асуудал мэдэгдэх
             </Button>
@@ -124,9 +91,9 @@ function OrderCard({
             <Button
               onClick={handleViewClick}
               size="sm"
-              className={`h-9 rounded-2xl text-sm font-semibold shadow-md active:scale-95 transition-all ${
+              className={`h-9 rounded-2xl text-sm font-semibold shadow-md pressable ${
                 isAwaitingPayment
-                  ? 'bg-accent hover:bg-accent/90'
+                  ? 'bg-primary hover:bg-primary/90'
                   : 'bg-primary hover:bg-primary/90'
               }`}
             >
@@ -221,7 +188,7 @@ export function OrdersScreen() {
       <div className="flex items-center gap-4 px-6 pt-12">
         <button
           onClick={() => router.back()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -252,7 +219,7 @@ export function OrdersScreen() {
       <div className="mt-4 space-y-3 px-6 min-h-[264px]">
         {isLoading ? (
           [1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm">
+            <div key={i} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
               <Skeleton className="h-12 w-12 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-32" />
@@ -296,7 +263,7 @@ export function OrdersScreen() {
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Шалтгаан</p>
               <Select value={reason} onValueChange={setReason}>
-                <SelectTrigger className="h-12 rounded-2xl border-border bg-card shadow-sm">
+                <SelectTrigger className="h-12 rounded-2xl border-border bg-card shadow-card">
                   <SelectValue placeholder="Шалтгаан сонгоно уу" />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl">
@@ -318,7 +285,7 @@ export function OrdersScreen() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Болсон зүйлийг дэлгэрэнгүй тайлбарлана уу…"
-                className="min-h-[100px] rounded-2xl border-border bg-card shadow-sm resize-none"
+                className="min-h-[100px] rounded-2xl border-border bg-card shadow-card resize-none"
               />
             </div>
 
@@ -338,7 +305,7 @@ export function OrdersScreen() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-card py-3 text-sm text-muted-foreground active:scale-95 transition-all"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-card py-3 text-sm text-muted-foreground pressable"
                 >
                   <Camera className="h-4 w-4" />
                   Зураг нэмэх {photos.length > 0 && `(${photos.length}/3)`}
@@ -382,7 +349,7 @@ export function OrdersScreen() {
               Болих
             </Button>
             <Button
-              className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+              className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground shadow-md hover:bg-primary/90 pressable"
               onClick={() => { void handleDisputeSubmit() }}
               disabled={submitting || !reason || description.length < 20}
             >

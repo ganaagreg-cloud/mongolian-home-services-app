@@ -268,7 +268,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
   const showTimeError    = step2Submitted && matchingStrategy === 'scheduled' && !selectedTime
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-48">
+    <div className="flex min-h-screen flex-col bg-background pb-32">
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-12">
@@ -279,7 +279,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             (step === 4 && isSurvey) ? () => setStep(1) :
             () => setStep((s) => s - 1)
           }
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-card/80 transition-colors active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card hover:bg-card/80 transition-colors pressable"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
@@ -314,7 +314,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             )}
             {preSelectedServiceId != null ? (
               /* Pre-selected from home screen — read-only chip */
-              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 shadow-sm min-h-[56px]">
+              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 shadow-card min-h-[56px]">
                 {selectedService && (() => {
                   const Icon = ICON_MAP[selectedService.icon as keyof typeof ICON_MAP] ?? Sparkles
                   return (
@@ -331,7 +331,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
               /* Skeleton grid — holds space while service types load */
               <div className="mt-3 grid grid-cols-3 gap-3">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-sm">
+                  <div key={i} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-card">
                     <Skeleton className="h-6 w-6 rounded-lg" />
                     <Skeleton className="h-3 w-16" />
                   </div>
@@ -350,10 +350,10 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                         setBookingData({ quantity: 0, estimatedHours: 1, isValid: false })
                         setStep1Submitted(false)
                       }}
-                      className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-2 rounded-2xl p-4 pressable ${
                         serviceTypeId === s.id
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-card text-foreground shadow-sm hover:shadow-md'
+                          : 'bg-card text-foreground shadow-card hover:shadow-md'
                       }`}
                     >
                       <Icon className="h-6 w-6" />
@@ -371,13 +371,13 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
               <h2 className="font-semibold text-foreground">Хаяг</h2>
               <button
                 onClick={() => setShowLocationPicker(true)}
-                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary active:scale-95 transition-all"
+                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-medium text-primary pressable"
               >
                 <LocateFixed className="h-4 w-4 shrink-0" />
                 {address ? 'Байршил өөрчлөх' : 'Газрын зурагт байршил сонгох'}
               </button>
               {address && (
-                <div className="mt-2 flex items-start gap-2 rounded-2xl bg-card px-4 py-3 shadow-sm">
+                <div className="mt-2 flex items-start gap-2 rounded-2xl bg-card px-4 py-3 shadow-card">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <p className="text-sm text-foreground">{address}</p>
                 </div>
@@ -387,7 +387,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                   placeholder="Эсвэл хаяг гараар оруулах..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="h-12 rounded-2xl border-border bg-card pl-4 shadow-sm"
+                  className="h-12 rounded-2xl border-border bg-card pl-4 shadow-card"
                 />
               </div>
               {showAddressError && (
@@ -416,20 +416,20 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             <div className="mt-3 grid grid-cols-2 gap-3">
               <button
                 onClick={() => setMatchingStrategy('instant')}
-                className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
+                className={`flex flex-col items-center gap-2 rounded-2xl p-4 pressable ${
                   matchingStrategy === 'instant'
-                    ? 'bg-accent text-accent-foreground shadow-md'
-                    : 'bg-card text-foreground shadow-sm'
+                    ? 'bg-highlight text-highlight-foreground shadow-md'
+                    : 'bg-card text-foreground shadow-card'
                 }`}
               >
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  matchingStrategy === 'instant' ? 'bg-white/20' : 'bg-accent/10'
+                  matchingStrategy === 'instant' ? 'bg-white/20' : 'bg-highlight/10'
                 }`}>
-                  <Zap className={`h-5 w-5 ${matchingStrategy === 'instant' ? 'text-white' : 'text-accent'}`} />
+                  <Zap className={`h-5 w-5 ${matchingStrategy === 'instant' ? 'text-highlight-foreground' : 'text-highlight-strong'}`} />
                 </div>
                 <p className="font-semibold text-sm">Яг одоо</p>
                 <p className={`text-center text-xs leading-tight ${
-                  matchingStrategy === 'instant' ? 'text-accent-foreground/80' : 'text-muted-foreground'
+                  matchingStrategy === 'instant' ? 'text-highlight-foreground/80' : 'text-muted-foreground'
                 }`}>
                   Шуурхай дуудлага
                 </p>
@@ -437,10 +437,10 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
 
               <button
                 onClick={() => setMatchingStrategy('scheduled')}
-                className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition-all active:scale-95 ${
+                className={`flex flex-col items-center gap-2 rounded-2xl p-4 pressable ${
                   matchingStrategy === 'scheduled'
                     ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-card text-foreground shadow-sm'
+                    : 'bg-card text-foreground shadow-card'
                 }`}
               >
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
@@ -459,9 +459,9 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
           </div>
 
           {matchingStrategy === 'instant' && (
-            <div className="mt-6 mx-6 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-                <Clock className="h-5 w-5 text-accent" />
+            <div className="mt-6 mx-6 flex items-start gap-3 rounded-2xl border border-highlight/30 bg-highlight/5 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-highlight/10">
+                <Clock className="h-5 w-5 text-highlight-strong" />
               </div>
               <div>
                 <p className="font-semibold text-foreground">Шуурхай хайлт</p>
@@ -482,10 +482,10 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                     <button
                       key={d.full}
                       onClick={() => setSelectedDate(index)}
-                      className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors active:scale-95 ${
+                      className={`flex min-w-[60px] flex-col items-center rounded-2xl py-3 transition-colors pressable ${
                         selectedDate === index
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-card text-foreground shadow-sm'
+                          : 'bg-card text-foreground shadow-card'
                       }`}
                     >
                       <span className="text-xs font-medium opacity-80">{d.day}</span>
@@ -502,10 +502,10 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                     <button
                       key={time}
                       onClick={() => setSelectedTime(time)}
-                      className={`rounded-2xl py-3 text-sm font-medium transition-colors active:scale-95 ${
+                      className={`rounded-2xl py-3 text-sm font-medium transition-colors pressable ${
                         selectedTime === time
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-card text-foreground shadow-sm'
+                          : 'bg-card text-foreground shadow-card'
                       }`}
                     >
                       {time}
@@ -520,11 +520,11 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
           )}
 
           {/* Urgent toggle */}
-          <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
-                  <Zap className="h-5 w-5 text-accent" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-highlight/10">
+                  <Zap className="h-5 w-5 text-highlight-strong" />
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Яаралтай</p>
@@ -533,20 +533,20 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
               </div>
               <button
                 onClick={() => setUrgent((v) => !v)}
-                className={`relative h-6 w-11 rounded-full transition-colors duration-200 active:scale-95 ${
-                  urgent ? 'bg-accent' : 'bg-muted'
+                className={`relative h-6 w-11 rounded-full transition-colors duration-200 pressable ${
+                  urgent ? 'bg-highlight' : 'bg-muted'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-transform duration-200 ${
                     urgent ? 'translate-x-5' : 'translate-x-0.5'
                   }`}
                 />
               </button>
             </div>
             {urgent && breakdown && breakdown.urgentSurcharge > 0 && (
-              <div className="mt-3 rounded-xl bg-accent/10 px-3 py-2">
-                <p className="text-xs font-medium text-accent">
+              <div className="mt-3 rounded-xl bg-highlight/10 px-3 py-2">
+                <p className="text-xs font-medium text-highlight-strong">
                   +₮{breakdown.urgentSurcharge.toLocaleString()} яаралтай нэмэгдэл нэмэгдэнэ
                 </p>
               </div>
@@ -577,7 +577,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
               {[0, 1, 2].map((i) => (
                 <button
                   key={i}
-                  className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card transition-all active:scale-95 hover:border-primary/50"
+                  className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card pressable hover:border-primary/50"
                 >
                   <Camera className="h-6 w-6 text-muted-foreground" />
                   <span className="mt-1 text-xs text-muted-foreground">Зураг нэмэх</span>
@@ -586,7 +586,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             </div>
           </div>
 
-          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">
               Зураг нэмсэнээр ажилтан орчинг урьдчилан мэдэж, илүү сайн бэлдэж ирнэ.
               Зураг нэмэхгүй ч захиалга хийж болно.
@@ -601,7 +601,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
           {isSurvey ? (
             /* Survey: no price shown — mover quotes after visiting */
             <>
-              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
                 <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
                 <div className="mt-3 space-y-2.5">
                   <div className="flex justify-between text-sm">
@@ -648,7 +648,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
           ) : breakdown && (
             /* Standard: show price breakdown */
             <>
-              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+              <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
                 <h2 className="font-semibold text-foreground">Захиалгын хураангуй</h2>
                 <div className="mt-3 space-y-2.5">
                   <div className="flex justify-between text-sm">
@@ -682,13 +682,13 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                   {urgent && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Яаралтай</span>
-                      <span className="font-medium text-accent">Тийм</span>
+                      <span className="font-medium text-highlight-strong">Тийм</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+              <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
                 <h2 className="font-semibold text-foreground">Үнийн тооцоо</h2>
                 <div className="mt-3 space-y-2">
                   <div className="flex justify-between text-sm">
@@ -703,7 +703,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                   {breakdown.urgentSurcharge > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Яаралтай нэмэгдэл</span>
-                      <span className="font-medium text-accent">+₮{breakdown.urgentSurcharge.toLocaleString()}</span>
+                      <span className="font-medium text-highlight-strong">+₮{breakdown.urgentSurcharge.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -767,7 +767,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             )}
           </div>
 
-          <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-6 mx-6 rounded-2xl bg-card p-4 shadow-card">
             <h2 className="font-semibold text-foreground">Цаашид юу болох вэ?</h2>
             <div className="mt-3 space-y-3">
               {isSurvey ? (
@@ -808,7 +808,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
                     'Escrow-ээр төлбөр хийснээр ажил эхэлнэ',
                   ].map((text, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-highlight text-highlight-foreground">
                         <span className="text-xs font-bold">{i + 1}</span>
                       </div>
                       <p className="text-sm text-foreground">{text}</p>
@@ -849,7 +849,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
             </div>
           )}
 
-          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-sm">
+          <div className="mt-4 mx-6 rounded-2xl bg-card p-4 shadow-card">
             <p className="text-center text-xs text-muted-foreground">
               Захиалга илгээснээр та манай үйлчилгээний нөхцлийг зөвшөөрсөнд тооцно.
             </p>
@@ -866,11 +866,11 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
       )}
 
       {/* Fixed bottom CTA — sits above AppBottomNav (~88px) */}
-      <div className="fixed bottom-20 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background px-6 pb-2 pt-4">
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[390px] -translate-x-1/2 bg-background/95 px-6 pb-[max(env(safe-area-inset-bottom),24px)] pt-4 backdrop-blur-xl">
         {step < 5 ? (
           <Button
             onClick={handleNext}
-            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md hover:bg-primary/90 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold shadow-md hover:bg-primary/90 pressable"
           >
             Үргэлжлэх
             <ArrowRight className="ml-2 h-5 w-5" />
@@ -879,7 +879,7 @@ export function CreateOrderScreen({ preSelectedServiceId }: CreateOrderScreenPro
           <Button
             onClick={() => { void handleConfirm() }}
             disabled={isConfirming || paymentPending || (!isSurvey && !breakdown)}
-            className="h-14 w-full rounded-2xl bg-accent text-base font-semibold text-accent-foreground shadow-md hover:bg-accent/90 disabled:opacity-50 active:scale-95 transition-all"
+            className="h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-md hover:bg-primary/90 disabled:opacity-50 pressable"
           >
             {isConfirming ? 'Илгээж байна...' : paymentPending ? 'Төлбөр хүлээгдэж байна' : (
               <>

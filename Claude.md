@@ -78,7 +78,7 @@ After completing any implementation:
 ### User Flow Testing
 - Login: Google/Facebook OAuth button → Better Auth callback → home screen
 - Worker registration: profile → "Ажилтнаар бүртгүүлэх" → DAN + police clearance → admin approves → `is_worker=true`
-- Mode toggle: home screen segmented control (Хэрэглэгч / Ажилтан) — only visible when `is_worker=true`
+- Mode toggle: inline segmented control in the header of `/home` and `/jobs` (Хэрэглэгч / Ажилтан) — only visible when `is_worker=true`
 - Booking: search → worker card → date/time → payment → confirmation
 - Admin: pending verifications → approve/reject → dispute resolution
 
@@ -118,9 +118,9 @@ Turborepo monorepo: `packages/api` is a Hono + Node.js API server (port 4000); `
 
 ### Navigation: Route-Aware Link Nav (M2 complete)
 
-Tab bars (`AppBottomNav`, `AppWorkerBottomNav`) use `<Link href>` with active state from `usePathname().startsWith(href)`. Browser Back works natively. All tab routes prefetch automatically (always in viewport).
+Tab bars (`AppBottomNav`, `AppWorkerBottomNav`) wrap `FloatingTabBar`: `<Link href>` tabs, rendered only when `usePathname()` exactly matches a tab root — drill-down screens own the bottom edge and have a back button. Browser Back works natively. All tab routes prefetch automatically (always in viewport).
 
-**ModeToggle** (`components/mode-toggle.tsx`) — standalone component mounted in both `(app)/layout.tsx` and `(worker)/layout.tsx`:
+**ModeToggle** (`components/mode-toggle.tsx`) — inline component rendered in the `HomeScreen` and `WorkerJobsScreen` headers (it used to float above the tab bar and covered content):
 - Visible only when `session.isWorker === true`
 - Display mode derived from pathname: `/jobs` or `/worker*` → worker mode, else → user mode — never a prop
 - On switch: `router.push` immediately (optimistic), then `PATCH /api/me/mode` to persist; on failure → toast + revert push
@@ -149,11 +149,11 @@ packages/web/
       layout.tsx              # Redirect authed users to /
       login/page.tsx          # Full pre-auth flow (login/register/forgot-pw/OTP)
     (app)/
-      layout.tsx              # User auth gate + SessionProvider + ModeToggle + AppBottomNav
+      layout.tsx              # User auth gate + SessionProvider + AppBottomNav
       home/page.tsx           # HomeScreen (M1 reference migration)
       loading.tsx  error.tsx
     (worker)/
-      layout.tsx              # Worker auth gate (is_worker required) + ModeToggle + WorkerBottomNav
+      layout.tsx              # Worker auth gate (is_worker required) + WorkerBottomNav
       jobs/page.tsx           # WorkerJobsScreen (M1 reference migration)
       loading.tsx  error.tsx
   context/
